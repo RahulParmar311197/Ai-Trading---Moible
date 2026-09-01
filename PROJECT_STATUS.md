@@ -40,6 +40,7 @@ Before every implementation task, check this file, `AI_TRADING_PLATFORM_BLUEPRIN
 - [x] Provider → Redis publisher startup wiring on `main`
 - [x] Provider → Redis startup integration test
 - [x] Provider → validation → publisher integration coverage aligned with actual runtime API
+- [x] Android CI build job added to GitHub Actions
 
 ## In progress
 
@@ -76,8 +77,10 @@ Before every implementation task, check this file, `AI_TRADING_PLATFORM_BLUEPRIN
 - [x] Redis publisher startup wiring
 - [x] Provider startup integration test
 - [x] Provider validation/publisher integration coverage
+- [x] Android CI build job
 - [ ] SDK dependency/version CI verification
 - [ ] Full backend CI verification
+- [ ] Android CI execution verification
 - [ ] Stage 1 final integration verification
 
 ## Later stages
@@ -159,8 +162,8 @@ Live/autonomous trading must not be enabled until replay, backtesting, paper tra
 
 ## Last completed work
 
-Corrected the market pipeline integration test directly on `main` after comparing it with the actual `ProviderMarketRunner` API. The test now uses a fake feed and exercises the real `run()` path, verifying valid events reach the publisher and stale events are rejected before publication.
+Added an Android build job to the existing GitHub Actions workflow on `main`. It provisions Java 17 and Android tooling, downloads the pinned Gradle 8.10.2 distribution, and runs `gradle assembleDebug`. The job is intentionally separate from the backend job so Android build failures are visible independently.
 
 ## Next task
 
-Verify the complete backend test suite and official Upstox SDK protobuf import on current `main`. Fix only confirmed failures directly on `main`, then update this file.
+Wait for and inspect the new CI run on `main`. Verify the Android build and backend/Upstox checks. Fix only confirmed failures directly on `main`, then update this file.
