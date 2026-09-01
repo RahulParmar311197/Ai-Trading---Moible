@@ -40,10 +40,14 @@ Before starting any new implementation task, review this file, `AI_TRADING_PLATF
 - [x] Upstox V3 historical candle adapter
 - [x] Upstox provider registration and access-token configuration
 - [x] Upstox historical normalization tests
+- [x] Upstox V3 live authorization/transport boundary
+- [x] WebSocket/Protobuf runtime dependencies
+- [x] Live authorization boundary test
 
 ## In progress
 
-- [ ] Upstox V3 live WebSocket/Protobuf transport
+- [ ] Add the official Upstox V3 protobuf schema/generated decoder
+- [ ] Map decoded Upstox live LTPC/full data into canonical `MarketEvent`
 - [ ] Connect configured provider runner to application startup
 - [ ] Complete official Gradle wrapper files and validate `./gradlew assembleDebug`
 - [ ] Verify Android CI build passes on GitHub Actions
@@ -72,7 +76,9 @@ Before starting any new implementation task, review this file, `AI_TRADING_PLATF
 - [x] Provider → quality validation gate
 - [x] Explicit provider-selection boundary
 - [x] Concrete Upstox historical provider adapter
-- [ ] Concrete Upstox live provider adapter
+- [x] Upstox live authorization/transport boundary
+- [ ] Upstox protobuf decoder
+- [ ] Upstox live canonical normalization
 - [ ] Provider startup integration
 
 ## Later stages
@@ -154,8 +160,8 @@ Live/autonomous trading must not be enabled until replay, backtesting, paper tra
 
 ## Last completed work
 
-Implemented the first real external provider adapter using the current Upstox V3 Historical Candle API. It maps canonical timeframes to Upstox V3 units/intervals, authenticates with `UPSTOX_ACCESS_TOKEN`, converts provider candle arrays into canonical `Candle` objects, and validates OHLC. The provider selector now returns the Upstox adapter when `MARKET_DATA_PROVIDER=upstox` is configured. Upstox V3 live streaming remains pending because its current feed requires an authorized WebSocket plus Protobuf decoding.
+Implemented the Upstox V3 live authorization/transport boundary. The adapter calls the current V3 authorization endpoint, obtains the one-time authorized WebSocket URI, opens the WebSocket, sends a binary subscription request, and injects incoming binary payloads into a decoder boundary. Added `websockets` and `protobuf` dependencies and authorization tests. The official protobuf schema/generated decoder and canonical live-event normalization remain pending; no fake schema was invented.
 
 ## Next task
 
-Implement the Upstox V3 live WebSocket authorization/transport and official Protobuf decoding boundary. Before doing so, re-check this status file, the full blueprint, and the current repository.
+Add the official Upstox V3 protobuf schema/generated decoder, then map decoded LTPC/full feed data into canonical `MarketEvent`. Before doing so, re-check this status file, the full blueprint, and the current repository.
