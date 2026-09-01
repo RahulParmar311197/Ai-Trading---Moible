@@ -38,6 +38,7 @@ Before every implementation task, check this file, `AI_TRADING_PLATFORM_BLUEPRIN
 - [x] Safe degraded startup when live data is not configured
 - [x] Redis publisher implementation
 - [x] Provider → Redis publisher startup wiring on `main`
+- [x] Provider → Redis startup integration test
 
 ## In progress
 
@@ -72,6 +73,7 @@ Before every implementation task, check this file, `AI_TRADING_PLATFORM_BLUEPRIN
 - [x] Upstox feed-field extraction
 - [x] Application startup provider wiring
 - [x] Redis publisher startup wiring
+- [x] Provider startup integration test
 - [ ] SDK dependency/version CI verification
 - [ ] Full backend CI verification
 - [ ] Stage 1 final integration verification
@@ -155,8 +157,8 @@ Live/autonomous trading must not be enabled until replay, backtesting, paper tra
 
 ## Last completed work
 
-Reconciled the project tracker with the actual `main` runtime: the FastAPI lifespan now selects the configured provider, constructs the Redis publisher, passes its `publish` callback into `ProviderMarketRunner`, and starts the runner task. This matches the intended provider-neutral market-data flow without bypassing the deterministic quality gate.
+Added and committed the FastAPI lifespan integration test on `main`. It verifies that configured provider startup creates the provider runner, injects the Redis publisher callback, uses the configured instrument list, and exposes the runner task.
 
 ## Next task
 
-Verify the current `main` CI/backend test state, starting with the failing Upstox SDK protobuf import/version check. Fix only confirmed failures, directly on `main`, and update this file after verification.
+Verify the complete backend test suite and official Upstox SDK protobuf import on current `main`. Fix only confirmed failures directly on `main`, then update this file.
