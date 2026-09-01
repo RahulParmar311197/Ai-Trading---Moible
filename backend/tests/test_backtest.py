@@ -39,6 +39,21 @@ def test_target_and_stop_are_resolved_from_current_candle_only():
     assert result.net_pnl == Decimal("1")
 
 
+def test_position_can_remain_open_until_a_later_candle_hits_target():
+    strategy = OneShot(MarketOrder(Side.LONG, Decimal("1"), Decimal("100"), target_price=Decimal("103")))
+    result = BacktestEngine([candle(0, high="101"), candle(60, high="104")]).run(strategy)
+    assert len(result.trades) == 1
+    assert result.trades[0].exit_price == Decimal("103")
+    assert [event.event for event in result.order_events] == ["OPEN", "CLOSE"]
+
+
+def test_open_position_is_closed_at_end_of_data():
+    strategy = OneShot(MarketOrder(Side.LONG, Decimal("1"), Decimal("100")))
+    result = BacktestEngine([candle(0), candle(60, close="102")]).run(strategy)
+    assert result.trades[0].exit_price == Decimal("102")
+    assert result.order_events[-1].event == "CLOSE_END"
+
+
 def test_fees_and_slippage_are_applied_deterministically():
     strategy = OneShot(MarketOrder(Side.LONG, Decimal("2"), Decimal("100"), target_price=Decimal("101")))
     result = BacktestEngine([candle(0, high="102", close="100")], fee_rate=Decimal("0.01"), slippage_bps=Decimal("10")).run(strategy)
