@@ -22,12 +22,13 @@ Before starting any new implementation task, review this file, `AI_TRADING_PLATF
 - [x] PostgreSQL/SQLAlchemy executor integration
 - [x] Live PostgreSQL instrument integration test
 - [x] GitHub Actions PostgreSQL 16 service for integration tests
+- [x] Candle persistence migration and repository/tests
+- [x] Tick persistence migration and repository/tests
 
 ## In progress
 
 - [ ] Complete official Gradle wrapper files and validate `./gradlew assembleDebug`
 - [ ] Verify Android CI build passes on GitHub Actions
-- [ ] Implement candle/tick persistence
 - [ ] Implement market-data provider adapter interface
 - [ ] Implement REST market-data endpoints
 - [ ] Implement WebSocket market stream
@@ -43,7 +44,8 @@ Before starting any new implementation task, review this file, `AI_TRADING_PLATF
 - [x] PostgreSQL repository implementation
 - [x] SQLAlchemy PostgreSQL executor integration
 - [x] Live PostgreSQL integration validation
-- [ ] Candle/tick persistence
+- [x] Candle persistence
+- [x] Tick persistence
 - [ ] Provider adapter interface
 - [ ] REST market endpoints
 - [ ] WebSocket market stream
@@ -129,8 +131,8 @@ Live/autonomous trading must not be enabled until replay, backtesting, paper tra
 
 ## Last completed work
 
-Added a real PostgreSQL integration test for instrument persistence and configured CI with a PostgreSQL 16 service. The integration test applies migrations and exercises repository upsert/get/list against PostgreSQL.
+Implemented canonical tick persistence as required by the blueprint: PostgreSQL migration with instrument/time indexing and a repository with deterministic upsert/range-query tests. The blueprint defines `ticks` as a core market-data table but does not prescribe provider-specific tick columns, so the implementation uses only fields supported by the existing standard market-event contract plus a deterministic tick ID.
 
 ## Next task
 
-Implement candle/tick persistence according to the full blueprint. Before doing so, re-check this status file, the full blueprint, and the current repository.
+Implement the market-data provider adapter interface. Before doing so, re-check this status file, the full blueprint, and the current repository.
