@@ -46,6 +46,34 @@ class BacktestTrade:
     net_pnl: Decimal
 
 
+@dataclass(frozen=True)
+class BacktestReport:
+    """Stable, API-friendly projection of a deterministic backtest result."""
+    starting_balance: Decimal
+    ending_balance: Decimal
+    net_pnl: Decimal
+    trade_count: int
+    win_rate: Decimal
+    expectancy: Decimal
+    max_drawdown: Decimal
+    trades: tuple[BacktestTrade, ...]
+    order_events: tuple[BacktestOrderEvent, ...]
+
+    @classmethod
+    def from_result(cls, result: "BacktestResult") -> "BacktestReport":
+        return cls(
+            starting_balance=result.starting_balance,
+            ending_balance=result.ending_balance,
+            net_pnl=result.net_pnl,
+            trade_count=len(result.trades),
+            win_rate=result.win_rate,
+            expectancy=result.expectancy,
+            max_drawdown=result.max_drawdown,
+            trades=tuple(result.trades),
+            order_events=tuple(result.order_events),
+        )
+
+
 @dataclass
 class BacktestResult:
     starting_balance: Decimal
