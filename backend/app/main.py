@@ -9,6 +9,8 @@ from app.api.markets import router as markets_router
 from app.config import settings
 from app.market.provider_runtime import ProviderMarketRunner
 from app.market.providers import ProviderConfigurationError, get_market_data_feed
+from app.market.redis_client import get_redis_client
+from app.market.redis_publisher import RedisMarketPublisher
 
 
 @asynccontextmanager
@@ -17,10 +19,13 @@ async def lifespan(app: FastAPI):
     if settings.market_data_provider and settings.configured_market_data_instruments:
         try:
             feed = get_market_data_feed()
-            # Publisher wiring is intentionally deferred until the live publisher
-            # dependency is configured; startup must never invent a sink.
+            publisher = RedisMarketPublisher(get_redis_client())
+            runner = ProviderMarketRunner(feed, publisher.publish)
             app.state.market_data_feed = feed
-            app.state.market_data_runner = ProviderMarketRunner(feed, _unconfigured_publisher)
+            app.state.market_data_publisher = publisher
+            app.state.market_data_runner = runner
+            runner_task = runner.start(settings.configured_market_data_instruments)
+            app.state.market_data_runner_task = runner_task
         except ProviderConfigurationError as exc:
             app.state.market_data_startup_error = str(exc)
     else:
@@ -32,10 +37,6 @@ async def lifespan(app: FastAPI):
         if runner_task is not None:
             runner_task.cancel()
             await asyncio.gather(runner_task, return_exceptions=True)
-
-
-async def _unconfigured_publisher(event) -> None:
-    raise RuntimeError("Live market publisher is not configured")
 
 
 app = FastAPI(title="AI Trading Platform API", version="0.1.0", lifespan=lifespan)
