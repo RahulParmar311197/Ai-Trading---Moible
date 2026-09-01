@@ -31,7 +31,6 @@ Before starting any new implementation task, review this file, `AI_TRADING_PLATF
 - [x] Added first backend health test
 - [x] Added Android Gradle project skeleton
 - [x] Added Android application module and Compose entry point
-- [x] Added Android manifest and base theme
 - [x] Added PostgreSQL migration foundation and migration policy
 - [x] Added architecture documentation foundation
 - [x] Added GitHub Actions backend test workflow
@@ -49,12 +48,18 @@ Before starting any new implementation task, review this file, `AI_TRADING_PLATF
 - [x] Added instrument repository boundary and in-memory implementation
 - [x] Added instrument service boundary
 - [x] Added repository/service unit tests
+- [x] Added PostgreSQL instrument repository with parameterized upsert/get/list operations
+- [x] Added PostgreSQL repository unit test using a deterministic fake SQL executor
+- [x] Added environment-backed database settings
+- [x] Added SQLAlchemy database engine factory
+- [x] Added SQLAlchemy executor wired to the repository contract
+- [x] Added database executor unit tests
 
 ## In progress
 
 - [ ] Complete official Gradle wrapper files and validate `./gradlew assembleDebug`
 - [ ] Verify Android CI build passes on GitHub Actions
-- [ ] Implement concrete instrument database repository
+- [ ] Add a live PostgreSQL integration test/container
 - [ ] Implement candle/tick persistence
 - [ ] Implement market-data provider adapter interface
 - [ ] Implement REST market-data endpoints
@@ -78,8 +83,10 @@ Before starting any new implementation task, review this file, `AI_TRADING_PLATF
 - [x] Canonical instrument/timeframe/candle models (initial)
 - [x] Provider-neutral normalization (initial)
 - [x] Instrument persistence migration
-- [x] Instrument repository/service boundaries (in-memory implementation)
-- [ ] Concrete instrument database repository
+- [x] Instrument repository/service boundaries
+- [x] PostgreSQL repository implementation (DB executor boundary)
+- [x] SQLAlchemy PostgreSQL executor integration
+- [ ] Live PostgreSQL integration validation
 - [ ] Candle/tick persistence
 - [ ] Provider adapter interface
 - [ ] REST market endpoints
@@ -164,8 +171,8 @@ Live/autonomous trading must not be enabled until replay, backtesting, paper tra
 
 ## Last completed work
 
-Implemented the Stage 1 instrument persistence foundation: SQL migration matching the blueprint instrument fields, repository boundary, deterministic in-memory repository for testing, service boundary, and tests.
+Wired the Stage 1 PostgreSQL repository boundary to a concrete SQLAlchemy executor and environment-backed database settings. Added deterministic SQLite-backed executor tests without requiring a live database.
 
 ## Next task
 
-Implement the concrete database repository for instruments using the project's configured PostgreSQL persistence approach. Before doing so, re-check this file, the full blueprint, and the current repository.
+Add live PostgreSQL integration validation, then implement candle/tick persistence. Before doing so, re-check this file, the full blueprint, and the current repository.
