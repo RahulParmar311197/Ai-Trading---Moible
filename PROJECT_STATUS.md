@@ -45,11 +45,13 @@ Before starting any new implementation task, review this file, `AI_TRADING_PLATF
 - [x] Live authorization boundary test
 - [x] Upstox Protobuf decoder injection boundary and tests
 - [x] Upstox SDK-backed protobuf decoder adapter
+- [x] Upstox live LTP → canonical MarketEvent normalization boundary
+- [x] Upstox LTP normalization tests
 
 ## In progress
 
 - [ ] Verify official Upstox SDK protobuf import/version in CI
-- [ ] Map decoded Upstox live LTPC/full data into canonical `MarketEvent`
+- [ ] Map actual decoded LTPC/full feed message fields into the normalizer
 - [ ] Connect configured provider runner to application startup
 - [ ] Complete official Gradle wrapper files and validate `./gradlew assembleDebug`
 - [ ] Verify Android CI build passes on GitHub Actions
@@ -81,8 +83,9 @@ Before starting any new implementation task, review this file, `AI_TRADING_PLATF
 - [x] Upstox live authorization/transport boundary
 - [x] Upstox protobuf decoder injection boundary
 - [x] Upstox SDK-backed protobuf decoder adapter
+- [x] Upstox live LTP normalization boundary
 - [ ] Upstox SDK dependency/version CI verification
-- [ ] Upstox live canonical normalization
+- [ ] Actual decoded Upstox LTPC/full feed mapping
 - [ ] Provider startup integration
 
 ## Later stages
@@ -164,8 +167,8 @@ Live/autonomous trading must not be enabled until replay, backtesting, paper tra
 
 ## Last completed work
 
-Added an SDK-backed Upstox V3 protobuf decoder adapter that delegates parsing to the official generated `FeedResponse` message when the installed Upstox SDK exposes it. The core application still uses the injected decoder boundary. No hand-written protobuf schema was introduced.
+Added the Upstox live LTP normalization boundary. It converts an externally decoded price/timestamp into the canonical `MarketEvent` without pretending that an LTPC message contains real OHLC. The boundary uses the observed price for the tick event and leaves actual candle OHLC to aggregation. Added validation tests.
 
 ## Next task
 
-Verify the exact installed Upstox SDK protobuf module/version in CI, then map decoded LTPC/full feed data into canonical `MarketEvent`. Before doing so, re-check this status file, the full blueprint, and the current repository.
+Inspect the actual Upstox SDK `FeedResponse` field structure available to the selected dependency version and implement the real LTPC/full-feed extraction into the normalization boundary. Before doing so, re-check this status file, the full blueprint, and the current repository.
