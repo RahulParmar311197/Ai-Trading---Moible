@@ -19,17 +19,23 @@ Before starting any new implementation task, review this file and the current re
 ## Completed
 
 - [x] Confirmed GitHub repository access
-- [x] Confirmed repository is currently empty
+- [x] Confirmed repository was initially empty
 - [x] Created project status tracker
 - [x] Defined staged development rule: inspect status + repository before every next task
+- [x] Added root README
+- [x] Added `.gitignore` with secret/build protection
+- [x] Added `.env.example`
+- [x] Added initial FastAPI application
+- [x] Added backend dependency manifest
+- [x] Added first backend health test
+- [x] Re-checked repository contents after foundation changes
 
 ## In progress
 
 - [ ] Repository foundation files
-- [ ] Backend application skeleton
 - [ ] Android application skeleton
 - [ ] Database/migration foundation
-- [ ] Test foundation
+- [ ] CI/test foundation
 - [ ] Documentation structure
 
 ## Pending roadmap
@@ -125,4 +131,4 @@ Live/autonomous trading must not be enabled until replay, backtesting, paper tra
 
 ## Next task
 
-Complete the repository foundation and then re-check this status file before proceeding to market-data implementation.
+Finish Stage 0 foundation: Android skeleton, database/migration foundation, documentation structure, and CI/test foundation. Then re-check this file and repository before beginning Stage 1 market-data implementation.
