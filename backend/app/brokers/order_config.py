@@ -28,6 +28,7 @@ class BrokerInstrument:
     provider_symbol: str
     exchange_segment: ExchangeSegment
     product_type: ProductType = ProductType.INTRADAY
+    validity: OrderValidity = OrderValidity.DAY
     lot_size: int = 1
 
     def __post_init__(self) -> None:
@@ -42,6 +43,8 @@ class InstrumentResolver:
 
     def __init__(self, instruments: tuple[BrokerInstrument, ...] = ()) -> None:
         self._by_canonical = {item.canonical_symbol.upper(): item for item in instruments}
+        if len(self._by_canonical) != len(instruments):
+            raise ValueError("duplicate instrument mapping")
 
     def resolve(self, canonical_symbol: str) -> BrokerInstrument:
         key = canonical_symbol.strip().upper()
@@ -53,7 +56,9 @@ class InstrumentResolver:
             raise KeyError(f"instrument mapping not configured: {key}") from exc
 
     def add(self, instrument: BrokerInstrument) -> None:
-        key = instrument.canonical_symbol.upper()
+        key = instrument.canonical_symbol.strip().upper()
+        if not key:
+            raise ValueError("canonical symbol must be non-empty")
         if key in self._by_canonical:
             raise ValueError(f"duplicate instrument mapping: {instrument.canonical_symbol}")
         self._by_canonical[key] = instrument
