@@ -3,6 +3,7 @@ from decimal import Decimal
 import pytest
 
 from app.market.models import Timeframe
+from app.smc.models import Bias, SignalContext
 from app.strategy.dsl import (
     ConditionType,
     Operator,
@@ -61,3 +62,22 @@ def test_not_requires_exactly_one_child():
                 StrategyCondition(type=ConditionType.BOS, field="b"),
             ],
         )
+
+
+def test_smc_signal_context_adapter_preserves_deterministic_facts():
+    context = StrategySignalContext.from_smc_signal(
+        SignalContext(
+            bias=Bias.BULLISH,
+            bos=True,
+            mss=True,
+            choch=False,
+            liquidity_sweep=True,
+            fvg=True,
+            order_block=False,
+            score=80,
+            reasons=("MSS", "liquidity_sweep", "fvg"),
+        )
+    )
+    assert context.values["bias"] == "BULLISH"
+    assert context.values["mss"] is True
+    assert context.values["score"] == 80
