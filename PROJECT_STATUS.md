@@ -8,7 +8,7 @@ Work directly on `main` only. Before implementation, inspect this file, `AI_TRAD
 
 ## Current stage
 
-**Stage 4 — Backtesting**
+**Stage 4 — Backtesting / Stage 5 Strategy Foundation**
 
 ## Completed
 
@@ -80,6 +80,12 @@ Work directly on `main` only. Before implementation, inspect this file, `AI_TRAD
 - [x] Stage 4 `POST /api/v1/backtest` deterministic execution endpoint
 - [x] Stage 4 `GET /api/v1/backtest/{id}` persisted report retrieval endpoint
 - [x] Stage 4 API validation and repository serialization test coverage
+- [x] Strategy DSL package boundary
+- [x] Declarative strategy condition types from blueprint
+- [x] Declarative AND/OR/NOT and comparison/range evaluation
+- [x] Strategy risk constraints with bounded risk percentage
+- [x] Structured signal context for deterministic strategy evaluation
+- [x] Strategy DSL validation tests
 
 ## Stage 1 status
 
@@ -95,7 +101,7 @@ Work directly on `main` only. Before implementation, inspect this file, `AI_TRAD
 
 ## Stage 4 status
 
-**PARTIAL / UNVERIFIED** — deterministic engine, risk sizing, report projection, persistence migration/repository, and API endpoints now exist. The API currently accepts an explicit deterministic order plan as its transport adapter because the repository does not yet contain the blueprint's full reusable Strategy/DSL registry. This avoids inventing executable strategy code or a duplicate strategy framework. Latest runtime/CI verification remains unavailable.
+**PARTIAL / UNVERIFIED** — deterministic engine, risk sizing, report projection, persistence migration/repository, and API endpoints exist. The API currently accepts an explicit deterministic order plan as its transport adapter because the repository does not yet contain a complete reusable strategy execution registry. The new declarative Strategy DSL is now present, but has not yet been wired into candle-derived strategy execution or paper trading. Latest runtime/CI verification remains unavailable.
 
 ## Stage 4 checklist
 
@@ -118,17 +124,19 @@ Work directly on `main` only. Before implementation, inspect this file, `AI_TRAD
 - [x] GET backtest report API
 - [x] API/repository unit coverage
 - [ ] Full runtime/CI verification of latest Stage 4 changes
-- [ ] Reusable strategy/DSL integration for backtest requests
+- [ ] Integrate reusable Strategy DSL into replay/backtest strategy evaluation
 - [ ] Broader risk-engine integration required by later trading stages
 
-## Later stages
+## Stage 5 — AI / Strategy
 
-### Stage 5 — AI
-- [ ] Structured market context
+- [x] Declarative Strategy DSL foundation
+- [ ] Structured market context pipeline
 - [ ] AI analysis service
-- [ ] Strategy DSL
-- [ ] AI output validation
+- [ ] AI-to-DSL strategy generation with strict validation
+- [ ] AI output validation against deterministic signal/risk facts
 - [ ] Trade explanation
+
+## Later stages
 
 ### Stage 6 — Options
 - [ ] Option chain
@@ -173,7 +181,7 @@ Live/autonomous trading remains disabled/gated. It must not be enabled until rep
 
 ## Runtime / CI verification
 
-GitHub Actions is the available repository verification path. No workflow run is currently reported for latest commit `aed4fffc90677161eb5d379b3cb2368a61badac1`, and the connected commit status API reports no statuses. Therefore the newly added API/repository tests remain **UNVERIFIED**. No local/Codespace test execution is claimed.
+GitHub Actions is the available repository verification path. No workflow run is currently reported for latest commit `0824bdca7ed92eb41367f0a699eab78efb60f771`, and the connected commit status API reports no statuses. The container runtime also cannot reach GitHub to clone the repository, so no local test command is claimed as executed. The API/repository and Strategy DSL tests therefore remain **UNVERIFIED**.
 
 ## Recent commits on main
 
@@ -186,7 +194,11 @@ GitHub Actions is the available repository verification path. No workflow run is
 - `88a8b8b` — backtest API execution/validation tests
 - `1fa1c55` — backtest report/persistence exports
 - `aed4fff` — backtest repository serialization test
+- `0e266e9` — strategy package boundary
+- `1ea4d2e` — declarative strategy DSL
+- `0824bdc` — Strategy DSL tests
+- `fc43dce` — status update for backtest API/persistence
 
 ## Next task
 
-Build the reusable blueprint-aligned Strategy/DSL boundary that can be consumed by replay, backtest, paper trading and later AI strategy generation, then integrate it with the existing deterministic backtest protocol. Do not bypass risk or create duplicate strategy frameworks. Keep runtime/CI verification explicitly UNVERIFIED until an actual workflow or runtime executes successfully.
+Integrate the new Strategy DSL with the existing deterministic SMC/replay/backtest boundaries without creating a second strategy framework. Then add AI strategy-generation/validation only as a declarative translation layer; AI must never authorize execution or bypass risk controls. Keep runtime/CI verification explicitly UNVERIFIED until an actual workflow or runtime executes successfully.
