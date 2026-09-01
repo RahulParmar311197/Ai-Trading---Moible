@@ -22,6 +22,7 @@ Last updated: 2026-09-01
 - Official Upstox and Dhan API contracts were reviewed before adding adapters. The adapters map provider account/position/order responses into the common broker models and keep live mutation disabled by default.
 - Added a provider-neutral `BrokerInstrument`/`InstrumentResolver` boundary with explicit exchange segment, product type, validity enum, and lot-size metadata. Unknown canonical symbols are rejected rather than guessed.
 - Wired the resolver into the explicit Upstox/Dhan live-order construction path. When live mutation is explicitly enabled, provider security IDs plus exchange/product/validity configuration now come from the resolver rather than hard-coded defaults. Unknown instruments fail before the network request. Live mutation remains disabled by default.
+- Added deterministic provider catalogue ingestion for Upstox BOD JSON records and Dhan scrip-master rows. Catalogues map stable provider identifiers, exchange/segment, trading symbol, lot size, product policy and validity into the existing resolver boundary; unsupported Dhan exchange/segment combinations are rejected rather than guessed.
 
 ## CI evidence
 
@@ -32,7 +33,7 @@ For commit `5b6818d`, GitHub Actions completed with:
 
 For status commit `aad451d`, the separate Android CI workflow completed **SUCCESS**.
 
-For the latest broker test commit `ee6816f`, GitHub Actions run `33505513022` (Android CI) is currently **IN PROGRESS**. No result is claimed yet. The backend workflow result for this commit is also not yet verified.
+For broker test commit `ee6816f`, GitHub Actions run `33505513022` (Android CI) was observed **IN PROGRESS**; no completion result is claimed. Subsequent catalogue commits triggered newer workflow runs, whose final results are not yet verified here.
 
 No local/Codespace test execution is claimed.
 
@@ -152,7 +153,7 @@ No local/Codespace test execution is claimed.
 - [x] Provider-neutral instrument/security-ID resolution boundary
 - [x] Explicit exchange/product/validity order configuration boundary
 - [x] Resolver wired into Upstox/Dhan live-order payload construction
-- [ ] Provider-specific instrument catalogue ingestion
+- [x] Upstox BOD/Dhan scrip-master catalogue ingestion boundary
 - [ ] Auth/session lifecycle integration
 - [ ] Live broker runtime verification
 - [ ] Controlled execution/risk integration
@@ -186,17 +187,18 @@ No Codespace/runtime session is exposed through the connected tools, so no local
 
 ## Recent commits on main
 
+- `532a326` — export instrument catalogue boundary
+- `469ab2c` — cover provider catalogue ingestion
+- `9052438` — add provider instrument catalogue ingestion
 - `ee6816f` — verify provider order payload resolution
 - `4412867` — preserve Dhan client identity in resolved order payload
 - `946e70e` — add instrument validity configuration
 - `eb2e69f` — wire Upstox resolver into live order construction
 - `0b5f849` — record previous broker instrument milestone
-- `b09bd7a` — add broker instrument resolution tests
-- `748c7b7` — add provider-neutral instrument/order configuration
 
 ## Next execution
 
-1. Add provider-specific instrument catalogue ingestion behind the resolver boundary, without embedding credentials or live mutation.
-2. Integrate broker authentication/session lifecycle through existing application configuration, keeping credentials out of domain models/logs.
-3. Return to paper persistence, audit, partial fills, and replay-to-paper integration.
+1. Integrate broker authentication/session lifecycle through existing application configuration, keeping credentials out of domain models/logs.
+2. Return to paper persistence, audit, partial fills, and replay-to-paper integration.
+3. Add controlled risk/execution boundary only after deterministic risk integration is verified.
 4. Re-run CI verification after the next stable milestone.
