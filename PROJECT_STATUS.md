@@ -30,12 +30,14 @@ Before starting any new implementation task, review this file, `AI_TRADING_PLATF
 - [x] REST candle endpoint API tests
 - [x] WebSocket market stream
 - [x] Redis live-market-state boundary and tests
+- [x] Redis live event publisher boundary and ordering test
 
 ## In progress
 
 - [ ] Complete official Gradle wrapper files and validate `./gradlew assembleDebug`
 - [ ] Verify Android CI build passes on GitHub Actions
-- [ ] Wire Redis implementation into WebSocket/provider event flow
+- [ ] Wire the concrete Redis client into the application runtime
+- [ ] Connect provider adapter events to live publisher/WebSocket fan-out
 - [ ] Add market-data freshness/quality checks
 
 ## Stage 1 checklist
@@ -54,7 +56,9 @@ Before starting any new implementation task, review this file, `AI_TRADING_PLATF
 - [x] REST market-data persistence wiring
 - [x] WebSocket market stream
 - [x] Redis live-state boundary
-- [ ] Redis runtime wiring/fan-out
+- [x] Redis event publisher boundary
+- [ ] Concrete Redis runtime wiring
+- [ ] Provider → publisher → WebSocket integration
 - [ ] Market-data freshness/quality controls
 
 ## Later stages
@@ -136,8 +140,8 @@ Live/autonomous trading must not be enabled until replay, backtesting, paper tra
 
 ## Last completed work
 
-Added a Redis-backed live market-state boundary that stores the latest normalized `MarketEvent` per instrument, with a fake-client round-trip test. This is intentionally a persistence/state boundary only; runtime WebSocket/provider fan-out is not marked complete until the concrete Redis client is wired into the event flow.
+Added `LiveMarketPublisher`, which persists each normalized `MarketEvent` to the Redis live-state boundary before asynchronously handing it to the WebSocket fan-out callback. Added a deterministic ordering test. The concrete Redis client and provider-to-publisher runtime wiring remain intentionally incomplete.
 
 ## Next task
 
-Wire Redis into the live WebSocket/provider event flow. Before doing so, re-check this status file, the full blueprint, and the current repository.
+Wire a concrete Redis client into application runtime, then connect provider adapter events to `LiveMarketPublisher`. Before doing so, re-check this status file, the full blueprint, and the current repository.
