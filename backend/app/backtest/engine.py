@@ -171,21 +171,24 @@ class BacktestEngine:
                                                      position.quantity, trade.exit_price, candle.timestamp))
                     position = None
 
-            if position is None:
-                order = strategy.on_candle(tuple(visible))
-                if order is not None:
-                    self._validate_order(order, candle, effective_risk)
-                    quantity = self._resolve_quantity(order, balance, effective_risk)
-                    entry = self._fill_price(order.entry_price, order.side, entering=True)
-                    position = _OpenPosition(order, entry, candle.timestamp, quantity)
-                    events.append(BacktestOrderEvent(sequence, "OPEN", order.side, quantity, entry, candle.timestamp))
-                    exit_price = self._resolve_exit(order, candle)
-                    if exit_price is not None:
-                        trade, balance = self._close_position(position, exit_price, candle.timestamp, balance)
-                        trades.append(trade)
-                        events.append(BacktestOrderEvent(sequence, "CLOSE", order.side, quantity,
-                                                         trade.exit_price, candle.timestamp))
-                        position = None
+            # Evaluate the strategy on every visible candle, even while a
+            # position is open. New orders are ignored until the position is
+            # closed, preserving the strategy protocol's candle visibility
+            # contract without permitting overlapping positions.
+            order = strategy.on_candle(tuple(visible))
+            if position is None and order is not None:
+                self._validate_order(order, candle, effective_risk)
+                quantity = self._resolve_quantity(order, balance, effective_risk)
+                entry = self._fill_price(order.entry_price, order.side, entering=True)
+                position = _OpenPosition(order, entry, candle.timestamp, quantity)
+                events.append(BacktestOrderEvent(sequence, "OPEN", order.side, quantity, entry, candle.timestamp))
+                exit_price = self._resolve_exit(order, candle)
+                if exit_price is not None:
+                    trade, balance = self._close_position(position, exit_price, candle.timestamp, balance)
+                    trades.append(trade)
+                    events.append(BacktestOrderEvent(sequence, "CLOSE", order.side, quantity,
+                                                     trade.exit_price, candle.timestamp))
+                    position = None
             equity.append(balance)
 
         if position is not None and self._candles:

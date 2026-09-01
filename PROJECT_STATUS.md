@@ -104,10 +104,12 @@ Work directly on `main` only. Before implementation, inspect this file, `AI_TRAD
 - [x] `/api/v1/ai/analyze`, `/api/v1/ai/strategy`, `/api/v1/ai/explain-trade` endpoints
 - [x] AI provider configuration gate that keeps AI disabled when no endpoint is configured
 - [x] AI service failure and validation unit coverage
+- [x] Replay/backtest regression fixes identified by GitHub Actions
+- [x] Liveness/readiness separation: `/health` remains healthy while `/ready` exposes market-data degraded state
 
 ## Stage 1 status
 
-**PARTIAL / UNVERIFIED** — prior CI verification exists for market-data work, but the placeholder Android Gradle wrapper and missing official `gradle-wrapper.jar` remain. Latest runtime verification is unavailable.
+**PARTIAL / UNVERIFIED** — prior CI verification exists for market-data work, but the placeholder Android Gradle wrapper and missing official `gradle-wrapper.jar` remain. Latest complete Stage 1 verification is not yet established.
 
 ## Stage 2 status
 
@@ -115,11 +117,11 @@ Work directly on `main` only. Before implementation, inspect this file, `AI_TRAD
 
 ## Stage 3 status
 
-**PARTIAL / UNVERIFIED** — replay foundation, SMC integration, and reusable strategy evaluation boundary exist; latest runtime/CI verification and replay-to-paper execution remain outstanding.
+**PARTIAL / UNVERIFIED** — replay foundation, SMC integration, and reusable strategy evaluation boundary exist; latest complete verification and replay-to-paper execution remain outstanding.
 
 ## Stage 4 status
 
-**PARTIAL / UNVERIFIED** — deterministic engine, risk sizing, report projection, persistence migration/repository, API endpoints, and reusable Strategy DSL backtest adapter exist. The backtest API can select a validated DSL strategy instead of requiring explicit order plans, while preserving the existing order-plan transport for compatibility. Latest runtime/CI verification remains unavailable.
+**PARTIAL / UNVERIFIED** — deterministic engine, risk sizing, report projection, persistence migration/repository, API endpoints, and reusable Strategy DSL backtest adapter exist. GitHub Actions found and drove fixes for strategy invocation visibility and replay state indexing; the latest fix is awaiting a fresh workflow result.
 
 ## Stage 4 checklist
 
@@ -143,7 +145,7 @@ Work directly on `main` only. Before implementation, inspect this file, `AI_TRAD
 - [x] API/repository unit coverage
 - [x] Integrate reusable Strategy DSL into backtest strategy evaluation
 - [x] Integrate reusable strategy protocol into replay evaluation
-- [ ] Full runtime/CI verification of latest Stage 4 changes
+- [ ] Fresh CI/runtime verification after fixes
 - [ ] Broader risk-engine integration required by later trading stages
 
 ## Stage 5 — AI / Strategy
@@ -160,7 +162,7 @@ Work directly on `main` only. Before implementation, inspect this file, `AI_TRAD
 - [x] AI analysis endpoint
 - [x] AI strategy endpoint
 - [x] AI trade explanation endpoint
-- [ ] Production AI provider contract compatibility verification
+- [ ] Real external AI provider contract verification
 - [ ] Android AI feature integration
 
 ## Later stages
@@ -208,10 +210,11 @@ Live/autonomous trading remains disabled/gated. It must not be enabled until rep
 
 ## Runtime / CI verification
 
-GitHub Actions is the available repository verification path. No Codespace/runtime session is exposed through the connected tools, so no local/Codespace test command is claimed as executed. GitHub Actions runs for commit `0ff9c41141cc086c566ab9377b289c0b3fd4dda1` are currently in progress; no pass/fail result is claimed yet. The new AI service/API, market-context, replay-strategy, and DSL backtest tests remain **UNVERIFIED** until the workflow completes successfully.
+GitHub Actions is the available real runtime verification path. For commit `0ff9c41141cc086c566ab9377b289c0b3fd4dda1`, Android `assembleDebug` passed, while the backend non-integration suite reported 4 failures: one stale backtest strategy-visibility expectation, one health-contract expectation, and two replay strategy index errors. Those failures were inspected from the actual CI logs and fixes were prepared on `main`. A fresh workflow for the current fix commit is required before marking these changes verified. No local/Codespace command is claimed as executed.
 
 ## Recent commits on main
 
+- `c9389d4` — provider-neutral AI analysis service and APIs
 - `0ff9c41` — deterministic market context, safe AI-to-DSL translation, and replay strategy evaluation
 - `2405bc9` — integrate Strategy DSL with deterministic backtesting
 - `7600193` — status update for AI safety and strategy context milestones
@@ -219,22 +222,7 @@ GitHub Actions is the available repository verification path. No Codespace/runti
 - `3b18f9a` — deterministic AI output validation gate
 - `943bfb3` — structured AI analysis/trade proposal contracts
 - `8fb8c5b` — AI contract boundary
-- `c632f9f` — status update for strategy DSL
-- `01fd308` — SMC-to-DSL context tests
-- `cb7f6e5` — SMC signal-context adapter
-- `0824bdc` — Strategy DSL tests
-- `1ea4d2e` — declarative strategy DSL
-- `0e266e9` — strategy package boundary
-- `aed4fff` — backtest repository serialization test
-- `1fa1c55` — backtest report/persistence exports
-- `88a8b8b` — backtest API execution/validation tests
-- `550b8fd` — nested report JSON serialization fix
-- `5ef6ccf` — backtest API router registration
-- `818b3eb` — backtest repository dependency wiring
-- `b54921c` — deterministic backtest API and report retrieval
-- `4698ca3` — PostgreSQL backtest report repository
-- `5912246` — persisted backtest report storage migration
 
 ## Next task
 
-After current CI completes, inspect/fix any runtime failures. Then implement the Stage 6 options foundation: provider-neutral option-chain contracts, deterministic Greeks, payoff calculation, and liquidity validation. Keep live/autonomous execution gated.
+Verify the fresh CI result for the fixes. If green, continue Stage 6 with provider-neutral option-chain contracts, deterministic Black-Scholes-style Greeks, payoff calculation, and liquidity validation. If CI reports new failures, fix those first. Keep live/autonomous execution gated.

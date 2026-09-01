@@ -129,6 +129,6 @@ class ReplayEngine:
                 continue
             order = strategy.on_candle(state.candles)
             if order is not None:
-                signals.append(ReplayStrategySignal(state.index, state.timestamp, order))
+                signals.append(ReplayStrategySignal(state.current_index, state.current_timestamp, order))
         self.clock.pause()
         return signals

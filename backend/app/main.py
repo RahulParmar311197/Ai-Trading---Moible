@@ -51,5 +51,12 @@ app.include_router(ai_router)
 
 @app.get("/health")
 def health() -> dict[str, str]:
+    """Liveness endpoint: the API process is healthy even in market-data degraded mode."""
+    return {"status": "ok"}
+
+
+@app.get("/ready")
+def readiness() -> dict[str, str]:
+    """Readiness reflects live market-data configuration without hiding liveness."""
     status = getattr(app.state, "market_data_startup_error", None)
     return {"status": "ok" if status is None else "degraded"}
