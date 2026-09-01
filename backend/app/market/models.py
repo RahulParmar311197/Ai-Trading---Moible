@@ -18,6 +18,9 @@ class InstrumentType(StrEnum):
 
 
 class Timeframe(StrEnum):
+    """Canonical candle intervals plus the non-aggregated tick event interval."""
+
+    TICK = "tick"
     M1 = "1m"
     M3 = "3m"
     M5 = "5m"
