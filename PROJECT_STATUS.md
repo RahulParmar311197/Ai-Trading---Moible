@@ -37,11 +37,14 @@ Before starting any new implementation task, review this file, `AI_TRADING_PLATF
 - [x] Market-data freshness and quality validation rules
 - [x] Provider runtime quality-validation gate and tests
 - [x] Explicit market-data provider configuration boundary
+- [x] Upstox V3 historical candle adapter
+- [x] Upstox provider registration and access-token configuration
+- [x] Upstox historical normalization tests
 
 ## In progress
 
-- [ ] Implement concrete external provider adapter
-- [ ] Connect configured provider to application startup
+- [ ] Upstox V3 live WebSocket/Protobuf transport
+- [ ] Connect configured provider runner to application startup
 - [ ] Complete official Gradle wrapper files and validate `./gradlew assembleDebug`
 - [ ] Verify Android CI build passes on GitHub Actions
 
@@ -68,7 +71,8 @@ Before starting any new implementation task, review this file, `AI_TRADING_PLATF
 - [x] Market-data freshness/quality validation rules
 - [x] Provider → quality validation gate
 - [x] Explicit provider-selection boundary
-- [ ] Concrete provider adapter
+- [x] Concrete Upstox historical provider adapter
+- [ ] Concrete Upstox live provider adapter
 - [ ] Provider startup integration
 
 ## Later stages
@@ -150,8 +154,8 @@ Live/autonomous trading must not be enabled until replay, backtesting, paper tra
 
 ## Last completed work
 
-Added an explicit market-data provider configuration boundary and settings for provider selection and instrument IDs. The application now has a deterministic place to select a concrete adapter, while refusing to silently fall back to simulated data when no real provider adapter is installed.
+Implemented the first real external provider adapter using the current Upstox V3 Historical Candle API. It maps canonical timeframes to Upstox V3 units/intervals, authenticates with `UPSTOX_ACCESS_TOKEN`, converts provider candle arrays into canonical `Candle` objects, and validates OHLC. The provider selector now returns the Upstox adapter when `MARKET_DATA_PROVIDER=upstox` is configured. Upstox V3 live streaming remains pending because its current feed requires an authorized WebSocket plus Protobuf decoding.
 
 ## Next task
 
-Implement the first concrete external market-data provider adapter supported by the repository/project requirements, then wire it into startup. Do not invent credentials or provider APIs; verify the provider contract before implementation.
+Implement the Upstox V3 live WebSocket authorization/transport and official Protobuf decoding boundary. Before doing so, re-check this status file, the full blueprint, and the current repository.
