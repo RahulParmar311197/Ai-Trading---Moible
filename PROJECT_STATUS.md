@@ -4,7 +4,7 @@ Last updated: 2026-09-01
 
 ## Working rule
 
-Before every implementation task, check this file, `AI_TRADING_PLATFORM_BLUEPRINT_FULL.md`, and the current `main` repository state. Work directly on `main` only. Update this file after each completed milestone or meaningful change.
+Work directly on `main` only. Before implementation, inspect this file, `AI_TRADING_PLATFORM_BLUEPRINT_FULL.md`, the uploaded blueprint when available, and the actual repository state. Update this file after meaningful milestones.
 
 ## Current stage
 
@@ -36,76 +36,63 @@ Before every implementation task, check this file, `AI_TRADING_PLATFORM_BLUEPRIN
 - [x] Upstox LTPC/full-feed extraction
 - [x] Application startup provider selection
 - [x] Safe degraded startup when live data is not configured
-- [x] Redis publisher implementation
-- [x] Provider → Redis publisher startup wiring on `main`
-- [x] Provider → Redis startup integration test
-- [x] Provider → validation → publisher integration coverage aligned with actual runtime API
-- [x] Android CI build job added to GitHub Actions
+- [x] Redis publisher implementation and provider startup wiring
+- [x] Provider → validation → publisher integration coverage
+- [x] Android CI build job
 - [x] Canonical deterministic candle timeframe aggregation for 1m–4h, 1D and 1W
 - [x] Timeframe aggregation unit coverage
-- [x] Credential-free degraded startup path exercised through the FastAPI lifespan in unit coverage
-- [x] Confirmed and fixed CI Python import-path failure caused by `PYTHONPATH=backend` while the job already runs in `backend`
-- [x] Added internal `Timeframe.TICK` contract required by live LTP normalization
-- [x] Kept internal `TICK` out of the public candle-timeframe API
-- [x] Official Upstox protobuf import/version verification passed in CI
-- [x] Backend non-integration test suite passed in CI after timeframe API fix
-- [x] Backend integration test suite passed in CI after timeframe API fix
-- [x] Android `assembleDebug` passed in CI after timeframe API fix
+- [x] Credential-free degraded startup coverage
+- [x] CI Python import-path correction
+- [x] Internal `Timeframe.TICK` contract while keeping TICK out of public candle API
+- [x] Official Upstox protobuf import/version verification in CI
+- [x] Backend non-integration and integration suites previously passed in CI
+- [x] Android `assembleDebug` previously passed in CI
 - [x] Stage 2 deterministic swing detection with right-side confirmation
-- [x] Stage 2 market-structure break detection (BOS/MSS/CHOCH)
-- [x] Stage 2 equal-high/equal-low liquidity pools and sweep detection
+- [x] Stage 2 BOS/MSS/CHOCH structure detection
+- [x] Stage 2 equal-high/equal-low liquidity pools and sweeps
 - [x] Stage 2 three-candle FVG detection
-- [x] Stage 2 displacement-based order-block candidates with strength scoring
-- [x] Stage 2 premium/discount dealing-range calculation
-- [x] Stage 2 explicit ICT London/New York session windows and session levels
+- [x] Stage 2 displacement/order-block candidates with strength scoring
+- [x] Stage 2 premium/discount dealing range
+- [x] Stage 2 ICT London/New York sessions and levels
 - [x] Stage 2 deterministic SMC orchestration and structured signal context
-- [x] Stage 2 unit coverage for confirmation, structure, FVG, premium/discount, sessions, and determinism
-- [x] Stage 3 deterministic replay clock with Play/Pause/Reset/Next/Previous controls
-- [x] Stage 3 configurable replay speeds: 0.5x, 1x, 2x, 5x, 10x
-- [x] Stage 3 deterministic historical event ordering with stable tie-breaking
-- [x] Stage 3 timeframe-filtered replay using canonical Candle/Timeframe
-- [x] Stage 3 look-ahead-safe historical market state (only data at or before replay time)
-- [x] Stage 3 deterministic replay statistics foundation
-- [x] Stage 3 replay reset/state lifecycle
-- [x] Stage 3 unit coverage for ordering, look-ahead protection, controls, reset, timeframe filtering, and statistics
+- [x] Stage 2 unit coverage for confirmation, structure, FVG, premium/discount, sessions and determinism
+- [x] Stage 3 deterministic replay clock and Play/Pause/Reset/Next/Previous controls
+- [x] Stage 3 configurable replay speeds 0.5x/1x/2x/5x/10x
+- [x] Stage 3 deterministic historical event ordering and stable tie-breaking
+- [x] Stage 3 timeframe filtering and look-ahead-safe historical state
+- [x] Stage 3 deterministic replay statistics foundation and reset lifecycle
+- [x] Stage 3 unit coverage
 - [x] Stage 3 historical repository loading boundary
-- [x] Stage 3 integration with the existing deterministic SMC engine without creating a duplicate strategy framework
+- [x] Stage 3 integration with existing deterministic SMC engine without duplicate strategy framework
 - [x] Stage 4 deterministic event-driven backtest foundation
-- [x] Stage 4 strategy protocol using candle-visible state only
-- [x] Stage 4 market-order validation and deterministic fills
-- [x] Stage 4 stop/target resolution from the current candle
-- [x] Stage 4 deterministic fees and slippage
-- [x] Stage 4 P&L, win rate, expectancy, equity curve, and drawdown foundation
-- [x] Stage 4 unit coverage for look-ahead safety, stops/targets, fees/slippage, validation, and metrics
+- [x] Stage 4 candle-visible strategy protocol
+- [x] Stage 4 deterministic market-order validation and fills
+- [x] Stage 4 current-candle stop/target handling
+- [x] Stage 4 deterministic fees/slippage
+- [x] Stage 4 P&L, win rate, expectancy, equity curve and drawdown foundation
+- [x] Stage 4 multi-candle position lifecycle
+- [x] Stage 4 explicit OPEN/CLOSE/CLOSE_END order events and trade ledger
+- [x] Stage 4 chronological out-of-sample split support
+- [x] Stage 4 deterministic risk-based position sizing using balance, risk percentage and stop distance
+- [x] Stage 4 tests for multi-candle lifecycle, end-of-data close, OOS splitting and risk-based sizing
 
 ## Stage 1 status
 
 **PARTIAL / UNVERIFIED**
 
-Backend and Android CI verification is complete for the recorded market-data work, but the repository still contains a placeholder `android/gradlew` and does not contain an official generated `gradle-wrapper.jar`. Local Codespace/runtime execution is unavailable from this environment, so official wrapper and local end-to-end verification remain `UNVERIFIED`.
+Recorded backend and Android CI verification exists for the market-data work. The repository still contains a placeholder `android/gradlew` and does not contain an official generated `gradle-wrapper.jar`. Local Codespace/runtime execution is unavailable from this environment. Full current verification therefore remains `UNVERIFIED`.
 
 ## Stage 2 status
 
 **PARTIAL / UNVERIFIED**
 
-The deterministic SMC/ICT engine and unit coverage are implemented. Earlier CI evidence verified backend/Android foundations, but the latest SMC/replay sequence requires fresh CI confirmation before calling the stage fully verified. API/client integration remains to be assessed against the complete product flow.
+The deterministic SMC/ICT engine and unit coverage are implemented. Fresh end-to-end verification of the latest SMC/replay sequence remains `UNVERIFIED`, and complete API/client product-flow integration has not yet been established.
 
-## Stage 3 checklist
+## Stage 3 status
 
-- [x] Replay clock
-- [x] Historical market state
-- [x] Deterministic event ordering
-- [x] Timeframe replay
-- [x] Look-ahead protection
-- [x] Play/pause/reset/step controls
-- [x] Replay speed controls
-- [x] Deterministic replay statistics foundation
-- [x] Unit coverage
-- [x] Historical repository loading boundary
-- [x] Existing SMC integration boundary
-- [ ] Runtime/CI verification of latest Stage 3 implementation
-- [ ] Full SMC/strategy replay execution lifecycle
-- [ ] Replay trade execution integration
+**PARTIAL / UNVERIFIED**
+
+The replay clock, deterministic ordering, look-ahead protection, timeframe filtering, historical loading boundary and SMC integration are implemented. Latest runtime/CI verification and replay-to-trade execution integration remain outstanding.
 
 ## Stage 4 checklist
 
@@ -117,12 +104,13 @@ The deterministic SMC/ICT engine and unit coverage are implemented. Earlier CI e
 - [x] Basic P&L metrics
 - [x] Equity curve and max drawdown foundation
 - [x] Unit coverage
-- [ ] Multi-candle position/order lifecycle
-- [ ] Explicit trade ledger/order events
-- [ ] Position sizing/risk integration
-- [ ] Out-of-sample split support
-- [ ] Full runtime/CI verification
+- [x] Multi-candle position/order lifecycle
+- [x] Explicit trade ledger/order events
+- [x] Deterministic risk-based position sizing
+- [x] Out-of-sample split support
+- [ ] Full runtime/CI verification of latest Stage 4 changes
 - [ ] Backtest API/report integration
+- [ ] Broader risk-engine integration required by later trading stages
 
 ## Later stages
 
@@ -172,16 +160,12 @@ The deterministic SMC/ICT engine and unit coverage are implemented. Earlier CI e
 
 ## Safety gates
 
-Live/autonomous trading must not be enabled until replay, backtesting, paper trading, risk controls, broker reconciliation, failure handling, and explicit user activation are implemented and tested.
+Live/autonomous trading remains disabled/gated. It must not be enabled until replay, backtesting, paper trading, risk controls, broker reconciliation, failure handling and explicit user activation are implemented and tested. AI remains subordinate to deterministic strategy, validation, risk and execution gates.
 
-AI remains subordinate to deterministic strategy, validation, risk, and execution gates.
+## Runtime / CI verification
 
-## Runtime verification
-
-GitHub Actions is the available repository verification path. Local Codespace/runtime execution is unavailable from this environment because outbound GitHub access is blocked by network DNS. No local test command is claimed as executed here.
-
-The latest backtest commit `92fcae2` currently has no reported commit status/workflow result available through the connected GitHub API, so its tests are `UNVERIFIED`.
+GitHub Actions is the available repository verification path. The latest Stage 4 commit `320b4b3` currently has no workflow run reported through the connected GitHub API, so the newly added risk-sizing tests are **UNVERIFIED**. No local test command is claimed as executed.
 
 ## Next task
 
-Complete the Stage 4 multi-candle position/order lifecycle and explicit trade ledger while preserving the current deterministic strategy boundary. Then add out-of-sample support and API/report integration, run/verify CI, and continue toward Stage 5 only after Stage 4 is genuinely verified.
+Implement the existing Stage 4 backtest API/report integration without creating a duplicate engine. Then run/verify CI when a workflow is available and close remaining Stage 4 verification gaps before advancing to Stage 5.
