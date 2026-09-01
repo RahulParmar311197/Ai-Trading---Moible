@@ -49,11 +49,13 @@ Before starting any new implementation task, review this file, `AI_TRADING_PLATF
 - [x] Upstox LTP normalization tests
 - [x] Upstox decoded LTPC/full-feed field extraction
 - [x] Upstox live feed-shape normalization tests
+- [x] Explicit application startup provider-selection boundary
+- [x] Safe degraded startup when live market data is not configured
 
 ## In progress
 
 - [ ] Verify official Upstox SDK protobuf import/version in CI
-- [ ] Connect configured provider runner to application startup
+- [ ] Wire the configured provider runner to the actual live publisher at startup
 - [ ] Complete official Gradle wrapper files and validate `./gradlew assembleDebug`
 - [ ] Verify Android CI build passes on GitHub Actions
 
@@ -86,8 +88,9 @@ Before starting any new implementation task, review this file, `AI_TRADING_PLATF
 - [x] Upstox SDK-backed protobuf decoder adapter
 - [x] Upstox live LTP normalization boundary
 - [x] Upstox decoded LTPC/full-feed extraction
+- [x] Application startup provider-selection boundary
 - [ ] Upstox SDK dependency/version CI verification
-- [ ] Provider startup integration
+- [ ] Provider → live publisher startup integration
 
 ## Later stages
 
@@ -168,8 +171,8 @@ Live/autonomous trading must not be enabled until replay, backtesting, paper tra
 
 ## Last completed work
 
-Implemented actual field extraction from Upstox V3 `FeedResponse`-shaped objects. The normalizer now handles direct LTPC feeds and full-feed wrappers (`fullFeed`/`ff` with `marketFF`/`indexFF`), extracting instrument key, LTP, LTT, and LTQ into canonical `MarketEvent` values. Tests cover both official documented feed shapes.
+Added application-lifespan initialization for configured market-data providers. Startup now selects the configured provider and stores its runner boundary, while unconfigured live data produces a safe degraded health state instead of silently starting simulated or incomplete live delivery. The actual live publisher remains intentionally separate until its concrete dependency is wired.
 
 ## Next task
 
-Verify the exact Upstox SDK protobuf import/version in CI, then connect the configured provider runner to application startup. Before doing so, re-check this status file, the full blueprint, and the current repository.
+Wire the configured provider runner to the existing concrete live publisher at startup, after verifying the publisher constructor/dependency contract. Then verify the Upstox SDK protobuf import/version in CI. Before each step, re-check this status file, the full blueprint, and the current repository.
