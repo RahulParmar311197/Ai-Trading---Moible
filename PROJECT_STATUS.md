@@ -166,8 +166,12 @@ Live/autonomous trading must not be enabled until replay, backtesting, paper tra
 
 ## Last completed work
 
-Strengthened startup verification so the test exercises the actual FastAPI lifespan with provider and instrument configuration disabled, proving the credential-free startup path records degraded health without attempting a live provider.
+Credential-free startup verification exercises the actual FastAPI lifespan with provider and instrument configuration disabled. The current `main` tree also contains deterministic canonical candle aggregation and its unit coverage.
+
+## Verification run
+
+A fresh `main` commit has been made to trigger the repository's configured backend and Android CI workflow. CI results remain `UNVERIFIED` until GitHub reports the run outcome.
 
 ## Next task
 
-Continue Stage 1 verification: run the available backend test path, verify Upstox SDK/protobuf compatibility, verify the credential-free startup path in the real test environment, and complete official Gradle wrapper/build verification. Fix only confirmed failures directly on `main`, then update this file.
+Inspect the CI run for the latest `main` commit. Fix only confirmed failures. Once Stage 1 verification is genuinely complete, proceed to Stage 2 SMC/ICT in dependency order without waiting for another user prompt.
