@@ -12,6 +12,7 @@ from ..base import (
     BrokerReconciliation,
 )
 from ..http import HTTPBrokerClient, LiveBrokerDisabled, decimal_value
+from ..order_config import BrokerInstrument, ExchangeSegment, InstrumentResolver, OrderValidity, ProductType
 
 
 class DhanBroker:
@@ -20,16 +21,26 @@ class DhanBroker:
     Read operations are available with an access token. Live order mutation is
     explicitly disabled by default and is not enabled by the application.
 
-    ``BrokerOrder.symbol`` is mapped to Dhan's ``securityId``. The exchange
-    segment defaults to NSE_EQ for this first provider-neutral boundary.
+    ``BrokerOrder.symbol`` remains the canonical symbol. When mutation is
+    explicitly enabled, the configured ``InstrumentResolver`` supplies Dhan's
+    security ID plus exchange/product/validity configuration.
     """
 
     provider = "dhan"
 
-    def __init__(self, client_id: str, access_token: str, *, timeout: float = 10.0, allow_live_orders: bool = False) -> None:
+    def __init__(
+        self,
+        client_id: str,
+        access_token: str,
+        *,
+        timeout: float = 10.0,
+        allow_live_orders: bool = False,
+        instrument_resolver: InstrumentResolver | None = None,
+    ) -> None:
         self.client_id = client_id
         self._client = HTTPBrokerClient("https://api.dhan.co/v2", access_token, timeout=timeout)
         self._allow_live_orders = allow_live_orders
+        self._instrument_resolver = instrument_resolver or InstrumentResolver()
 
     async def authenticate(self) -> BrokerAuthentication:
         return BrokerAuthentication(
@@ -67,15 +78,26 @@ class DhanBroker:
     async def place_order(self, order: BrokerOrder) -> BrokerOrder:
         if not self._allow_live_orders:
             raise LiveBrokerDisabled("Dhan live order submission is disabled")
-        body = {
-            "dhanClientId": self.client_id,
+        instrument = self._instrument_resolver.resolve(order.symbol)
+        body = self._order_payload(order, instrument)
+        payload = await self._client.request("POST", "/orders", json=body)
+        data = payload if isinstance(payload, dict) else {}
+        order_id = str(data.get("orderId", data.get("order_id", order.order_id)))
+        return order.model_copy(update={"order_id": order_id, "status": BrokerOrderStatus.NEW})
+
+    @staticmethod
+    def _order_payload(order: BrokerOrder, instrument: BrokerInstrument) -> dict[str, Any]:
+        exchange = instrument.exchange_segment.value
+        product = {ProductType.INTRADAY: "INTRADAY", ProductType.DELIVERY: "CNC", ProductType.MARGIN: "MARGIN"}[instrument.product_type]
+        return {
+            "dhanClientId": "",
             "correlationId": order.client_order_id,
             "transactionType": order.side.value,
-            "exchangeSegment": "NSE_EQ",
-            "productType": "INTRADAY",
+            "exchangeSegment": exchange,
+            "productType": product,
             "orderType": order.order_type.value,
-            "validity": "DAY",
-            "securityId": order.symbol,
+            "validity": instrument.validity.value,
+            "securityId": instrument.provider_symbol,
             "quantity": order.quantity,
             "disclosedQuantity": "",
             "price": str(order.average_price or Decimal("0")),
@@ -85,10 +107,6 @@ class DhanBroker:
             "boProfitValue": "",
             "boStopLossValue": "",
         }
-        payload = await self._client.request("POST", "/orders", json=body)
-        data = payload if isinstance(payload, dict) else {}
-        order_id = str(data.get("orderId", data.get("order_id", order.order_id)))
-        return order.model_copy(update={"order_id": order_id, "status": BrokerOrderStatus.NEW})
 
     async def cancel_order(self, order_id: str) -> BrokerOrder:
         if not self._allow_live_orders:
