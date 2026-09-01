@@ -17,7 +17,8 @@ Last updated: 2026-09-01
 - AI has a provider-neutral HTTP/service boundary and `/api/v1/ai/analyze`, `/api/v1/ai/strategy`, `/api/v1/ai/explain-trade` endpoints. AI remains advisory and cannot authorize execution.
 - Options have provider-neutral contracts, deterministic Black-Scholes Greeks, liquidity/spread filtering, deterministic delta-based strike selection, multi-leg expiry payoff, risk metrics, deterministic strategy selection, a provider-neutral option-chain boundary, and options analytics APIs.
 - Paper trading has deterministic in-memory order/fill/position execution, configurable fees/slippage, limit-order behavior, duplicate-order protection, P&L accounting, configurable order-notional and position limits, a kill switch, and a paper-only API. Persistence, partial fills, replay-to-paper, and full risk/audit integration remain unfinished.
-- Stage 8 has a provider-neutral account/order/position/broker protocol. The boundary now explicitly models non-secret authentication context and deterministic order reconciliation. No live broker adapter has been enabled.
+- Stage 8 has a provider-neutral account/order/position/broker protocol. The boundary explicitly models non-secret authentication context and deterministic order reconciliation.
+- Provider-neutral broker idempotency enforcement is now implemented as an opt-in decorator/store: repeated successful submissions with the same client order ID return the original result, conflicting reuse is rejected, and failed submissions release the reservation for safe retry. No live broker adapter has been enabled.
 
 ## CI evidence
 
@@ -26,7 +27,7 @@ For commit `5b6818d`, GitHub Actions completed with:
 - Android build: **SUCCESS**; `gradle assembleDebug` completed successfully.
 - Backend tests: **FAILURE** at `pytest -q -m 'not integration'`; the job stopped before integration tests. The failure output is not exposed by the connected GitHub log endpoint, so the exact failing assertion is **UNVERIFIED** from the available tool surface.
 
-For the latest status commit `aad451d`, the separate Android CI workflow completed **SUCCESS**. No workflow run is exposed yet for broker commit `fa94c8d` through the connected commit workflow endpoint.
+For status commit `aad451d`, the separate Android CI workflow completed **SUCCESS**. No workflow run is exposed yet for the latest broker commits through the connected commit workflow endpoint.
 
 No local/Codespace test execution is claimed.
 
@@ -139,7 +140,7 @@ No local/Codespace test execution is claimed.
 - [x] Provider-neutral account/order/position/broker protocol
 - [x] Non-secret authentication context boundary
 - [x] Deterministic order reconciliation result boundary
-- [ ] Idempotency enforcement implementation
+- [x] Provider-neutral idempotency enforcement decorator/store
 - [ ] Dhan adapter
 - [ ] Upstox order/position/account adapter
 - [ ] Live broker runtime verification
@@ -173,16 +174,15 @@ No Codespace/runtime session is exposed through the connected tools, so no local
 
 ## Recent commits on main
 
+- `3981c1e` — export broker idempotency boundary
+- `e480a77` — add broker idempotency tests
+- `ecbe960` — implement provider-neutral broker idempotency
 - `fa94c8d` — strengthen broker authentication and reconciliation boundary
 - `81c6041` — record broker boundary and CI evidence
-- `ffd067f` — define account/order/position/execution contracts
-- `6b74209` — add provider-neutral broker boundary
-- `aad451d` — record paper risk controls and current status
-- `1d3644c` — expose paper kill switch status and controls
 
 ## Next execution
 
-1. Implement broker idempotency enforcement at the provider-neutral boundary without enabling live execution.
-2. Add Dhan and Upstox adapters only behind the common interface and only after inspecting/validating current official API contracts.
+1. Inspect official Dhan and Upstox API contracts and repository configuration before creating adapters.
+2. Implement adapters behind the common broker interface without enabling unrestricted live execution.
 3. Return to paper persistence, audit, partial fills, and replay-to-paper integration.
 4. Re-run CI verification after the next stable milestone.
