@@ -8,7 +8,7 @@ Before every implementation task, check this file, `AI_TRADING_PLATFORM_BLUEPRIN
 
 ## Current stage
 
-**Stage 3 — Replay**
+**Stage 4 — Backtesting**
 
 ## Completed
 
@@ -68,18 +68,27 @@ Before every implementation task, check this file, `AI_TRADING_PLATFORM_BLUEPRIN
 - [x] Stage 3 deterministic replay statistics foundation
 - [x] Stage 3 replay reset/state lifecycle
 - [x] Stage 3 unit coverage for ordering, look-ahead protection, controls, reset, timeframe filtering, and statistics
+- [x] Stage 3 historical repository loading boundary
+- [x] Stage 3 integration with the existing deterministic SMC engine without creating a duplicate strategy framework
+- [x] Stage 4 deterministic event-driven backtest foundation
+- [x] Stage 4 strategy protocol using candle-visible state only
+- [x] Stage 4 market-order validation and deterministic fills
+- [x] Stage 4 stop/target resolution from the current candle
+- [x] Stage 4 deterministic fees and slippage
+- [x] Stage 4 P&L, win rate, expectancy, equity curve, and drawdown foundation
+- [x] Stage 4 unit coverage for look-ahead safety, stops/targets, fees/slippage, validation, and metrics
 
 ## Stage 1 status
 
 **PARTIAL / UNVERIFIED**
 
-The backend and Android CI verification is complete for the current market-data work, but the repository still contains a placeholder `android/gradlew` and does not contain an official generated `gradle-wrapper.jar`. Runtime execution from this environment is unavailable, so the official wrapper and local end-to-end verification remain `UNVERIFIED`.
+Backend and Android CI verification is complete for the recorded market-data work, but the repository still contains a placeholder `android/gradlew` and does not contain an official generated `gradle-wrapper.jar`. Local Codespace/runtime execution is unavailable from this environment, so official wrapper and local end-to-end verification remain `UNVERIFIED`.
 
 ## Stage 2 status
 
 **PARTIAL / UNVERIFIED**
 
-The deterministic SMC/ICT engine and unit coverage are implemented. Runtime/CI verification of the latest Stage 2 commit must be confirmed from GitHub Actions before the stage can be called fully verified. API/client integration remains to be assessed against the complete product flow.
+The deterministic SMC/ICT engine and unit coverage are implemented. Earlier CI evidence verified backend/Android foundations, but the latest SMC/replay sequence requires fresh CI confirmation before calling the stage fully verified. API/client integration remains to be assessed against the complete product flow.
 
 ## Stage 3 checklist
 
@@ -92,20 +101,30 @@ The deterministic SMC/ICT engine and unit coverage are implemented. Runtime/CI v
 - [x] Replay speed controls
 - [x] Deterministic replay statistics foundation
 - [x] Unit coverage
-- [ ] Runtime/CI verification of Stage 3 implementation
-- [ ] Full SMC/strategy replay integration
+- [x] Historical repository loading boundary
+- [x] Existing SMC integration boundary
+- [ ] Runtime/CI verification of latest Stage 3 implementation
+- [ ] Full SMC/strategy replay execution lifecycle
 - [ ] Replay trade execution integration
 
-## Later stages
+## Stage 4 checklist
 
-### Stage 4 — Backtesting
-- [ ] Event loop
-- [ ] Strategy interface
-- [ ] Execution simulator
-- [ ] Fees/slippage
-- [ ] Performance metrics
-- [ ] Equity/drawdown reporting
-- [ ] Out-of-sample support
+- [x] Event-driven candle loop foundation
+- [x] Strategy interface/protocol
+- [x] Deterministic market-order validation
+- [x] Current-candle stop/target handling
+- [x] Fees/slippage
+- [x] Basic P&L metrics
+- [x] Equity curve and max drawdown foundation
+- [x] Unit coverage
+- [ ] Multi-candle position/order lifecycle
+- [ ] Explicit trade ledger/order events
+- [ ] Position sizing/risk integration
+- [ ] Out-of-sample split support
+- [ ] Full runtime/CI verification
+- [ ] Backtest API/report integration
+
+## Later stages
 
 ### Stage 5 — AI
 - [ ] Structured market context
@@ -161,6 +180,8 @@ AI remains subordinate to deterministic strategy, validation, risk, and executio
 
 GitHub Actions is the available repository verification path. Local Codespace/runtime execution is unavailable from this environment because outbound GitHub access is blocked by network DNS. No local test command is claimed as executed here.
 
+The latest backtest commit `92fcae2` currently has no reported commit status/workflow result available through the connected GitHub API, so its tests are `UNVERIFIED`.
+
 ## Next task
 
-Verify the Stage 3 implementation in GitHub Actions, then integrate replay with the existing deterministic SMC engine without introducing a duplicate strategy framework. Continue toward Stage 4 only after replay foundations are verified.
+Complete the Stage 4 multi-candle position/order lifecycle and explicit trade ledger while preserving the current deterministic strategy boundary. Then add out-of-sample support and API/report integration, run/verify CI, and continue toward Stage 5 only after Stage 4 is genuinely verified.
