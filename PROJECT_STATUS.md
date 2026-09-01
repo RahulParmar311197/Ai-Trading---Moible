@@ -41,6 +41,8 @@ Before every implementation task, check this file, `AI_TRADING_PLATFORM_BLUEPRIN
 - [x] Provider → Redis startup integration test
 - [x] Provider → validation → publisher integration coverage aligned with actual runtime API
 - [x] Android CI build job added to GitHub Actions
+- [x] Canonical deterministic candle timeframe aggregation for 1m–4h, 1D and 1W
+- [x] Timeframe aggregation unit coverage
 
 ## In progress
 
@@ -77,6 +79,7 @@ Before every implementation task, check this file, `AI_TRADING_PLATFORM_BLUEPRIN
 - [x] Redis publisher startup wiring
 - [x] Provider startup integration test
 - [x] Provider validation/publisher integration coverage
+- [x] Timeframe aggregation
 - [x] Android CI build job
 - [ ] SDK dependency/version CI verification
 - [ ] Full backend CI verification
@@ -162,8 +165,8 @@ Live/autonomous trading must not be enabled until replay, backtesting, paper tra
 
 ## Last completed work
 
-Added an Android build job to the existing GitHub Actions workflow on `main`. It provisions Java 17 and Android tooling, downloads the pinned Gradle 8.10.2 distribution, and runs `gradle assembleDebug`. The job is intentionally separate from the backend job so Android build failures are visible independently.
+Added canonical deterministic timeframe aggregation using the repository's `Candle` and `Timeframe` contracts, including daily and weekly UTC buckets, plus unit coverage for OHLCV aggregation and timestamp validation.
 
 ## Next task
 
-Wait for and inspect the new CI run on `main`. Verify the Android build and backend/Upstox checks. Fix only confirmed failures directly on `main`, then update this file.
+Continue Stage 1 verification: inspect and run the available backend test path, verify Upstox SDK/protobuf compatibility, verify credential-free degraded startup, and complete the official Gradle wrapper/build verification. Fix only confirmed failures directly on `main`, then update this file.
