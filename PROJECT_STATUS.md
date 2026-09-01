@@ -8,7 +8,7 @@ Work directly on `main` only. Before implementation, inspect this file, `AI_TRAD
 
 ## Current stage
 
-**Stage 4 — Backtesting / Stage 5 Strategy Foundation**
+**Stage 4 — Backtesting / Stage 5 Strategy & AI Foundation**
 
 ## Completed
 
@@ -85,11 +85,15 @@ Work directly on `main` only. Before implementation, inspect this file, `AI_TRAD
 - [x] Declarative AND/OR/NOT and comparison/range evaluation
 - [x] Strategy risk constraints with bounded risk percentage
 - [x] Structured signal context for deterministic strategy evaluation
+- [x] SMC `SignalContext` → Strategy DSL adapter
 - [x] Strategy DSL validation tests
+- [x] Structured AI analysis/trade-proposal contracts
+- [x] Deterministic AI output validation gate
+- [x] AI safety validation tests
 
 ## Stage 1 status
 
-**PARTIAL / UNVERIFIED** — prior CI verification exists for market-data work, but the placeholder Android Gradle wrapper and missing official `gradle-wrapper.jar` remain. Local runtime execution is unavailable.
+**PARTIAL / UNVERIFIED** — prior CI verification exists for market-data work, but the placeholder Android Gradle wrapper and missing official `gradle-wrapper.jar` remain. Latest runtime verification is unavailable.
 
 ## Stage 2 status
 
@@ -101,7 +105,7 @@ Work directly on `main` only. Before implementation, inspect this file, `AI_TRAD
 
 ## Stage 4 status
 
-**PARTIAL / UNVERIFIED** — deterministic engine, risk sizing, report projection, persistence migration/repository, and API endpoints exist. The API currently accepts an explicit deterministic order plan as its transport adapter because the repository does not yet contain a complete reusable strategy execution registry. The new declarative Strategy DSL is now present, but has not yet been wired into candle-derived strategy execution or paper trading. Latest runtime/CI verification remains unavailable.
+**PARTIAL / UNVERIFIED** — deterministic engine, risk sizing, report projection, persistence migration/repository, and API endpoints exist. The API uses an explicit deterministic order plan transport adapter because the repository does not yet contain a complete candle-derived reusable strategy execution registry. The declarative Strategy DSL and SMC-context adapter now exist, but they are not yet the backtest execution strategy registry. Latest runtime/CI verification remains unavailable.
 
 ## Stage 4 checklist
 
@@ -130,11 +134,13 @@ Work directly on `main` only. Before implementation, inspect this file, `AI_TRAD
 ## Stage 5 — AI / Strategy
 
 - [x] Declarative Strategy DSL foundation
-- [ ] Structured market context pipeline
-- [ ] AI analysis service
-- [ ] AI-to-DSL strategy generation with strict validation
-- [ ] AI output validation against deterministic signal/risk facts
-- [ ] Trade explanation
+- [x] SMC signal-context adapter
+- [x] Structured AI analysis/trade-proposal contracts
+- [x] Deterministic AI output validation gate
+- [ ] Structured market context pipeline from live/replay market facts
+- [ ] AI provider/service implementation
+- [ ] AI-to-DSL strategy generation with strict schema validation
+- [ ] Trade explanation API
 
 ## Later stages
 
@@ -181,7 +187,7 @@ Live/autonomous trading remains disabled/gated. It must not be enabled until rep
 
 ## Runtime / CI verification
 
-GitHub Actions is the available repository verification path. No workflow run is currently reported for latest commit `0824bdca7ed92eb41367f0a699eab78efb60f771`, and the connected commit status API reports no statuses. The container runtime also cannot reach GitHub to clone the repository, so no local test command is claimed as executed. The API/repository and Strategy DSL tests therefore remain **UNVERIFIED**.
+GitHub Actions is the available repository verification path. No workflow run is currently reported for latest commit `3f481d51d9006e84f3d6389adc473e5f39c29cea`, and the connected commit status API has not reported a status. The container runtime cannot reach GitHub to clone the repository, so no local/Codespace test command is claimed as executed. New backtest API, repository, Strategy DSL and AI validation tests remain **UNVERIFIED**.
 
 ## Recent commits on main
 
@@ -198,7 +204,14 @@ GitHub Actions is the available repository verification path. No workflow run is
 - `1ea4d2e` — declarative strategy DSL
 - `0824bdc` — Strategy DSL tests
 - `fc43dce` — status update for backtest API/persistence
+- `cb7f6e5` — SMC signal-context adapter
+- `01fd308` — SMC-to-DSL context tests
+- `c632f9f` — status update for strategy DSL
+- `8fb8c5b` — AI contract boundary
+- `943bfb3` — structured AI analysis/trade proposal contracts
+- `3b18f9a` — deterministic AI output validation gate
+- `3f481d5` — AI safety validation tests
 
 ## Next task
 
-Integrate the new Strategy DSL with the existing deterministic SMC/replay/backtest boundaries without creating a second strategy framework. Then add AI strategy-generation/validation only as a declarative translation layer; AI must never authorize execution or bypass risk controls. Keep runtime/CI verification explicitly UNVERIFIED until an actual workflow or runtime executes successfully.
+Integrate Strategy DSL evaluation into the existing replay/backtest strategy boundary without creating a second strategy framework. Then implement the structured market-context pipeline and declarative AI-to-DSL translation/validation. Keep runtime/CI verification explicitly UNVERIFIED until an actual workflow or runtime executes successfully.
