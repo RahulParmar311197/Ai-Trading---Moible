@@ -74,25 +74,20 @@ Work directly on `main` only. Before implementation, inspect this file, `AI_TRAD
 - [x] Stage 4 explicit OPEN/CLOSE/CLOSE_END order events and trade ledger
 - [x] Stage 4 chronological out-of-sample split support
 - [x] Stage 4 deterministic risk-based position sizing using balance, risk percentage and stop distance
-- [x] Stage 4 tests for multi-candle lifecycle, end-of-data close, OOS splitting and risk-based sizing
+- [x] Stage 4 stable `BacktestReport` projection for API/report consumers
+- [x] Stage 4 tests for lifecycle, OOS splitting, risk sizing and report projection
 
 ## Stage 1 status
 
-**PARTIAL / UNVERIFIED**
-
-Recorded backend and Android CI verification exists for the market-data work. The repository still contains a placeholder `android/gradlew` and does not contain an official generated `gradle-wrapper.jar`. Local Codespace/runtime execution is unavailable from this environment. Full current verification therefore remains `UNVERIFIED`.
+**PARTIAL / UNVERIFIED** — recorded CI verification exists for prior market-data work, but the placeholder Android Gradle wrapper and missing official `gradle-wrapper.jar` remain. Local runtime execution is unavailable.
 
 ## Stage 2 status
 
-**PARTIAL / UNVERIFIED**
-
-The deterministic SMC/ICT engine and unit coverage are implemented. Fresh end-to-end verification of the latest SMC/replay sequence remains `UNVERIFIED`, and complete API/client product-flow integration has not yet been established.
+**PARTIAL / UNVERIFIED** — deterministic SMC/ICT implementation and unit coverage exist; fresh end-to-end verification and complete API/client product-flow integration remain outstanding.
 
 ## Stage 3 status
 
-**PARTIAL / UNVERIFIED**
-
-The replay clock, deterministic ordering, look-ahead protection, timeframe filtering, historical loading boundary and SMC integration are implemented. Latest runtime/CI verification and replay-to-trade execution integration remain outstanding.
+**PARTIAL / UNVERIFIED** — replay foundation and SMC integration exist; latest runtime/CI verification and replay-to-trade execution integration remain outstanding.
 
 ## Stage 4 checklist
 
@@ -108,8 +103,9 @@ The replay clock, deterministic ordering, look-ahead protection, timeframe filte
 - [x] Explicit trade ledger/order events
 - [x] Deterministic risk-based position sizing
 - [x] Out-of-sample split support
+- [x] Stable report projection
 - [ ] Full runtime/CI verification of latest Stage 4 changes
-- [ ] Backtest API/report integration
+- [ ] Backtest API endpoint and persistence/report integration
 - [ ] Broader risk-engine integration required by later trading stages
 
 ## Later stages
@@ -164,8 +160,8 @@ Live/autonomous trading remains disabled/gated. It must not be enabled until rep
 
 ## Runtime / CI verification
 
-GitHub Actions is the available repository verification path. The latest Stage 4 commit `320b4b3` currently has no workflow run reported through the connected GitHub API, so the newly added risk-sizing tests are **UNVERIFIED**. No local test command is claimed as executed.
+GitHub Actions is the available repository verification path. No current workflow run is reported for commits `320b4b3`, `50fe0bf`, or `7aae7fb` through the connected GitHub API. The newly added tests are therefore **UNVERIFIED**. No local test command is claimed as executed.
 
 ## Next task
 
-Implement the existing Stage 4 backtest API/report integration without creating a duplicate engine. Then run/verify CI when a workflow is available and close remaining Stage 4 verification gaps before advancing to Stage 5.
+Complete the existing Stage 4 backtest API endpoint and report integration using the deterministic engine and `BacktestReport`; then verify through CI and continue to Stage 5 only after the remaining Stage 4 gates are satisfied.
