@@ -8,21 +8,35 @@ from .models import Fill, Order, OrderSide, OrderStatus, OrderType, Position
 class PaperBroker:
     """In-memory paper broker with deterministic fills and no live-broker access."""
 
-    def __init__(self, starting_balance: Decimal = Decimal("100000"), fee_rate: Decimal = Decimal("0"), slippage: Decimal = Decimal("0")) -> None:
+    def __init__(self, starting_balance: Decimal = Decimal("100000"), fee_rate: Decimal = Decimal("0"), slippage: Decimal = Decimal("0"), max_order_notional: Decimal | None = None, max_position_quantity: int | None = None, max_daily_loss: Decimal | None = None) -> None:
         if starting_balance < 0 or fee_rate < 0 or slippage < 0:
             raise ValueError("balance, fee rate and slippage must be non-negative")
+        for name, value in (("max_order_notional", max_order_notional), ("max_daily_loss", max_daily_loss)):
+            if value is not None and value <= 0:
+                raise ValueError(f"{name} must be positive")
+        if max_position_quantity is not None and max_position_quantity <= 0:
+            raise ValueError("max_position_quantity must be positive")
         self.balance = starting_balance
         self.fee_rate = fee_rate
         self.slippage = slippage
+        self.max_order_notional = max_order_notional
+        self.max_position_quantity = max_position_quantity
+        self.max_daily_loss = max_daily_loss
+        self.realized_pnl_total = Decimal("0")
+        self.halted = False
         self.orders: dict[str, Order] = {}
         self.fills: list[Fill] = []
         self.positions: dict[str, Position] = {}
 
     def place_order(self, order: Order, market_price: Decimal) -> Fill | None:
+        if self.halted:
+            raise ValueError("paper trading is halted by kill switch")
         if order.order_id in self.orders:
             raise ValueError(f"duplicate order id: {order.order_id}")
         if market_price <= 0:
             raise ValueError("market price must be positive")
+        if self.max_order_notional is not None and market_price * order.quantity > self.max_order_notional:
+            raise ValueError("order exceeds paper risk notional limit")
         if order.order_type is OrderType.LIMIT:
             if order.limit_price is None:
                 raise ValueError("limit order requires limit_price")
@@ -33,20 +47,17 @@ class PaperBroker:
                 self.orders[order.order_id] = order.model_copy(update={"status": OrderStatus.NEW})
                 return None
 
-        execution_price = market_price * (
-            Decimal("1") + self.slippage if order.side is OrderSide.BUY else Decimal("1") - self.slippage
-        )
+        execution_price = market_price * (Decimal("1") + self.slippage if order.side is OrderSide.BUY else Decimal("1") - self.slippage)
         fee = execution_price * order.quantity * self.fee_rate
+        projected_quantity = self._projected_position_quantity(order)
+        if self.max_position_quantity is not None and abs(projected_quantity) > self.max_position_quantity:
+            raise ValueError("order exceeds paper position limit")
         fill = Fill(order_id=order.order_id, quantity=order.quantity, price=execution_price, fee=fee)
-        self.orders[order.order_id] = order.model_copy(
-            update={
-                "status": OrderStatus.FILLED,
-                "filled_quantity": order.quantity,
-                "average_fill_price": execution_price,
-            }
-        )
+        self.orders[order.order_id] = order.model_copy(update={"status": OrderStatus.FILLED, "filled_quantity": order.quantity, "average_fill_price": execution_price})
         self.fills.append(fill)
         self._apply_fill(order, fill)
+        if self.max_daily_loss is not None and self.realized_pnl_total <= -self.max_daily_loss:
+            self.halted = True
         return fill
 
     def cancel_order(self, order_id: str) -> Order:
@@ -58,6 +69,12 @@ class PaperBroker:
         cancelled = order.model_copy(update={"status": OrderStatus.CANCELLED})
         self.orders[order_id] = cancelled
         return cancelled
+
+    def kill_switch(self) -> None:
+        self.halted = True
+
+    def clear_kill_switch(self) -> None:
+        self.halted = False
 
     def mark_to_market(self, symbol: str, price: Decimal) -> Position | None:
         if price <= 0:
@@ -71,6 +88,12 @@ class PaperBroker:
             if marks and symbol in marks:
                 total += position.quantity * marks[symbol]
         return total
+
+    def _projected_position_quantity(self, order: Order) -> int:
+        current = self.positions.get(order.symbol)
+        existing = current.quantity if current else 0
+        signed = order.quantity if order.side is OrderSide.BUY else -order.quantity
+        return existing + signed
 
     def _apply_fill(self, order: Order, fill: Fill) -> None:
         signed = fill.quantity if order.side is OrderSide.BUY else -fill.quantity
@@ -89,7 +112,9 @@ class PaperBroker:
         else:
             closing_qty = min(abs(old_qty), abs(signed))
             direction = Decimal("1") if old_qty > 0 else Decimal("-1")
-            current.realized_pnl += (fill.price - current.average_price) * closing_qty * direction - fill.fee
+            pnl = (fill.price - current.average_price) * closing_qty * direction
+            current.realized_pnl += pnl - fill.fee
+            self.realized_pnl_total += pnl - fill.fee
             current.quantity = new_qty
             if new_qty != 0 and (old_qty > 0) != (new_qty > 0):
                 current.average_price = fill.price
