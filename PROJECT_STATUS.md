@@ -8,7 +8,11 @@ Work directly on `main` only. Before implementation, inspect this file, `AI_TRAD
 
 ## Current stage
 
-**Stage 5 — Strategy & AI Foundation**
+**Stage 6 — Options Foundation**
+
+## Latest verified CI result
+
+Commit `0ff9c41141cc086c566ab9377b289c0b3fd4dda1` had Android `assembleDebug` PASS and backend unit-suite FAIL (104 passed, 4 failed). The failures were inspected from the actual GitHub Actions log and fixed in commit `fac9191f59d1b6297fc161704adca39203805f20`. A fresh CI run for `fac9191f59d1b6297fc161704adca39203805f20` is in progress; its result is not yet claimed.
 
 ## Completed
 
@@ -56,129 +60,82 @@ Work directly on `main` only. Before implementation, inspect this file, `AI_TRAD
 - [x] Stage 2 ICT London/New York sessions and levels
 - [x] Stage 2 deterministic SMC orchestration and structured signal context
 - [x] Stage 2 unit coverage for confirmation, structure, FVG, premium/discount, sessions and determinism
-- [x] Stage 3 deterministic replay clock and Play/Pause/Reset/Next/Previous controls
-- [x] Stage 3 configurable replay speeds 0.5x/1x/2x/5x/10x
-- [x] Stage 3 deterministic historical event ordering and stable tie-breaking
+- [x] Stage 3 deterministic replay clock and controls
+- [x] Stage 3 configurable replay speeds
+- [x] Stage 3 deterministic historical event ordering
 - [x] Stage 3 timeframe filtering and look-ahead-safe historical state
-- [x] Stage 3 deterministic replay statistics foundation and reset lifecycle
-- [x] Stage 3 unit coverage
+- [x] Stage 3 deterministic replay statistics foundation
 - [x] Stage 3 historical repository loading boundary
-- [x] Stage 3 integration with existing deterministic SMC engine without duplicate strategy framework
+- [x] Stage 3 deterministic SMC integration
+- [x] Stage 3 reusable strategy evaluation boundary
 - [x] Stage 4 deterministic event-driven backtest foundation
 - [x] Stage 4 candle-visible strategy protocol
-- [x] Stage 4 deterministic market-order validation and fills
-- [x] Stage 4 current-candle stop/target handling
-- [x] Stage 4 deterministic fees/slippage
-- [x] Stage 4 P&L, win rate, expectancy, equity curve and drawdown foundation
+- [x] Stage 4 deterministic fills, fees, slippage, P&L and metrics foundation
 - [x] Stage 4 multi-candle position lifecycle
-- [x] Stage 4 explicit OPEN/CLOSE/CLOSE_END order events and trade ledger
-- [x] Stage 4 chronological out-of-sample split support
-- [x] Stage 4 deterministic risk-based position sizing using balance, risk percentage and stop distance
-- [x] Stage 4 stable `BacktestReport` projection for API/report consumers
-- [x] Stage 4 persisted backtest report migration
-- [x] Stage 4 PostgreSQL backtest report repository boundary
-- [x] Stage 4 `POST /api/v1/backtest` deterministic execution endpoint
-- [x] Stage 4 `GET /api/v1/backtest/{id}` persisted report retrieval endpoint
-- [x] Stage 4 API validation and repository serialization test coverage
-- [x] Strategy DSL package boundary
-- [x] Declarative strategy condition types from blueprint
-- [x] Declarative AND/OR/NOT and comparison/range evaluation
-- [x] Strategy risk constraints with bounded risk percentage
-- [x] Structured signal context for deterministic strategy evaluation
-- [x] SMC `SignalContext` → Strategy DSL adapter
-- [x] Strategy DSL validation tests
-- [x] Structured AI analysis/trade-proposal contracts
-- [x] Deterministic AI output validation gate
-- [x] AI safety validation tests
-- [x] Reusable `DslBacktestStrategy` adapter over the existing backtest strategy protocol
-- [x] Strategy risk percentage propagation into deterministic backtest position sizing
-- [x] Backtest API accepts validated `StrategyDefinition` without creating a second strategy framework
-- [x] Strategy condition equality semantics for declarative value matching
-- [x] Strategy-to-backtest deterministic adapter tests
-- [x] Replay strategy evaluation boundary using the existing `BacktestStrategy` protocol
-- [x] Deterministic structured market-context builder from visible candles and SMC/ICT facts
-- [x] Safe AI-to-DSL translation boundary with strict Pydantic validation
-- [x] Rejection of executable/broker instructions from AI strategy payloads
-- [x] Provider-neutral HTTP AI service boundary with explicit timeout/auth configuration
-- [x] AI analysis/strategy/trade-explanation service layer
-- [x] `/api/v1/ai/analyze`, `/api/v1/ai/strategy`, `/api/v1/ai/explain-trade` endpoints
-- [x] AI provider configuration gate that keeps AI disabled when no endpoint is configured
-- [x] AI service failure and validation unit coverage
-- [x] Replay/backtest regression fixes identified by GitHub Actions
-- [x] Liveness/readiness separation: `/health` remains healthy while `/ready` exposes market-data degraded state
-
-## Stage 1 status
-
-**PARTIAL / UNVERIFIED** — prior CI verification exists for market-data work, but the placeholder Android Gradle wrapper and missing official `gradle-wrapper.jar` remain. Latest complete Stage 1 verification is not yet established.
-
-## Stage 2 status
-
-**PARTIAL / UNVERIFIED** — deterministic SMC/ICT implementation and unit coverage exist; fresh end-to-end verification and complete API/client product-flow integration remain outstanding.
-
-## Stage 3 status
-
-**PARTIAL / UNVERIFIED** — replay foundation, SMC integration, and reusable strategy evaluation boundary exist; latest complete verification and replay-to-paper execution remain outstanding.
-
-## Stage 4 status
-
-**PARTIAL / UNVERIFIED** — deterministic engine, risk sizing, report projection, persistence migration/repository, API endpoints, and reusable Strategy DSL backtest adapter exist. GitHub Actions found and drove fixes for strategy invocation visibility and replay state indexing; the latest fix is awaiting a fresh workflow result.
-
-## Stage 4 checklist
-
-- [x] Event-driven candle loop foundation
-- [x] Strategy interface/protocol
-- [x] Deterministic market-order validation
-- [x] Current-candle stop/target handling
-- [x] Fees/slippage
-- [x] Basic P&L metrics
-- [x] Equity curve and max drawdown foundation
-- [x] Unit coverage
-- [x] Multi-candle position/order lifecycle
-- [x] Explicit trade ledger/order events
-- [x] Deterministic risk-based position sizing
-- [x] Out-of-sample split support
-- [x] Stable report projection
-- [x] Backtest persistence migration
-- [x] Backtest report repository
-- [x] POST backtest API
-- [x] GET backtest report API
-- [x] API/repository unit coverage
-- [x] Integrate reusable Strategy DSL into backtest strategy evaluation
-- [x] Integrate reusable strategy protocol into replay evaluation
-- [ ] Fresh CI/runtime verification after fixes
-- [ ] Broader risk-engine integration required by later trading stages
-
-## Stage 5 — AI / Strategy
-
-- [x] Declarative Strategy DSL foundation
-- [x] SMC signal-context adapter
-- [x] Structured AI analysis/trade-proposal contracts
-- [x] Deterministic AI output validation gate
-- [x] Strategy DSL → backtest execution adapter
+- [x] Stage 4 trade ledger/order events
+- [x] Stage 4 out-of-sample split support
+- [x] Stage 4 deterministic risk-based sizing
+- [x] Stage 4 persisted report migration/repository/API
+- [x] Strategy DSL and deterministic SMC context adapter
+- [x] Strategy DSL → backtest adapter
 - [x] Strategy DSL → replay evaluation boundary
-- [x] Structured market context pipeline from visible/replay market facts
-- [x] Safe AI-to-DSL declarative translation/validation boundary
-- [x] Provider-neutral AI service boundary
-- [x] AI analysis endpoint
-- [x] AI strategy endpoint
-- [x] AI trade explanation endpoint
-- [ ] Real external AI provider contract verification
-- [ ] Android AI feature integration
+- [x] Structured market-context pipeline
+- [x] Safe AI-to-DSL translation/validation boundary
+- [x] Provider-neutral AI transport/service boundary
+- [x] AI analysis/strategy/trade-explanation APIs
+- [x] AI safety validation and service unit tests
+- [x] Backtest/replay/health regressions found by CI were patched
+- [x] Options provider-neutral `OptionContract` / `OptionChain` / `OptionLeg` contracts
+- [x] Option quote/OI/IV/Greeks fields
+- [x] Deterministic Black-Scholes price, delta, gamma, theta, vega and rho foundation
+- [x] Deterministic options liquidity/spread filter
+- [x] Deterministic delta-based strike selection
+- [x] Options unit tests for contracts, Greeks and liquidity selection
+
+## Stage 1
+
+**PARTIAL / UNVERIFIED** — prior CI verification exists, but final Stage 1 completion is not claimed because the official Gradle wrapper artifact requirement and complete end-to-end verification remain unresolved.
+
+## Stage 2
+
+**PARTIAL / UNVERIFIED** — deterministic SMC/ICT engine and unit coverage exist; complete product-flow and fresh final verification remain outstanding.
+
+## Stage 3
+
+**PARTIAL / UNVERIFIED** — deterministic replay and strategy evaluation exist; replay-to-paper execution and fresh final verification remain outstanding.
+
+## Stage 4
+
+**PARTIAL / UNVERIFIED** — deterministic engine, risk sizing, persistence/API, DSL strategy execution, and replay strategy evaluation exist. Fresh CI for the latest fixes is pending.
+
+## Stage 5
+
+**PARTIAL / UNVERIFIED** — structured market context, safe DSL translation, provider-neutral AI service, and APIs exist. External provider compatibility and Android AI integration are not verified.
+
+## Stage 6
+
+**PARTIAL / UNVERIFIED** — provider-neutral option contracts, deterministic Black-Scholes Greeks, liquidity filtering and delta selection now exist. The payoff/multi-leg strategy engine and options API/provider integration remain unfinished.
+
+### Stage 6 checklist
+
+- [x] Option chain contracts
+- [x] Strike/expiry/type/quote/OI/volume/IV fields
+- [x] Deterministic Black-Scholes Greeks
+- [x] Deterministic liquidity filter
+- [x] Deterministic delta-based strike selection
+- [ ] Multi-leg payoff engine: maximum profit/loss, breakevens, capital, RR
+- [ ] Options strategy selection API
+- [ ] Option-chain provider integration
+- [ ] Runtime/CI verification of options foundation
 
 ## Later stages
-
-### Stage 6 — Options
-- [ ] Option chain
-- [ ] Greeks
-- [ ] IV
-- [ ] Payoff engine
-- [ ] Options liquidity validation
 
 ### Stage 7 — Paper trading
 - [ ] Paper broker
 - [ ] Simulated order lifecycle
 - [ ] Position management
 - [ ] Portfolio P&L
+- [ ] Audit trail
 
 ### Stage 8 — Brokers
 - [ ] Broker abstraction
@@ -191,7 +148,7 @@ Work directly on `main` only. Before implementation, inspect this file, `AI_TRAD
 ### Stage 9 — Controlled live trading
 - [ ] Risk engine
 - [ ] Kill switches
-- [ ] Market-data freshness checks
+- [ ] Market-data freshness enforcement
 - [ ] Broker health checks
 - [ ] Audit logging
 - [ ] Limited live deployment
@@ -206,23 +163,23 @@ Work directly on `main` only. Before implementation, inspect this file, `AI_TRAD
 
 ## Safety gates
 
-Live/autonomous trading remains disabled/gated. It must not be enabled until replay, backtesting, paper trading, risk controls, broker reconciliation, failure handling and explicit user activation are implemented and tested. AI remains subordinate to deterministic strategy, validation, risk and execution gates.
+Live/autonomous trading remains disabled/gated. AI cannot authorize execution. Deterministic strategy, validation, risk and execution gates remain authoritative.
 
-## Runtime / CI verification
+## Current verification
 
-GitHub Actions is the available real runtime verification path. For commit `0ff9c41141cc086c566ab9377b289c0b3fd4dda1`, Android `assembleDebug` passed, while the backend non-integration suite reported 4 failures: one stale backtest strategy-visibility expectation, one health-contract expectation, and two replay strategy index errors. Those failures were inspected from the actual CI logs and fixes were prepared on `main`. A fresh workflow for the current fix commit is required before marking these changes verified. No local/Codespace command is claimed as executed.
+No local/Codespace execution is claimed because no Codespace/runtime session is exposed through the connected tools. GitHub Actions is the real runtime verification path. The latest fix run is currently in progress. Options code added in this milestone is **UNVERIFIED** until CI executes it.
 
 ## Recent commits on main
 
+- `fac9191` — fix replay and health regressions found by CI
 - `c9389d4` — provider-neutral AI analysis service and APIs
-- `0ff9c41` — deterministic market context, safe AI-to-DSL translation, and replay strategy evaluation
-- `2405bc9` — integrate Strategy DSL with deterministic backtesting
-- `7600193` — status update for AI safety and strategy context milestones
-- `3f481d5` — AI safety validation tests
-- `3b18f9a` — deterministic AI output validation gate
-- `943bfb3` — structured AI analysis/trade proposal contracts
-- `8fb8c5b` — AI contract boundary
+- `0ff9c41` — market context, safe AI-to-DSL translation, replay strategy evaluation
+- `2405bc9` — Strategy DSL deterministic backtesting integration
+- `7600193` — strategy/AI status update
 
-## Next task
+## Next
 
-Verify the fresh CI result for the fixes. If green, continue Stage 6 with provider-neutral option-chain contracts, deterministic Black-Scholes-style Greeks, payoff calculation, and liquidity validation. If CI reports new failures, fix those first. Keep live/autonomous execution gated.
+1. Verify CI for `fac9191` and fix any remaining failures.
+2. Complete multi-leg options payoff and strategy selection if repository write tooling permits it.
+3. Add options API/provider boundary.
+4. Continue to Stage 7 paper trading only after the options foundation is sufficiently verified.
