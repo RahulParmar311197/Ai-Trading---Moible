@@ -34,13 +34,14 @@ Before starting any new implementation task, review this file, `AI_TRADING_PLATF
 - [x] Concrete Redis client factory
 - [x] Runtime Redis → WebSocket publisher wiring
 - [x] Provider → LiveMarketPublisher runtime bridge and test
+- [x] Market-data freshness and quality validation rules
 
 ## In progress
 
-- [ ] Add market-data freshness/quality checks
+- [ ] Instantiate/connect a concrete provider adapter in application startup
+- [ ] Integrate quality validation into provider runtime path
 - [ ] Complete official Gradle wrapper files and validate `./gradlew assembleDebug`
 - [ ] Verify Android CI build passes on GitHub Actions
-- [ ] Instantiate/connect a concrete provider adapter in application startup
 
 ## Stage 1 checklist
 
@@ -62,8 +63,8 @@ Before starting any new implementation task, review this file, `AI_TRADING_PLATF
 - [x] Concrete Redis runtime wiring
 - [x] Redis → WebSocket runtime wiring
 - [x] Provider → publisher runtime bridge
-- [ ] Concrete provider → publisher startup integration
-- [ ] Market-data freshness/quality controls
+- [x] Market-data freshness/quality validation rules
+- [ ] Provider → quality validation → publisher startup integration
 
 ## Later stages
 
@@ -144,8 +145,8 @@ Live/autonomous trading must not be enabled until replay, backtesting, paper tra
 
 ## Last completed work
 
-Added `ProviderMarketRunner`, which consumes the provider-neutral `MarketDataFeed.stream()` contract and forwards each normalized `MarketEvent` to the live publisher. Added a forwarding test. This is the runtime bridge; a concrete external provider implementation and application-startup instantiation are still intentionally pending.
+Added provider-neutral market-data freshness and quality validation. It rejects invalid OHLC relationships, negative volume, invalid bid/ask relationships, timezone-naive timestamps, future events, and events older than the configured maximum age. Added deterministic tests for valid, invalid, stale, and future events.
 
 ## Next task
 
-Implement market-data freshness/quality controls, while preserving the provider-neutral boundary. Before doing so, re-check this status file, the full blueprint, and the current repository.
+Integrate quality validation into the provider runtime path, then instantiate/connect a concrete provider adapter in application startup. Before doing so, re-check this status file, the full blueprint, and the current repository.
