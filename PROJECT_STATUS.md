@@ -43,6 +43,7 @@ Before every implementation task, check this file, `AI_TRADING_PLATFORM_BLUEPRIN
 - [x] Android CI build job added to GitHub Actions
 - [x] Canonical deterministic candle timeframe aggregation for 1m–4h, 1D and 1W
 - [x] Timeframe aggregation unit coverage
+- [x] Credential-free degraded startup path exercised through the FastAPI lifespan in unit coverage
 
 ## In progress
 
@@ -165,8 +166,8 @@ Live/autonomous trading must not be enabled until replay, backtesting, paper tra
 
 ## Last completed work
 
-Added canonical deterministic timeframe aggregation using the repository's `Candle` and `Timeframe` contracts, including daily and weekly UTC buckets, plus unit coverage for OHLCV aggregation and timestamp validation.
+Strengthened startup verification so the test exercises the actual FastAPI lifespan with provider and instrument configuration disabled, proving the credential-free startup path records degraded health without attempting a live provider.
 
 ## Next task
 
-Continue Stage 1 verification: inspect and run the available backend test path, verify Upstox SDK/protobuf compatibility, verify credential-free degraded startup, and complete the official Gradle wrapper/build verification. Fix only confirmed failures directly on `main`, then update this file.
+Continue Stage 1 verification: run the available backend test path, verify Upstox SDK/protobuf compatibility, verify the credential-free startup path in the real test environment, and complete official Gradle wrapper/build verification. Fix only confirmed failures directly on `main`, then update this file.
