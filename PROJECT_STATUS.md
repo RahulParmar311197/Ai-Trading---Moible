@@ -25,12 +25,13 @@ Before starting any new implementation task, review this file, `AI_TRADING_PLATF
 - [x] Candle persistence migration and repository/tests
 - [x] Tick persistence migration and repository/tests
 - [x] Provider-neutral market-data feed interface and contract test
+- [x] Initial REST market-data API contract (`/timeframes`, `/candles` validation)
 
 ## In progress
 
 - [ ] Complete official Gradle wrapper files and validate `./gradlew assembleDebug`
 - [ ] Verify Android CI build passes on GitHub Actions
-- [ ] Implement REST market-data endpoints
+- [ ] Wire REST market-data endpoints to concrete repository dependencies
 - [ ] Implement WebSocket market stream
 - [ ] Add Redis integration for live market state
 - [ ] Add market-data freshness/quality checks
@@ -47,7 +48,8 @@ Before starting any new implementation task, review this file, `AI_TRADING_PLATF
 - [x] Candle persistence
 - [x] Tick persistence
 - [x] Provider adapter interface
-- [ ] REST market endpoints
+- [x] REST market-data API contract
+- [ ] REST market-data persistence wiring
 - [ ] WebSocket market stream
 - [ ] Redis live-state integration
 - [ ] Market-data freshness/quality controls
@@ -131,8 +133,8 @@ Live/autonomous trading must not be enabled until replay, backtesting, paper tra
 
 ## Last completed work
 
-Implemented `backend/app/market/feed.py` as the provider-neutral adapter contract required by the blueprint. It exposes asynchronous historical candle retrieval and streaming canonical market events, keeping provider-specific transports behind the adapter boundary. Added a contract test without introducing an optional pytest-asyncio dependency.
+Added the initial REST market-data API contract with supported timeframe discovery and candle-query validation. The endpoint intentionally returns 503 until concrete persistence dependencies are wired, preventing fabricated market data.
 
 ## Next task
 
-Implement the REST market-data endpoints. Before doing so, re-check this status file, the full blueprint, and the current repository.
+Wire the REST market-data endpoints to the concrete PostgreSQL candle repository. Before doing so, re-check this status file, the full blueprint, and the current repository.
