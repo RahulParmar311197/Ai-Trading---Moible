@@ -12,6 +12,7 @@ from ..base import (
     BrokerReconciliation,
 )
 from ..http import HTTPBrokerClient, LiveBrokerDisabled, decimal_value
+from ..order_config import BrokerInstrument, InstrumentResolver, OrderValidity, ProductType
 
 
 class UpstoxBroker:
@@ -21,14 +22,24 @@ class UpstoxBroker:
     intentionally disabled unless the caller explicitly opts in; this class
     does not itself provide a route that enables live trading.
 
-    ``BrokerOrder.symbol`` is mapped to the Upstox ``instrument_token``.
+    ``BrokerOrder.symbol`` remains the canonical symbol. When mutation is
+    explicitly enabled, the configured ``InstrumentResolver`` supplies the
+    provider instrument token and order configuration instead of guessing it.
     """
 
     provider = "upstox"
 
-    def __init__(self, access_token: str, *, timeout: float = 10.0, allow_live_orders: bool = False) -> None:
+    def __init__(
+        self,
+        access_token: str,
+        *,
+        timeout: float = 10.0,
+        allow_live_orders: bool = False,
+        instrument_resolver: InstrumentResolver | None = None,
+    ) -> None:
         self._client = HTTPBrokerClient("https://api.upstox.com/v2", access_token, timeout=timeout)
         self._allow_live_orders = allow_live_orders
+        self._instrument_resolver = instrument_resolver or InstrumentResolver()
 
     async def authenticate(self) -> BrokerAuthentication:
         return BrokerAuthentication(
@@ -67,13 +78,23 @@ class UpstoxBroker:
     async def place_order(self, order: BrokerOrder) -> BrokerOrder:
         if not self._allow_live_orders:
             raise LiveBrokerDisabled("Upstox live order submission is disabled")
-        body = {
+        instrument = self._instrument_resolver.resolve(order.symbol)
+        body = self._order_payload(order, instrument)
+        payload = await self._client.request("POST", "/order/place", json=body)
+        order_id = str((payload.get("data") or {}).get("order_id", order.order_id)) if isinstance(payload, dict) else order.order_id
+        return order.model_copy(update={"order_id": order_id, "status": BrokerOrderStatus.NEW})
+
+    @staticmethod
+    def _order_payload(order: BrokerOrder, instrument: BrokerInstrument) -> dict[str, Any]:
+        product = {ProductType.INTRADAY: "I", ProductType.DELIVERY: "D", ProductType.MARGIN: "MTF"}[instrument.product_type]
+        validity = instrument.validity.value if hasattr(instrument, "validity") else OrderValidity.DAY.value
+        return {
             "quantity": order.quantity,
-            "product": "D",
-            "validity": "DAY",
+            "product": product,
+            "validity": validity,
             "price": float(order.average_price or Decimal("0")),
             "tag": order.client_order_id,
-            "instrument_token": order.symbol,
+            "instrument_token": instrument.provider_symbol,
             "order_type": order.order_type.value,
             "transaction_type": order.side.value,
             "disclosed_quantity": 0,
@@ -81,9 +102,6 @@ class UpstoxBroker:
             "is_amo": False,
             "market_protection": 0,
         }
-        payload = await self._client.request("POST", "/order/place", json=body)
-        order_id = str((payload.get("data") or {}).get("order_id", order.order_id)) if isinstance(payload, dict) else order.order_id
-        return order.model_copy(update={"order_id": order_id, "status": BrokerOrderStatus.NEW})
 
     async def cancel_order(self, order_id: str) -> BrokerOrder:
         if not self._allow_live_orders:
