@@ -4,99 +4,77 @@ Last updated: 2026-09-01
 
 ## Working rule
 
-Before starting any new implementation task, review this file, `AI_TRADING_PLATFORM_BLUEPRINT_FULL.md`, and the current repository state. Update this file after each completed milestone or meaningful change.
+Before every implementation task, check this file, `AI_TRADING_PLATFORM_BLUEPRINT_FULL.md`, and the current `main` repository state. Work directly on `main` only. Update this file after each completed milestone or meaningful change.
 
 ## Current stage
 
-**Stage 1 — Market data (initial implementation)**
+**Stage 1 — Market data**
 
 ## Completed
 
-- [x] Repository and project foundation
-- [x] Full blueprint preserved in repository
+- [x] Repository/project foundation
+- [x] Full master blueprint preserved
 - [x] FastAPI + Android skeleton
-- [x] PostgreSQL migration foundation
-- [x] CI/test foundation
+- [x] PostgreSQL and CI/test foundation
 - [x] Canonical market models and normalization
-- [x] Instrument migration, repository, service, and tests
-- [x] PostgreSQL/SQLAlchemy executor integration
-- [x] Live PostgreSQL instrument integration test
-- [x] GitHub Actions PostgreSQL 16 service for integration tests
-- [x] Candle persistence migration and repository/tests
-- [x] Tick persistence migration and repository/tests
-- [x] Provider-neutral market-data feed interface and contract test
-- [x] REST market-data API contract
-- [x] REST candle endpoint wired to PostgreSQL repository dependency
-- [x] REST candle endpoint API tests
+- [x] Instrument/candle/tick persistence and repositories
+- [x] Provider-neutral market-data feed boundary
+- [x] REST market-data API and PostgreSQL wiring
 - [x] WebSocket market stream
-- [x] Redis live-market-state boundary and tests
-- [x] Redis live event publisher boundary and ordering test
-- [x] Concrete Redis client factory
-- [x] Runtime Redis → WebSocket publisher wiring
-- [x] Provider → LiveMarketPublisher runtime bridge and test
-- [x] Market-data freshness and quality validation rules
-- [x] Provider runtime quality-validation gate and tests
-- [x] Explicit market-data provider configuration boundary
+- [x] Redis live state and event publisher boundaries
+- [x] Redis → WebSocket runtime boundary
+- [x] Provider → publisher runtime bridge
+- [x] Market-data freshness/quality validation
+- [x] Provider quality-validation gate
+- [x] Explicit provider-selection configuration
 - [x] Upstox V3 historical candle adapter
-- [x] Upstox provider registration and access-token configuration
-- [x] Upstox historical normalization tests
+- [x] Upstox authentication/access-token configuration
 - [x] Upstox V3 live authorization/transport boundary
-- [x] WebSocket/Protobuf runtime dependencies
-- [x] Live authorization boundary test
-- [x] Upstox Protobuf decoder injection boundary and tests
-- [x] Upstox SDK-backed protobuf decoder adapter
-- [x] Upstox live LTP → canonical MarketEvent normalization boundary
-- [x] Upstox LTP normalization tests
-- [x] Upstox decoded LTPC/full-feed field extraction
-- [x] Upstox live feed-shape normalization tests
-- [x] Explicit application startup provider-selection boundary
-- [x] Safe degraded startup when live market data is not configured
-- [x] Redis live publisher implementation restored on clean branch
-- [x] Redis publisher unit test
-- [x] Project status updated on clean branch
+- [x] Upstox protobuf decoder injection boundary
+- [x] Upstox SDK-backed decoder boundary
+- [x] Upstox live LTP normalization
+- [x] Upstox LTPC/full-feed extraction
+- [x] Application startup provider selection
+- [x] Safe degraded startup when live data is not configured
+- [x] Redis publisher implementation
+- [x] Provider → Redis publisher startup wiring on `main`
 
 ## In progress
 
-- [ ] Merge verified Redis publisher branch into main
-- [ ] Wire configured provider runner to Redis publisher at startup
 - [ ] Verify official Upstox SDK protobuf import/version in CI
+- [ ] Verify complete backend test suite on current `main`
+- [ ] Verify live provider startup path without external credentials
 - [ ] Complete official Gradle wrapper files and validate `./gradlew assembleDebug`
 - [ ] Verify Android CI build passes on GitHub Actions
 
 ## Stage 1 checklist
 
-- [x] Canonical instrument/timeframe/candle models (initial)
-- [x] Provider-neutral normalization (initial)
-- [x] Instrument persistence migration
-- [x] Instrument repository/service boundaries
-- [x] PostgreSQL repository implementation
-- [x] SQLAlchemy PostgreSQL executor integration
-- [x] Live PostgreSQL integration validation
+- [x] Canonical market-data models
+- [x] Provider-neutral normalization
+- [x] Instrument persistence
 - [x] Candle persistence
 - [x] Tick persistence
 - [x] Provider adapter interface
-- [x] REST market-data API contract
-- [x] REST market-data persistence wiring
+- [x] REST market-data API
+- [x] REST persistence wiring
 - [x] WebSocket market stream
 - [x] Redis live-state boundary
-- [x] Redis event publisher boundary
-- [x] Concrete Redis runtime wiring
-- [x] Redis → WebSocket runtime wiring
-- [x] Provider → LiveMarketPublisher runtime bridge
-- [x] Market-data freshness/quality validation rules
-- [x] Provider → quality validation gate
-- [x] Explicit provider-selection boundary
-- [x] Concrete Upstox historical provider adapter
-- [x] Upstox live authorization/transport boundary
-- [x] Upstox protobuf decoder injection boundary
-- [x] Upstox SDK-backed protobuf decoder adapter
-- [x] Upstox live LTP normalization boundary
-- [x] Upstox decoded LTPC/full-feed extraction
-- [x] Application startup provider-selection boundary
-- [x] Redis publisher implementation
-- [ ] Redis publisher merged to main
-- [ ] Upstox SDK dependency/version CI verification
-- [ ] Provider → live publisher startup integration
+- [x] Redis event publisher
+- [x] Redis → WebSocket wiring
+- [x] Provider → publisher bridge
+- [x] Freshness/quality validation
+- [x] Provider selection boundary
+- [x] Upstox historical adapter
+- [x] Upstox live transport boundary
+- [x] Upstox protobuf decoder boundary
+- [x] Upstox SDK decoder adapter
+- [x] Upstox live normalization
+- [x] Upstox feed-field extraction
+- [x] Application startup provider wiring
+- [x] Redis publisher startup wiring
+- [ ] SDK dependency/version CI verification
+- [ ] Full backend CI verification
+- [ ] Stage 1 final integration verification
 
 ## Later stages
 
@@ -177,8 +155,8 @@ Live/autonomous trading must not be enabled until replay, backtesting, paper tra
 
 ## Last completed work
 
-Restored the Redis live-market publisher boundary on `work/redis-publisher-2` from the actual current `main` HEAD. Added its unit test and recorded the work in this status file. The publisher serializes canonical dataclass/Pydantic events and publishes them to the `market.events` channel.
+Reconciled the project tracker with the actual `main` runtime: the FastAPI lifespan now selects the configured provider, constructs the Redis publisher, passes its `publish` callback into `ProviderMarketRunner`, and starts the runner task. This matches the intended provider-neutral market-data flow without bypassing the deterministic quality gate.
 
 ## Next task
 
-Merge the verified Redis publisher branch into `main`, then wire the configured provider runner to the publisher at application startup. Before each step, re-check this status file, the full blueprint, and the current repository.
+Verify the current `main` CI/backend test state, starting with the failing Upstox SDK protobuf import/version check. Fix only confirmed failures, directly on `main`, and update this file after verification.
