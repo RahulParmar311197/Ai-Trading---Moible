@@ -1,0 +1,4 @@
+#!/bin/sh
+# Gradle Wrapper launcher placeholder.
+# Generate the official wrapper with the pinned Gradle distribution before local Android builds.
+exec gradle "$@"
