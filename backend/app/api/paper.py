@@ -21,14 +21,7 @@ class PlacePaperOrderRequest(BaseModel):
 
 @router.post("/orders", response_model=Order)
 def place_paper_order(request: PlacePaperOrderRequest) -> Order:
-    order = Order(
-        order_id=request.order_id,
-        symbol=request.symbol,
-        side=request.side,
-        order_type=request.order_type,
-        quantity=request.quantity,
-        limit_price=request.limit_price,
-    )
+    order = Order(order_id=request.order_id, symbol=request.symbol, side=request.side, order_type=request.order_type, quantity=request.quantity, limit_price=request.limit_price)
     try:
         broker.place_order(order, request.market_price)
     except (ValueError, KeyError) as exc:
@@ -58,4 +51,16 @@ def list_paper_positions():
 
 @router.get("/account")
 def paper_account() -> dict[str, object]:
-    return {"balance": broker.balance, "equity": broker.equity(), "positions": len(broker.positions)}
+    return {"balance": broker.balance, "equity": broker.equity(), "positions": len(broker.positions), "trading_halted": broker.halted}
+
+
+@router.post("/kill-switch")
+def activate_kill_switch() -> dict[str, bool]:
+    broker.kill_switch()
+    return {"trading_halted": broker.halted}
+
+
+@router.post("/kill-switch/clear")
+def clear_kill_switch() -> dict[str, bool]:
+    broker.clear_kill_switch()
+    return {"trading_halted": broker.halted}
