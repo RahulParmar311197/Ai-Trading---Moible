@@ -43,6 +43,7 @@ Before starting any new implementation task, review this file, `AI_TRADING_PLATF
 - [x] Upstox V3 live authorization/transport boundary
 - [x] WebSocket/Protobuf runtime dependencies
 - [x] Live authorization boundary test
+- [x] Upstox Protobuf decoder injection boundary and tests
 
 ## In progress
 
@@ -77,7 +78,8 @@ Before starting any new implementation task, review this file, `AI_TRADING_PLATF
 - [x] Explicit provider-selection boundary
 - [x] Concrete Upstox historical provider adapter
 - [x] Upstox live authorization/transport boundary
-- [ ] Upstox protobuf decoder
+- [x] Upstox protobuf decoder injection boundary
+- [ ] Official Upstox protobuf schema/generated decoder
 - [ ] Upstox live canonical normalization
 - [ ] Provider startup integration
 
@@ -160,7 +162,7 @@ Live/autonomous trading must not be enabled until replay, backtesting, paper tra
 
 ## Last completed work
 
-Implemented the Upstox V3 live authorization/transport boundary. The adapter calls the current V3 authorization endpoint, obtains the one-time authorized WebSocket URI, opens the WebSocket, sends a binary subscription request, and injects incoming binary payloads into a decoder boundary. Added `websockets` and `protobuf` dependencies and authorization tests. The official protobuf schema/generated decoder and canonical live-event normalization remain pending; no fake schema was invented.
+Added the Upstox V3 Protobuf decoder injection boundary with empty-payload validation and tests. This is deliberately only the application boundary: the official generated `MarketDataFeedV3` schema has not been copied or fabricated into the repository.
 
 ## Next task
 
