@@ -25,6 +25,16 @@ class BacktestStrategy(Protocol):
 
 
 @dataclass(frozen=True)
+class BacktestOrderEvent:
+    sequence: int
+    event: str
+    side: Side
+    quantity: Decimal
+    price: Decimal
+    timestamp: object
+
+
+@dataclass(frozen=True)
 class BacktestTrade:
     side: Side
     quantity: Decimal
@@ -42,6 +52,7 @@ class BacktestResult:
     ending_balance: Decimal
     trades: list[BacktestTrade] = field(default_factory=list)
     equity_curve: list[Decimal] = field(default_factory=list)
+    order_events: list[BacktestOrderEvent] = field(default_factory=list)
 
     @property
     def net_pnl(self) -> Decimal:
@@ -69,6 +80,13 @@ class BacktestResult:
         return sum((t.net_pnl for t in self.trades), Decimal("0")) / Decimal(len(self.trades))
 
 
+@dataclass
+class _OpenPosition:
+    order: MarketOrder
+    entry_fill: Decimal
+    entry_timestamp: object
+
+
 class BacktestEngine:
     """Deterministic candle-by-candle simulator with no future-data access."""
 
@@ -86,28 +104,49 @@ class BacktestEngine:
         balance = self.starting_balance
         visible: list[Candle] = []
         trades: list[BacktestTrade] = []
+        events: list[BacktestOrderEvent] = []
         equity = [balance]
-        for candle in self._candles:
+        position: _OpenPosition | None = None
+
+        for sequence, candle in enumerate(self._candles):
             visible.append(candle)
-            order = strategy.on_candle(tuple(visible))
-            if order is None:
-                equity.append(balance)
-                continue
-            self._validate_order(order, candle)
-            exit_price = self._resolve_exit(order, candle)
-            entry = self._fill_price(order.entry_price, order.side, entering=True)
-            exit_fill = self._fill_price(exit_price, order.side, entering=False)
-            gross = (exit_fill - entry) * order.quantity
-            if order.side == Side.SHORT:
-                gross = -gross
-            notional = abs(entry * order.quantity) + abs(exit_fill * order.quantity)
-            fees = notional * self.fee_rate
-            slippage = abs(entry - order.entry_price) * order.quantity + abs(exit_fill - exit_price) * order.quantity
-            net = gross - fees
-            balance += net
-            trades.append(BacktestTrade(order.side, order.quantity, entry, exit_fill, gross, fees, slippage, net))
+
+            if position is not None:
+                exit_price = self._resolve_exit(position.order, candle)
+                if exit_price is not None:
+                    trade, balance = self._close_position(position, exit_price, candle.timestamp, balance)
+                    trades.append(trade)
+                    events.append(BacktestOrderEvent(sequence, "CLOSE", position.order.side,
+                                                     position.order.quantity, trade.exit_price, candle.timestamp))
+                    position = None
+
+            if position is None:
+                order = strategy.on_candle(tuple(visible))
+                if order is not None:
+                    self._validate_order(order, candle)
+                    entry = self._fill_price(order.entry_price, order.side, entering=True)
+                    position = _OpenPosition(order, entry, candle.timestamp)
+                    events.append(BacktestOrderEvent(sequence, "OPEN", order.side, order.quantity, entry, candle.timestamp))
+                    # A stop/target can legitimately trigger on the entry candle.
+                    exit_price = self._resolve_exit(order, candle)
+                    if exit_price is not None:
+                        trade, balance = self._close_position(position, exit_price, candle.timestamp, balance)
+                        trades.append(trade)
+                        events.append(BacktestOrderEvent(sequence, "CLOSE", order.side, order.quantity,
+                                                         trade.exit_price, candle.timestamp))
+                        position = None
+
             equity.append(balance)
-        return BacktestResult(self.starting_balance, balance, trades, equity)
+
+        if position is not None and self._candles:
+            last = self._candles[-1]
+            trade, balance = self._close_position(position, last.close, last.timestamp, balance)
+            trades.append(trade)
+            events.append(BacktestOrderEvent(len(self._candles), "CLOSE_END", position.order.side,
+                                             position.order.quantity, trade.exit_price, last.timestamp))
+            equity[-1] = balance
+
+        return BacktestResult(self.starting_balance, balance, trades, equity, events)
 
     def _validate_order(self, order: MarketOrder, candle: Candle) -> None:
         if order.quantity <= 0 or order.entry_price <= 0:
@@ -119,17 +158,29 @@ class BacktestEngine:
         if order.entry_price < candle.low or order.entry_price > candle.high:
             raise ValueError("backtest order cannot fill outside the current candle")
 
-    def _resolve_exit(self, order: MarketOrder, candle: Candle) -> Decimal:
+    def _resolve_exit(self, order: MarketOrder, candle: Candle) -> Decimal | None:
         if order.stop_price is not None and ((order.side == Side.LONG and candle.low <= order.stop_price) or
                                              (order.side == Side.SHORT and candle.high >= order.stop_price)):
             return order.stop_price
         if order.target_price is not None and ((order.side == Side.LONG and candle.high >= order.target_price) or
                                                (order.side == Side.SHORT and candle.low <= order.target_price)):
             return order.target_price
-        return candle.close
+        return None
+
+    def _close_position(self, position: _OpenPosition, exit_price: Decimal, timestamp: object,
+                        balance: Decimal) -> tuple[BacktestTrade, Decimal]:
+        order = position.order
+        exit_fill = self._fill_price(exit_price, order.side, entering=False)
+        gross = (exit_fill - position.entry_fill) * order.quantity
+        if order.side == Side.SHORT:
+            gross = -gross
+        notional = abs(position.entry_fill * order.quantity) + abs(exit_fill * order.quantity)
+        fees = notional * self.fee_rate
+        slippage = abs(position.entry_fill - order.entry_price) * order.quantity + abs(exit_fill - exit_price) * order.quantity
+        net = gross - fees
+        return BacktestTrade(order.side, order.quantity, position.entry_fill, exit_fill, gross, fees, slippage, net), balance + net
 
     def _fill_price(self, price: Decimal, side: Side, entering: bool) -> Decimal:
-        # Slippage is deliberately deterministic and applied against the trader.
         bps = self.slippage_bps / Decimal("10000")
         adverse = (side == Side.LONG) == entering
         return price * (Decimal("1") + bps if adverse else Decimal("1") - bps)
