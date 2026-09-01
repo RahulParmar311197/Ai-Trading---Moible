@@ -90,3 +90,25 @@ def test_out_of_sample_ratio_must_leave_both_sides_non_empty():
         engine.out_of_sample_split(Decimal("0"))
     with pytest.raises(ValueError):
         engine.out_of_sample_split(Decimal("1"))
+
+
+def test_risk_based_sizing_uses_balance_and_stop_distance():
+    strategy = OneShot(MarketOrder(Side.LONG, None, Decimal("100"), stop_price=Decimal("95"), target_price=Decimal("110")))
+    result = BacktestEngine([candle(0, low="99", high="101")], starting_balance=Decimal("1000"),
+                            risk_per_trade=Decimal("1")).run(strategy)
+    assert result.trades[0].quantity == Decimal("2")
+    assert result.order_events[0].quantity == Decimal("2")
+
+
+def test_risk_based_sizing_requires_stop_and_valid_risk_percent():
+    with pytest.raises(ValueError, match="risk_per_trade"):
+        BacktestEngine([candle(0)], risk_per_trade=Decimal("0"))
+    with pytest.raises(ValueError, match="stop price"):
+        BacktestEngine([candle(0)], risk_per_trade=Decimal("1")).run(
+            OneShot(MarketOrder(Side.LONG, None, Decimal("100"))))
+
+
+def test_explicit_quantity_remains_authoritative_when_risk_sizing_enabled():
+    strategy = OneShot(MarketOrder(Side.LONG, Decimal("3"), Decimal("100"), stop_price=Decimal("95")))
+    result = BacktestEngine([candle(0)], starting_balance=Decimal("1000"), risk_per_trade=Decimal("1")).run(strategy)
+    assert result.trades[0].quantity == Decimal("3")
