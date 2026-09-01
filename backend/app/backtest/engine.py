@@ -100,6 +100,20 @@ class BacktestEngine:
         self.fee_rate = fee_rate
         self.slippage_bps = slippage_bps
 
+    @property
+    def candles(self) -> tuple[Candle, ...]:
+        return self._candles
+
+    def out_of_sample_split(self, train_ratio: Decimal) -> tuple["BacktestEngine", "BacktestEngine"]:
+        """Split chronologically; the test set is strictly later than training data."""
+        if train_ratio <= 0 or train_ratio >= 1:
+            raise ValueError("train_ratio must be between 0 and 1")
+        cut = int(len(self._candles) * train_ratio)
+        if cut == 0 or cut == len(self._candles):
+            raise ValueError("train_ratio produces an empty split")
+        kwargs = dict(starting_balance=self.starting_balance, fee_rate=self.fee_rate, slippage_bps=self.slippage_bps)
+        return BacktestEngine(self._candles[:cut], **kwargs), BacktestEngine(self._candles[cut:], **kwargs)
+
     def run(self, strategy: BacktestStrategy) -> BacktestResult:
         balance = self.starting_balance
         visible: list[Candle] = []
@@ -127,7 +141,6 @@ class BacktestEngine:
                     entry = self._fill_price(order.entry_price, order.side, entering=True)
                     position = _OpenPosition(order, entry, candle.timestamp)
                     events.append(BacktestOrderEvent(sequence, "OPEN", order.side, order.quantity, entry, candle.timestamp))
-                    # A stop/target can legitimately trigger on the entry candle.
                     exit_price = self._resolve_exit(order, candle)
                     if exit_price is not None:
                         trade, balance = self._close_position(position, exit_price, candle.timestamp, balance)
