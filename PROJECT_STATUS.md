@@ -28,12 +28,13 @@ Before starting any new implementation task, review this file, `AI_TRADING_PLATF
 - [x] REST market-data API contract
 - [x] REST candle endpoint wired to PostgreSQL repository dependency
 - [x] REST candle endpoint API tests
+- [x] WebSocket market stream endpoint and in-process event hub
+- [x] WebSocket event-hub contract test
 
 ## In progress
 
 - [ ] Complete official Gradle wrapper files and validate `./gradlew assembleDebug`
 - [ ] Verify Android CI build passes on GitHub Actions
-- [ ] Implement WebSocket market stream
 - [ ] Add Redis integration for live market state
 - [ ] Add market-data freshness/quality checks
 
@@ -51,7 +52,7 @@ Before starting any new implementation task, review this file, `AI_TRADING_PLATF
 - [x] Provider adapter interface
 - [x] REST market-data API contract
 - [x] REST market-data persistence wiring
-- [ ] WebSocket market stream
+- [x] WebSocket market stream transport
 - [ ] Redis live-state integration
 - [ ] Market-data freshness/quality controls
 
@@ -134,8 +135,8 @@ Live/autonomous trading must not be enabled until replay, backtesting, paper tra
 
 ## Last completed work
 
-Wired the REST candle query endpoint to the concrete PostgreSQL repository through a FastAPI dependency. Added API tests for successful persisted-candle retrieval and invalid time ranges. No fabricated market data is returned.
+Implemented the WebSocket market-stream transport at `/api/v1/market-data/stream/{instrument_id}`. It subscribes clients to normalized `MarketEvent` messages through an in-process event hub. Added a contract test without introducing an async pytest plugin dependency. Redis fan-out remains pending and is intentionally separate from this transport milestone.
 
 ## Next task
 
-Implement the WebSocket market stream. Before doing so, re-check this status file, the full blueprint, and the current repository.
+Implement Redis integration for live market state/fan-out. Before doing so, re-check this status file, the full blueprint, and the current repository.
