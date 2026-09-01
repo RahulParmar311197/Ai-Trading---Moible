@@ -44,10 +44,11 @@ Before starting any new implementation task, review this file, `AI_TRADING_PLATF
 - [x] WebSocket/Protobuf runtime dependencies
 - [x] Live authorization boundary test
 - [x] Upstox Protobuf decoder injection boundary and tests
+- [x] Upstox SDK-backed protobuf decoder adapter
 
 ## In progress
 
-- [ ] Add the official Upstox V3 protobuf schema/generated decoder
+- [ ] Verify official Upstox SDK protobuf import/version in CI
 - [ ] Map decoded Upstox live LTPC/full data into canonical `MarketEvent`
 - [ ] Connect configured provider runner to application startup
 - [ ] Complete official Gradle wrapper files and validate `./gradlew assembleDebug`
@@ -79,7 +80,8 @@ Before starting any new implementation task, review this file, `AI_TRADING_PLATF
 - [x] Concrete Upstox historical provider adapter
 - [x] Upstox live authorization/transport boundary
 - [x] Upstox protobuf decoder injection boundary
-- [ ] Official Upstox protobuf schema/generated decoder
+- [x] Upstox SDK-backed protobuf decoder adapter
+- [ ] Upstox SDK dependency/version CI verification
 - [ ] Upstox live canonical normalization
 - [ ] Provider startup integration
 
@@ -162,8 +164,8 @@ Live/autonomous trading must not be enabled until replay, backtesting, paper tra
 
 ## Last completed work
 
-Added the Upstox V3 Protobuf decoder injection boundary with empty-payload validation and tests. This is deliberately only the application boundary: the official generated `MarketDataFeedV3` schema has not been copied or fabricated into the repository.
+Added an SDK-backed Upstox V3 protobuf decoder adapter that delegates parsing to the official generated `FeedResponse` message when the installed Upstox SDK exposes it. The core application still uses the injected decoder boundary. No hand-written protobuf schema was introduced.
 
 ## Next task
 
-Add the official Upstox V3 protobuf schema/generated decoder, then map decoded LTPC/full feed data into canonical `MarketEvent`. Before doing so, re-check this status file, the full blueprint, and the current repository.
+Verify the exact installed Upstox SDK protobuf module/version in CI, then map decoded LTPC/full feed data into canonical `MarketEvent`. Before doing so, re-check this status file, the full blueprint, and the current repository.
