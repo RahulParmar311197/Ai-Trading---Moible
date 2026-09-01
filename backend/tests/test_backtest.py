@@ -74,3 +74,19 @@ def test_drawdown_win_rate_and_expectancy_are_reported():
         OneShot(MarketOrder(Side.LONG, Decimal("1"), Decimal("100"))))
     assert result.win_rate == Decimal("100")
     assert result.expectancy == Decimal("1")
+
+
+def test_out_of_sample_split_is_chronological_and_non_overlapping():
+    engine = BacktestEngine([candle(0), candle(60), candle(120), candle(180)])
+    train, test = engine.out_of_sample_split(Decimal("0.5"))
+    assert len(train.candles) == 2
+    assert len(test.candles) == 2
+    assert train.candles[-1].timestamp < test.candles[0].timestamp
+
+
+def test_out_of_sample_ratio_must_leave_both_sides_non_empty():
+    engine = BacktestEngine([candle(0), candle(60)])
+    with pytest.raises(ValueError):
+        engine.out_of_sample_split(Decimal("0"))
+    with pytest.raises(ValueError):
+        engine.out_of_sample_split(Decimal("1"))
