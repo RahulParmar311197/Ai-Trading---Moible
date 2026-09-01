@@ -11,6 +11,7 @@ from typing import Any
 from pydantic import BaseModel, Field, model_validator
 
 from app.market.models import Timeframe
+from app.smc.models import SignalContext
 
 
 class ConditionType(StrEnum):
@@ -46,6 +47,23 @@ class StrategySignalContext(BaseModel):
     """Structured facts available to a strategy evaluator."""
 
     values: dict[str, Any] = Field(default_factory=dict)
+
+    @classmethod
+    def from_smc_signal(cls, signal: SignalContext) -> "StrategySignalContext":
+        """Adapt deterministic SMC facts without giving the DSL execution authority."""
+        return cls(
+            values={
+                "bias": signal.bias.value,
+                "bos": signal.bos,
+                "mss": signal.mss,
+                "choch": signal.choch,
+                "liquidity_sweep": signal.liquidity_sweep,
+                "fvg": signal.fvg,
+                "order_block": signal.order_block,
+                "score": signal.score,
+                "reasons": signal.reasons,
+            }
+        )
 
     def get(self, key: str) -> Any:
         return self.values.get(key)
@@ -95,7 +113,7 @@ class StrategyCondition(BaseModel):
                 return False
             return self.value[0] <= actual <= self.value[1]
         if self.operator is Operator.CROSSES:
-            return bool(actual)
+            return isinstance(actual, bool) and actual
         return False
 
 
