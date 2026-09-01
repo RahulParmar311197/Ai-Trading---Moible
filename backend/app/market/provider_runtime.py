@@ -5,10 +5,11 @@ from collections.abc import Awaitable, Callable
 
 from app.market.feed import MarketDataFeed
 from app.market.models import MarketEvent
+from app.market.quality import validate_event
 
 
 class ProviderMarketRunner:
-    """Consume normalized provider events and hand them to the live publisher."""
+    """Consume provider events, validate them, then deliver live events."""
 
     def __init__(
         self,
@@ -20,7 +21,8 @@ class ProviderMarketRunner:
 
     async def run(self, instrument_ids: list[str]) -> None:
         async for event in self.feed.stream(instrument_ids=instrument_ids):
-            await self.publish(event)
+            validated = validate_event(event)
+            await self.publish(validated)
 
     def start(self, instrument_ids: list[str]) -> asyncio.Task[None]:
         return asyncio.create_task(self.run(instrument_ids))
