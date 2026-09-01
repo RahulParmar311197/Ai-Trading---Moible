@@ -8,23 +8,50 @@ Last updated: 2026-09-01
 
 ## Current stage
 
-**Stage 6 — Options Foundation**
+**Stage 6 — Options**
 
 ## Latest implementation state
 
 - Strategy DSL is integrated with deterministic backtesting and replay evaluation.
 - Structured market context is built from visible candles plus deterministic SMC/ICT facts.
 - AI has a provider-neutral HTTP/service boundary and `/api/v1/ai/analyze`, `/api/v1/ai/strategy`, `/api/v1/ai/explain-trade` endpoints. AI remains advisory and cannot authorize execution.
-- Options now have provider-neutral contracts, deterministic Black-Scholes Greeks, liquidity/spread filtering, and deterministic delta-based strike selection.
-- Multi-leg options payoff, options strategy APIs, and live option-chain provider integration remain unfinished.
+- Options have provider-neutral contracts, deterministic Black-Scholes Greeks, liquidity/spread filtering, deterministic delta-based strike selection, a multi-leg expiry payoff engine, risk metrics, deterministic strategy selection, a provider-neutral option-chain boundary, and options analytics APIs.
+- Live option-chain provider integration remains unfinished and requires a real provider implementation/credentials.
 
-## CI evidence
+## Latest milestone — options payoff/strategy layer
 
-For commit `a2a392d1bc9aadcd6aa656f2b0f9f103e63a2218`, GitHub Actions backend tests executed **119 tests with 2 failures**; 117 passed. The two failures were stale startup tests expecting `/health` to report degraded. The implementation intentionally separates liveness (`/health`) from readiness (`/ready`), so the tests were updated accordingly in commit `465bb6a8381941b55a0c11597ad189f7a2fba970`.
+### IMPLEMENTED
 
-The same `a2a392d1...` run's Android build is still executing; no result is claimed yet. Commit `350627e5d41e091dd8e9bdfb89ff1d829d269a92` additionally fixes a Pydantic deprecation in `OptionLeg` quantity validation. A fresh CI run for the latest `main` is required before these fixes can be marked verified.
+- `OptionContract.lot_size` added to support correct multi-leg notional calculations.
+- Deterministic `payoff_at()` for multi-leg expiry P&L.
+- Deterministic maximum-profit/maximum-loss detection with unbounded results represented as `null`.
+- Breakeven detection across piecewise-linear option payoffs.
+- Capital requirement and risk/reward calculation when the loss side is bounded.
+- Risk-profile-aware deterministic strategy catalogue for bullish, bearish and neutral bias.
+- Liquidity-ranked option selection using the existing liquidity validator.
+- Provider-neutral `OptionChainProvider` plus safe unconfigured implementation.
+- `/api/v1/options/payoff` endpoint.
+- `/api/v1/options/strategies` endpoint.
+- `/api/v1/options/liquidity` endpoint.
+- Options payoff/strategy unit coverage including lot size, bounded spreads, unbounded calls and risk-profile restrictions.
 
-## Completed foundations
+### TESTS RUN
+
+`UNVERIFIED — no Codespace/runtime session is exposed through the connected tools.`
+
+### TESTS PASSED
+
+No local test execution claimed for this milestone.
+
+### BUILDS
+
+No local build execution claimed.
+
+### CI
+
+A fresh GitHub Actions result for the latest options commits has not yet been observed.
+
+## Stage status
 
 ### Stage 1 — Market Data
 
@@ -97,17 +124,19 @@ The same `a2a392d1...` run's Android build is still executing; no result is clai
 
 - [x] OptionContract / OptionChain / OptionLeg contracts
 - [x] Strike/expiry/OI/volume/IV/quote fields
+- [x] Contract lot-size support
 - [x] Deterministic Black-Scholes price/Greeks foundation
 - [x] Liquidity/spread validation
 - [x] Deterministic delta-based strike selection
+- [x] Multi-leg payoff engine
+- [x] Maximum profit/loss and breakeven calculations
+- [x] Capital requirement and risk/reward foundation
+- [x] Risk-profile-aware strategy selection
+- [x] Options analytics API
+- [x] Provider-neutral option-chain interface
 - [x] Options unit coverage
-- [ ] Multi-leg payoff engine
-- [ ] Maximum profit/loss and breakeven calculations
-- [ ] Options strategy selection API
-- [ ] Provider option-chain integration
-- [ ] Runtime/CI verification of latest options changes
-
-## Later stages
+- [ ] Live option-chain provider integration
+- [ ] Fresh runtime/CI verification of latest options changes
 
 ### Stage 7 — Paper Trading
 
@@ -152,22 +181,25 @@ The same `a2a392d1...` run's Android build is still executing; no result is clai
 
 ## Runtime limitation
 
-No Codespace/runtime session is exposed through the connected tools, so no local test command is claimed. GitHub Actions is the actual runtime verification path used here.
+No Codespace/runtime session is exposed through the connected tools, so no local test command is claimed. GitHub Actions is the runtime verification path available through the repository integration.
 
 ## Recent commits on main
 
+- `7b479bb` — correct options payoff test expectations
+- `d423f3e` — add options payoff and strategy tests
+- `5848bf4` — export options payoff and strategy services
+- `4125705` — add options analytics API
+- `0b8592c` — add provider-neutral option-chain boundary
+- `184ac37` — add deterministic options strategy selection
+- `f7f8db8` — add option contract lot size
+- `db37677` — add deterministic multi-leg payoff engine
 - `350627e` — fix Pydantic options quantity validation
 - `465bb6a` — align startup tests with liveness/readiness separation
 - `a2a392d` — options contracts, Greeks and liquidity foundation
-- `fac9191` — replay and health regression implementation fixes
-- `c9389d4` — provider-neutral AI analysis service and APIs
-- `0ff9c41` — market context, safe AI-to-DSL translation, replay strategy evaluation
-- `2405bc9` — Strategy DSL deterministic backtesting integration
 
 ## Next execution
 
-1. Wait for/inspect the fresh CI result for the latest `main` fixes.
-2. Fix any remaining test failures.
-3. Complete the multi-leg options payoff/strategy layer if repository write tooling permits it.
-4. Add the options API/provider boundary.
-5. Move to Stage 7 paper trading only after the options foundation is sufficiently verified.
+1. Inspect GitHub Actions for fresh verification of the latest main commits.
+2. Fix any reported failures.
+3. If clean, continue Stage 6 with a concrete provider adapter boundary only where repository architecture and available credentials support it.
+4. Then begin Stage 7 paper trading, reusing existing execution/risk abstractions rather than creating duplicates.
