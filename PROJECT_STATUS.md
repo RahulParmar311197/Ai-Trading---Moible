@@ -33,13 +33,14 @@ Before starting any new implementation task, review this file, `AI_TRADING_PLATF
 - [x] Redis live event publisher boundary and ordering test
 - [x] Concrete Redis client factory
 - [x] Runtime Redis → WebSocket publisher wiring
+- [x] Provider → LiveMarketPublisher runtime bridge and test
 
 ## In progress
 
-- [ ] Connect provider adapter events to live publisher/WebSocket fan-out
 - [ ] Add market-data freshness/quality checks
 - [ ] Complete official Gradle wrapper files and validate `./gradlew assembleDebug`
 - [ ] Verify Android CI build passes on GitHub Actions
+- [ ] Instantiate/connect a concrete provider adapter in application startup
 
 ## Stage 1 checklist
 
@@ -60,7 +61,8 @@ Before starting any new implementation task, review this file, `AI_TRADING_PLATF
 - [x] Redis event publisher boundary
 - [x] Concrete Redis runtime wiring
 - [x] Redis → WebSocket runtime wiring
-- [ ] Provider → publisher → WebSocket integration
+- [x] Provider → publisher runtime bridge
+- [ ] Concrete provider → publisher startup integration
 - [ ] Market-data freshness/quality controls
 
 ## Later stages
@@ -142,8 +144,8 @@ Live/autonomous trading must not be enabled until replay, backtesting, paper tra
 
 ## Last completed work
 
-Added the concrete Redis client factory using the existing `redis` dependency and configured `redis_url`, then wired `LiveMarketPublisher` to the existing WebSocket hub through an application-level runtime factory. This completes Redis runtime wiring without pretending that provider adapters are already connected.
+Added `ProviderMarketRunner`, which consumes the provider-neutral `MarketDataFeed.stream()` contract and forwards each normalized `MarketEvent` to the live publisher. Added a forwarding test. This is the runtime bridge; a concrete external provider implementation and application-startup instantiation are still intentionally pending.
 
 ## Next task
 
-Connect provider adapter events to `LiveMarketPublisher` and WebSocket fan-out. Before doing so, re-check this status file, the full blueprint, and the current repository.
+Implement market-data freshness/quality controls, while preserving the provider-neutral boundary. Before doing so, re-check this status file, the full blueprint, and the current repository.
