@@ -45,14 +45,17 @@ Before every implementation task, check this file, `AI_TRADING_PLATFORM_BLUEPRIN
 - [x] Timeframe aggregation unit coverage
 - [x] Credential-free degraded startup path exercised through the FastAPI lifespan in unit coverage
 - [x] Confirmed and fixed CI Python import-path failure caused by `PYTHONPATH=backend` while the job already runs in `backend`
+- [x] Added internal `Timeframe.TICK` contract required by live LTP normalization
+- [x] Kept internal `TICK` out of the public candle-timeframe API
 
 ## In progress
 
 - [ ] Verify official Upstox SDK protobuf import/version in CI
-- [ ] Verify complete backend test suite on current `main` after CI path fix
+- [ ] Verify complete backend test suite on current `main` after the timeframe API fix
 - [ ] Verify live provider startup path without external credentials
 - [ ] Complete official Gradle wrapper files and validate `./gradlew assembleDebug`
 - [ ] Verify Android CI build passes on GitHub Actions after the latest commit
+- [ ] Complete Stage 1 final integration verification
 
 ## Stage 1 checklist
 
@@ -84,6 +87,8 @@ Before every implementation task, check this file, `AI_TRADING_PLATFORM_BLUEPRIN
 - [x] Timeframe aggregation
 - [x] Android CI build job
 - [x] CI Python import path corrected
+- [x] Internal tick event timeframe support
+- [x] Public candle timeframe API excludes tick events
 - [ ] SDK dependency/version CI verification
 - [ ] Full backend CI verification
 - [ ] Android CI execution verification
@@ -166,14 +171,14 @@ Before every implementation task, check this file, `AI_TRADING_PLATFORM_BLUEPRIN
 
 Live/autonomous trading must not be enabled until replay, backtesting, paper trading, risk controls, broker reconciliation, failure handling, and explicit user activation are implemented and tested.
 
-## Last completed work
+## Last confirmed CI result
 
-The latest confirmed CI failure was not a market-data implementation defect: every non-integration test failed during collection because the workflow set `PYTHONPATH=backend` while its default working directory was already `backend`, producing `ModuleNotFoundError: No module named 'app'`. The official Upstox protobuf import step passed, and the Android `assembleDebug` CI job passed. The CI workflow was corrected to use `PYTHONPATH=.`.
+GitHub Actions run `33497106611` for commit `a97581064dceb19d251797a0c6a30485a055a736` confirmed that the official Upstox protobuf import step passed, but the backend non-integration suite failed with 51 passed, 1 failed, and 1 deselected. The failure was `tests/test_markets_api.py::test_supported_timeframes`: adding the required internal `Timeframe.TICK` enum caused the public `/api/v1/markets/timeframes` endpoint to expose `tick`. This was corrected by filtering `Timeframe.TICK` from the public candle-timeframe response.
 
-## Verification run
+## Current verification run
 
-Confirmed GitHub Actions run `33496104806` for commit `8959785deb7ed6dcea01959729cd818c309be58e` failed only because of the backend import-path configuration; Android succeeded and Upstox protobuf import succeeded. A new `main` commit (`d032e94bb2a1b87cb963c2e9b496ccc072e8f739`) contains the CI fix and should be verified by the next workflow run.
+Commit `79792fa7f9e1e65417e9ec44cb34607a9b7e8870` on `main` contains the API fix. GitHub Actions run `33497328952` is currently in progress; Android is building and backend verification has not yet been reported for this commit. Therefore the fix is currently `UNVERIFIED` until the runtime result completes.
 
 ## Next task
 
-Inspect the workflow run for `d032e94bb2a1b87cb963c2e9b496ccc072e8f739`. Fix only confirmed failures, then complete remaining Stage 1 verification. Do not move to Stage 2 until Stage 1 is genuinely verified.
+Verify GitHub Actions run `33497328952`. Fix only confirmed failures. If backend and Android verification pass, perform the remaining Stage 1 integration audit and then proceed to the next dependency only when Stage 1 evidence supports it.
