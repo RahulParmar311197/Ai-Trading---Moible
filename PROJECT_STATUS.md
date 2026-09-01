@@ -75,11 +75,15 @@ Work directly on `main` only. Before implementation, inspect this file, `AI_TRAD
 - [x] Stage 4 chronological out-of-sample split support
 - [x] Stage 4 deterministic risk-based position sizing using balance, risk percentage and stop distance
 - [x] Stage 4 stable `BacktestReport` projection for API/report consumers
-- [x] Stage 4 tests for lifecycle, OOS splitting, risk sizing and report projection
+- [x] Stage 4 persisted backtest report migration
+- [x] Stage 4 PostgreSQL backtest report repository boundary
+- [x] Stage 4 `POST /api/v1/backtest` deterministic execution endpoint
+- [x] Stage 4 `GET /api/v1/backtest/{id}` persisted report retrieval endpoint
+- [x] Stage 4 API validation and repository serialization test coverage
 
 ## Stage 1 status
 
-**PARTIAL / UNVERIFIED** — recorded CI verification exists for prior market-data work, but the placeholder Android Gradle wrapper and missing official `gradle-wrapper.jar` remain. Local runtime execution is unavailable.
+**PARTIAL / UNVERIFIED** — prior CI verification exists for market-data work, but the placeholder Android Gradle wrapper and missing official `gradle-wrapper.jar` remain. Local runtime execution is unavailable.
 
 ## Stage 2 status
 
@@ -88,6 +92,10 @@ Work directly on `main` only. Before implementation, inspect this file, `AI_TRAD
 ## Stage 3 status
 
 **PARTIAL / UNVERIFIED** — replay foundation and SMC integration exist; latest runtime/CI verification and replay-to-trade execution integration remain outstanding.
+
+## Stage 4 status
+
+**PARTIAL / UNVERIFIED** — deterministic engine, risk sizing, report projection, persistence migration/repository, and API endpoints now exist. The API currently accepts an explicit deterministic order plan as its transport adapter because the repository does not yet contain the blueprint's full reusable Strategy/DSL registry. This avoids inventing executable strategy code or a duplicate strategy framework. Latest runtime/CI verification remains unavailable.
 
 ## Stage 4 checklist
 
@@ -104,8 +112,13 @@ Work directly on `main` only. Before implementation, inspect this file, `AI_TRAD
 - [x] Deterministic risk-based position sizing
 - [x] Out-of-sample split support
 - [x] Stable report projection
+- [x] Backtest persistence migration
+- [x] Backtest report repository
+- [x] POST backtest API
+- [x] GET backtest report API
+- [x] API/repository unit coverage
 - [ ] Full runtime/CI verification of latest Stage 4 changes
-- [ ] Backtest API endpoint and persistence/report integration
+- [ ] Reusable strategy/DSL integration for backtest requests
 - [ ] Broader risk-engine integration required by later trading stages
 
 ## Later stages
@@ -160,8 +173,20 @@ Live/autonomous trading remains disabled/gated. It must not be enabled until rep
 
 ## Runtime / CI verification
 
-GitHub Actions is the available repository verification path. No current workflow run is reported for commits `320b4b3`, `50fe0bf`, or `7aae7fb` through the connected GitHub API. The newly added tests are therefore **UNVERIFIED**. No local test command is claimed as executed.
+GitHub Actions is the available repository verification path. No workflow run is currently reported for latest commit `aed4fffc90677161eb5d379b3cb2368a61badac1`, and the connected commit status API reports no statuses. Therefore the newly added API/repository tests remain **UNVERIFIED**. No local/Codespace test execution is claimed.
+
+## Recent commits on main
+
+- `5912246` — persisted backtest report storage migration
+- `4698ca3` — PostgreSQL backtest report repository
+- `b54921c` — deterministic backtest API and report retrieval
+- `818b3eb` — backtest repository dependency wiring
+- `5ef6ccf` — backtest API router registration
+- `550b8fd` — nested report JSON serialization fix
+- `88a8b8b` — backtest API execution/validation tests
+- `1fa1c55` — backtest report/persistence exports
+- `aed4fff` — backtest repository serialization test
 
 ## Next task
 
-Complete the existing Stage 4 backtest API endpoint and report integration using the deterministic engine and `BacktestReport`; then verify through CI and continue to Stage 5 only after the remaining Stage 4 gates are satisfied.
+Build the reusable blueprint-aligned Strategy/DSL boundary that can be consumed by replay, backtest, paper trading and later AI strategy generation, then integrate it with the existing deterministic backtest protocol. Do not bypass risk or create duplicate strategy frameworks. Keep runtime/CI verification explicitly UNVERIFIED until an actual workflow or runtime executes successfully.
