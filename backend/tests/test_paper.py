@@ -47,9 +47,9 @@ def test_closing_position_realizes_pnl() -> None:
     broker.place_order(order("1", OrderSide.BUY, 10), Decimal("100"))
     broker.place_order(order("2", OrderSide.SELL, 10), Decimal("110"))
     assert "NIFTY" not in broker.positions
-    # 10 shares * (110 - 100), before fees.
     assert broker.fills[-1].price == Decimal("110")
     assert broker.balance == Decimal("10100")
+    assert broker.realized_pnl_total == Decimal("100")
 
 
 def test_short_position_marks_in_the_right_direction() -> None:
@@ -65,3 +65,21 @@ def test_invalid_prices_are_rejected() -> None:
     broker = PaperBroker()
     with pytest.raises(ValueError):
         broker.place_order(order("1", OrderSide.BUY), Decimal("0"))
+
+
+def test_order_and_position_risk_limits_reject_before_fill() -> None:
+    broker = PaperBroker(max_order_notional=Decimal("500"), max_position_quantity=10)
+    with pytest.raises(ValueError, match="notional"):
+        broker.place_order(order("1", OrderSide.BUY, 6), Decimal("100"))
+    broker.place_order(order("2", OrderSide.BUY, 5), Decimal("100"))
+    with pytest.raises(ValueError, match="position limit"):
+        broker.place_order(order("3", OrderSide.BUY, 6), Decimal("100"))
+
+
+def test_kill_switch_rejects_new_orders_until_cleared() -> None:
+    broker = PaperBroker()
+    broker.kill_switch()
+    with pytest.raises(ValueError, match="halted"):
+        broker.place_order(order("1", OrderSide.BUY), Decimal("100"))
+    broker.clear_kill_switch()
+    assert broker.place_order(order("2", OrderSide.BUY), Decimal("100")) is not None
