@@ -101,6 +101,8 @@ class StrategyCondition(BaseModel):
 
         actual = context.get(self.field or self.type.value)
         if self.operator is None:
+            if self.value is not None:
+                return actual == self.value
             return bool(actual)
         if self.operator is Operator.GREATER_THAN:
             return actual is not None and actual > self.value

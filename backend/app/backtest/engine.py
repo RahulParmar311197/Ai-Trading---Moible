@@ -155,6 +155,10 @@ class BacktestEngine:
         events: list[BacktestOrderEvent] = []
         equity = [balance]
         position: _OpenPosition | None = None
+        strategy_risk = getattr(strategy, "risk_per_trade", None)
+        effective_risk = self.risk_per_trade if self.risk_per_trade is not None else strategy_risk
+        if effective_risk is not None and (effective_risk <= 0 or effective_risk > 100):
+            raise ValueError("strategy risk_per_trade must be greater than 0 and at most 100 percent")
 
         for sequence, candle in enumerate(self._candles):
             visible.append(candle)
@@ -170,8 +174,8 @@ class BacktestEngine:
             if position is None:
                 order = strategy.on_candle(tuple(visible))
                 if order is not None:
-                    self._validate_order(order, candle)
-                    quantity = self._resolve_quantity(order, balance)
+                    self._validate_order(order, candle, effective_risk)
+                    quantity = self._resolve_quantity(order, balance, effective_risk)
                     entry = self._fill_price(order.entry_price, order.side, entering=True)
                     position = _OpenPosition(order, entry, candle.timestamp, quantity)
                     events.append(BacktestOrderEvent(sequence, "OPEN", order.side, quantity, entry, candle.timestamp))
@@ -194,7 +198,7 @@ class BacktestEngine:
 
         return BacktestResult(self.starting_balance, balance, trades, equity, events)
 
-    def _validate_order(self, order: MarketOrder, candle: Candle) -> None:
+    def _validate_order(self, order: MarketOrder, candle: Candle, risk_per_trade: Decimal | None = None) -> None:
         if order.quantity is not None and order.quantity <= 0:
             raise ValueError("order quantity must be positive")
         if order.entry_price <= 0:
@@ -205,18 +209,18 @@ class BacktestEngine:
             raise ValueError("target price must be positive")
         if order.entry_price < candle.low or order.entry_price > candle.high:
             raise ValueError("backtest order cannot fill outside the current candle")
-        if self.risk_per_trade is not None and order.quantity is None and order.stop_price is None:
+        if risk_per_trade is not None and order.quantity is None and order.stop_price is None:
             raise ValueError("risk-based position sizing requires a stop price")
 
-    def _resolve_quantity(self, order: MarketOrder, balance: Decimal) -> Decimal:
+    def _resolve_quantity(self, order: MarketOrder, balance: Decimal, risk_per_trade: Decimal | None = None) -> Decimal:
         if order.quantity is not None:
             return order.quantity
-        if self.risk_per_trade is None or order.stop_price is None:
+        if risk_per_trade is None or order.stop_price is None:
             raise ValueError("order quantity is required when risk-based sizing is disabled")
         stop_distance = abs(order.entry_price - order.stop_price)
         if stop_distance == 0:
             raise ValueError("risk-based position sizing requires a non-zero stop distance")
-        risk_amount = balance * self.risk_per_trade / Decimal("100")
+        risk_amount = balance * risk_per_trade / Decimal("100")
         quantity = risk_amount / stop_distance
         if quantity <= 0:
             raise ValueError("risk-based position sizing produced a non-positive quantity")

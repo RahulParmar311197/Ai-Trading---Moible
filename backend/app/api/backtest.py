@@ -10,6 +10,7 @@ from app.api.dependencies import get_backtest_repository
 from app.backtest.engine import BacktestEngine, BacktestReport, MarketOrder, Side
 from app.backtest.repository import PostgresBacktestRepository
 from app.market.models import Candle
+from app.strategy import DslBacktestStrategy, StrategyDefinition
 
 router = APIRouter(prefix="/api/v1/backtest", tags=["backtest"])
 
@@ -28,6 +29,7 @@ class BacktestOrderPlan(BaseModel):
 class BacktestRequest(BaseModel):
     candles: list[Candle] = Field(min_length=1)
     orders: list[BacktestOrderPlan] = Field(default_factory=list)
+    strategy: StrategyDefinition | None = None
     starting_balance: Decimal = Field(default=Decimal("100000"), ge=0)
     fee_rate: Decimal = Field(default=Decimal("0"), ge=0)
     slippage_bps: Decimal = Field(default=Decimal("0"), ge=0)
@@ -84,6 +86,14 @@ class PlannedOrderStrategy:
         return MarketOrder(plan.side, plan.quantity, plan.entry_price, plan.stop_price, plan.target_price)
 
 
+def _select_strategy(request: BacktestRequest) -> PlannedOrderStrategy | DslBacktestStrategy:
+    if request.strategy is not None:
+        if request.orders:
+            raise HTTPException(status_code=422, detail="strategy and explicit orders cannot be combined")
+        return DslBacktestStrategy(request.strategy)
+    return PlannedOrderStrategy(request.orders)
+
+
 @router.post("")
 def run_backtest(
     request: BacktestRequest,
@@ -107,7 +117,8 @@ def run_backtest(
         slippage_bps=request.slippage_bps,
         risk_per_trade=request.risk_per_trade,
     )
-    report = BacktestReport.from_result(engine.run(PlannedOrderStrategy(request.orders)))
+    strategy = _select_strategy(request)
+    report = BacktestReport.from_result(engine.run(strategy))
     backtest_id = uuid4()
     repository.save(backtest_id, request.model_dump(mode="json"), report)
     return {"id": str(backtest_id), "report": _report_payload(report)}
