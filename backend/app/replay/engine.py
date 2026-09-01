@@ -1,11 +1,16 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Callable, Iterable
+from typing import Callable, Iterable, Protocol
 
 from app.market.models import Candle, Timeframe
+from app.smc.engine import SmcEngine, SmcAnalysis
 
 from .clock import ReplayClock, ReplaySpeed
 from .state import ReplayMarketState, ReplayStatistics
+
+
+class HistoricalCandleSource(Protocol):
+    def list_range(self, instrument_id: str, timeframe: str, start_time, end_time) -> list[Candle]: ...
 
 
 @dataclass(frozen=True)
@@ -15,20 +20,10 @@ class ReplayEvent:
 
 
 class ReplayEngine:
-    """Deterministic, look-ahead-safe candle replay engine.
+    """Deterministic, look-ahead-safe candle replay engine."""
 
-    Input candles are copied and ordered by timestamp with original position as a
-    stable tie-breaker. A strategy callback receives only candles at or before the
-    current replay event.
-    """
-
-    def __init__(
-        self,
-        candles: Iterable[Candle],
-        timeframe: Timeframe | None = None,
-        speed: ReplaySpeed = ReplaySpeed.X1,
-        starting_balance=None,
-    ):
+    def __init__(self, candles: Iterable[Candle], timeframe: Timeframe | None = None,
+                 speed: ReplaySpeed = ReplaySpeed.X1, starting_balance=None):
         ordered = list(enumerate(candles))
         if timeframe is not None:
             ordered = [(i, c) for i, c in ordered if c.timeframe == timeframe]
@@ -41,6 +36,14 @@ class ReplayEngine:
             self.statistics.ending_balance = starting_balance
         self._callback: Callable[[ReplayMarketState], None] | None = None
 
+    @classmethod
+    def from_repository(cls, source: HistoricalCandleSource, instrument_id: str,
+                        timeframe: Timeframe, start_time: datetime, end_time: datetime,
+                        speed: ReplaySpeed = ReplaySpeed.X1, starting_balance=None) -> "ReplayEngine":
+        """Load historical candles through the existing market-data repository boundary."""
+        candles = source.list_range(instrument_id, timeframe.value, start_time, end_time)
+        return cls(candles, timeframe=timeframe, speed=speed, starting_balance=starting_balance)
+
     @property
     def events(self) -> tuple[ReplayEvent, ...]:
         return self._events
@@ -50,8 +53,11 @@ class ReplayEngine:
         i = self.clock.index
         if i < 0:
             return ReplayMarketState(-1, None, ())
-        visible = tuple(event.candle for event in self._events[: i + 1])
-        return ReplayMarketState(i, self._events[i].candle.timestamp, visible)
+        return ReplayMarketState(
+            i,
+            self._events[i].candle.timestamp,
+            tuple(event.candle for event in self._events[: i + 1]),
+        )
 
     def on_event(self, callback: Callable[[ReplayMarketState], None]) -> None:
         self._callback = callback
@@ -87,3 +93,15 @@ class ReplayEngine:
             self.step()
         self.clock.pause()
         return self.state
+
+    def run_smc(self, smc: SmcEngine | None = None) -> list[SmcAnalysis]:
+        """Replay the existing SMC engine without exposing future candles."""
+        analyzer = smc or SmcEngine()
+        analyses: list[SmcAnalysis] = []
+        self.reset()
+        while not self.clock.finished:
+            state = self.step()
+            if state is not None:
+                analyses.append(analyzer.analyze(list(state.candles)))
+        self.clock.pause()
+        return analyses

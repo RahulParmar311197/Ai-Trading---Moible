@@ -65,3 +65,14 @@ def test_replay_statistics_are_deterministic():
     assert engine.statistics.net_pnl == Decimal("50")
     assert engine.statistics.win_rate == Decimal("50")
     assert engine.statistics.average_r == Decimal("0.5")
+
+
+def test_replay_can_use_existing_smc_engine_without_lookahead():
+    candles = [candle(i * 60, str(100 + i)) for i in range(6)]
+    engine = ReplayEngine(candles)
+
+    analyses = engine.run_smc()
+
+    assert len(analyses) == len(candles)
+    assert engine.state.current_index == len(candles) - 1
+    assert all(len(analysis.swings) <= len(candles) for analysis in analyses)
