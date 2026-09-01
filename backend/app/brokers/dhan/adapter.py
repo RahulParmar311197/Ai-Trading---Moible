@@ -12,7 +12,7 @@ from ..base import (
     BrokerReconciliation,
 )
 from ..http import HTTPBrokerClient, LiveBrokerDisabled, decimal_value
-from ..order_config import BrokerInstrument, ExchangeSegment, InstrumentResolver, OrderValidity, ProductType
+from ..order_config import BrokerInstrument, InstrumentResolver, ProductType
 
 
 class DhanBroker:
@@ -85,15 +85,13 @@ class DhanBroker:
         order_id = str(data.get("orderId", data.get("order_id", order.order_id)))
         return order.model_copy(update={"order_id": order_id, "status": BrokerOrderStatus.NEW})
 
-    @staticmethod
-    def _order_payload(order: BrokerOrder, instrument: BrokerInstrument) -> dict[str, Any]:
-        exchange = instrument.exchange_segment.value
+    def _order_payload(self, order: BrokerOrder, instrument: BrokerInstrument) -> dict[str, Any]:
         product = {ProductType.INTRADAY: "INTRADAY", ProductType.DELIVERY: "CNC", ProductType.MARGIN: "MARGIN"}[instrument.product_type]
         return {
-            "dhanClientId": "",
+            "dhanClientId": self.client_id,
             "correlationId": order.client_order_id,
             "transactionType": order.side.value,
-            "exchangeSegment": exchange,
+            "exchangeSegment": instrument.exchange_segment.value,
             "productType": product,
             "orderType": order.order_type.value,
             "validity": instrument.validity.value,
