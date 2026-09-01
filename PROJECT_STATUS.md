@@ -8,7 +8,7 @@ Last updated: 2026-09-01
 
 ## Current stage
 
-**Stage 8 — Broker Boundary Foundation**
+**Stage 8 — Broker Integration Foundation**
 
 ## Latest implementation state
 
@@ -17,8 +17,10 @@ Last updated: 2026-09-01
 - AI has a provider-neutral HTTP/service boundary and `/api/v1/ai/analyze`, `/api/v1/ai/strategy`, `/api/v1/ai/explain-trade` endpoints. AI remains advisory and cannot authorize execution.
 - Options have provider-neutral contracts, deterministic Black-Scholes Greeks, liquidity/spread filtering, deterministic delta-based strike selection, multi-leg expiry payoff, risk metrics, deterministic strategy selection, a provider-neutral option-chain boundary, and options analytics APIs.
 - Paper trading has deterministic in-memory order/fill/position execution, configurable fees/slippage, limit-order behavior, duplicate-order protection, P&L accounting, configurable order-notional and position limits, a kill switch, and a paper-only API. Persistence, partial fills, replay-to-paper, and full risk/audit integration remain unfinished.
-- Stage 8 has a provider-neutral account/order/position/broker protocol. The boundary explicitly models non-secret authentication context and deterministic order reconciliation.
-- Provider-neutral broker idempotency enforcement is now implemented as an opt-in decorator/store: repeated successful submissions with the same client order ID return the original result, conflicting reuse is rejected, and failed submissions release the reservation for safe retry. No live broker adapter has been enabled.
+- Stage 8 has a provider-neutral account/order/position/broker protocol with non-secret authentication context and deterministic order reconciliation.
+- Provider-neutral idempotency enforcement is implemented as an opt-in decorator/store: repeated successful submissions with the same client order ID return the original result, conflicting reuse is rejected, and failed submissions release the reservation for safe retry.
+- Official Upstox and Dhan API contracts were reviewed before adding adapters. Upstox v2 exposes funds/margin, positions, order placement, and order details; DhanHQ v2 exposes orders, correlation-id lookup, positions, and fund limits. The adapters map those provider responses into the common broker models. citeturn1search0turn0search0turn0search2turn1search4turn0search1turn1search1
+- Dhan and Upstox live mutation is explicitly gated by default. No application route currently enables live order submission/cancellation, so these adapters do not by themselves enable live trading.
 
 ## CI evidence
 
@@ -141,9 +143,14 @@ No local/Codespace test execution is claimed.
 - [x] Non-secret authentication context boundary
 - [x] Deterministic order reconciliation result boundary
 - [x] Provider-neutral idempotency enforcement decorator/store
-- [ ] Dhan adapter
-- [ ] Upstox order/position/account adapter
+- [x] Upstox adapter structure and read-side account/position/order mapping
+- [x] Dhan adapter structure and read-side account/position/order mapping
+- [x] Live mutation gating by default
+- [ ] Provider-specific instrument/security-ID resolution
+- [ ] Common provider-specific order-product configuration
+- [ ] Auth/session lifecycle integration
 - [ ] Live broker runtime verification
+- [ ] Controlled execution/risk integration
 
 ### Stage 9 — Controlled Live Trading
 
@@ -166,7 +173,7 @@ No local/Codespace test execution is claimed.
 
 ## Safety status
 
-**LIVE/AUTONOMOUS TRADING REMAINS GATED.** Paper trading is isolated from real broker execution. The broker protocol is only a provider-neutral boundary; no real broker can place live orders through it yet. AI remains subordinate to deterministic strategy, validation, risk and execution controls.
+**LIVE/AUTONOMOUS TRADING REMAINS GATED.** Paper trading is isolated from real broker execution. The Dhan and Upstox adapters default to mutation-disabled mode. AI remains subordinate to deterministic strategy, validation, risk and execution controls.
 
 ## Runtime limitation
 
@@ -174,15 +181,19 @@ No Codespace/runtime session is exposed through the connected tools, so no local
 
 ## Recent commits on main
 
+- `47a0c4a` — record broker idempotency milestone
+- `525cb66` — expose gated Dhan/Upstox adapters
+- `b07d46b` — add broker adapter mapping/gating tests
+- `1618870` — add gated Dhan account/portfolio adapter
+- `211b4d5` — add gated Upstox account/portfolio adapter
+- `6bdd3fa` — add safe broker HTTP transport boundary
 - `3981c1e` — export broker idempotency boundary
 - `e480a77` — add broker idempotency tests
 - `ecbe960` — implement provider-neutral broker idempotency
-- `fa94c8d` — strengthen broker authentication and reconciliation boundary
-- `81c6041` — record broker boundary and CI evidence
 
 ## Next execution
 
-1. Inspect official Dhan and Upstox API contracts and repository configuration before creating adapters.
-2. Implement adapters behind the common broker interface without enabling unrestricted live execution.
+1. Add provider-specific instrument/security-ID resolution and order-product configuration without enabling live execution.
+2. Integrate broker authentication/session lifecycle through existing application configuration, keeping credentials out of domain models/logs.
 3. Return to paper persistence, audit, partial fills, and replay-to-paper integration.
 4. Re-run CI verification after the next stable milestone.
