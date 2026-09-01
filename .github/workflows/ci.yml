@@ -32,6 +32,8 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install -r requirements.txt
+      - name: Verify official Upstox protobuf package
+        run: python -c "from upstox_client.feeder.proto import MarketDataFeedV3_pb2; print(MarketDataFeedV3_pb2.__name__)"
       - run: pytest -q -m 'not integration'
       - run: pytest -q -m integration
         env:
