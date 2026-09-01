@@ -8,32 +8,32 @@ Last updated: 2026-09-01
 
 ## Current stage
 
-**Stage 6 — Options**
+**Stage 7 — Paper Trading Foundation**
 
 ## Latest implementation state
 
 - Strategy DSL is integrated with deterministic backtesting and replay evaluation.
 - Structured market context is built from visible candles plus deterministic SMC/ICT facts.
 - AI has a provider-neutral HTTP/service boundary and `/api/v1/ai/analyze`, `/api/v1/ai/strategy`, `/api/v1/ai/explain-trade` endpoints. AI remains advisory and cannot authorize execution.
-- Options have provider-neutral contracts, deterministic Black-Scholes Greeks, liquidity/spread filtering, deterministic delta-based strike selection, a multi-leg expiry payoff engine, risk metrics, deterministic strategy selection, a provider-neutral option-chain boundary, and options analytics APIs.
-- Live option-chain provider integration remains unfinished and requires a real provider implementation/credentials.
+- Options have provider-neutral contracts, deterministic Black-Scholes Greeks, liquidity/spread filtering, deterministic delta-based strike selection, multi-leg expiry payoff, risk metrics, deterministic strategy selection, a provider-neutral option-chain boundary, and options analytics APIs.
+- Paper trading now has deterministic in-memory order/fill/position primitives, configurable fee/slippage simulation, limit-order behavior, duplicate-order protection, P&L accounting, and a paper-only API. Persistent audit/repository integration and broader deterministic risk integration remain unfinished.
 
-## Latest milestone — options payoff/strategy layer
+## Latest milestone — paper trading foundation
 
 ### IMPLEMENTED
 
-- `OptionContract.lot_size` added to support correct multi-leg notional calculations.
-- Deterministic `payoff_at()` for multi-leg expiry P&L.
-- Deterministic maximum-profit/maximum-loss detection with unbounded results represented as `null`.
-- Breakeven detection across piecewise-linear option payoffs.
-- Capital requirement and risk/reward calculation when the loss side is bounded.
-- Risk-profile-aware deterministic strategy catalogue for bullish, bearish and neutral bias.
-- Liquidity-ranked option selection using the existing liquidity validator.
-- Provider-neutral `OptionChainProvider` plus safe unconfigured implementation.
-- `/api/v1/options/payoff` endpoint.
-- `/api/v1/options/strategies` endpoint.
-- `/api/v1/options/liquidity` endpoint.
-- Options payoff/strategy unit coverage including lot size, bounded spreads, unbounded calls and risk-profile restrictions.
+- Provider-independent paper order, fill and position contracts.
+- Deterministic market/limit order execution.
+- Configurable proportional fees and slippage.
+- Duplicate order-id rejection.
+- Limit-order non-fill and cancellation behavior.
+- Long and short position accounting.
+- Average-price maintenance when adding to a position.
+- Realized P&L on closing trades.
+- Unrealized P&L mark-to-market.
+- Paper account/equity primitives.
+- Paper-only `/api/v1/paper/orders`, cancellation, positions and account endpoints.
+- Unit tests covering lifecycle, fees/slippage, duplicate protection, closing P&L, short mark-to-market and invalid prices.
 
 ### TESTS RUN
 
@@ -49,7 +49,7 @@ No local build execution claimed.
 
 ### CI
 
-A fresh GitHub Actions result for the latest options commits has not yet been observed.
+The GitHub Actions run for commit `5b6818d...` was observed as queued. No pass/fail result is claimed yet.
 
 ## Stage status
 
@@ -140,13 +140,18 @@ A fresh GitHub Actions result for the latest options commits has not yet been ob
 
 ### Stage 7 — Paper Trading
 
-- [ ] Paper broker
-- [ ] Simulated order lifecycle
-- [ ] Positions/average price
-- [ ] Realized/unrealized P&L
-- [ ] Fees/slippage
-- [ ] Risk controls
-- [ ] Audit trail
+- [x] Paper broker foundation
+- [x] Simulated market/limit order lifecycle
+- [x] Long/short positions and average price
+- [x] Realized/unrealized P&L foundation
+- [x] Fees/slippage simulation
+- [x] Duplicate-order protection
+- [x] Paper API boundary
+- [ ] Persistent order/trade/audit repository
+- [ ] Partial-fill simulation
+- [ ] Deterministic risk-engine integration
+- [ ] Replay-to-paper integration
+- [ ] Full paper-trading verification
 
 ### Stage 8 — Brokers
 
@@ -177,7 +182,7 @@ A fresh GitHub Actions result for the latest options commits has not yet been ob
 
 ## Safety status
 
-**LIVE/AUTONOMOUS TRADING REMAINS GATED.** No commit enables unrestricted live or autonomous execution. AI remains subordinate to deterministic strategy, validation, risk and execution controls.
+**LIVE/AUTONOMOUS TRADING REMAINS GATED.** Paper trading is isolated from real broker execution. AI remains subordinate to deterministic strategy, validation, risk and execution controls.
 
 ## Runtime limitation
 
@@ -185,6 +190,12 @@ No Codespace/runtime session is exposed through the connected tools, so no local
 
 ## Recent commits on main
 
+- `63308d7` — register paper trading API
+- `d29b3f1` — add paper trading API
+- `5b6818d` — add paper trading tests
+- `76875d0` — implement deterministic paper execution
+- `f203bca` — define paper order/fill/position contracts
+- `e26408f` — add paper trading package
 - `7b479bb` — correct options payoff test expectations
 - `d423f3e` — add options payoff and strategy tests
 - `5848bf4` — export options payoff and strategy services
@@ -193,13 +204,11 @@ No Codespace/runtime session is exposed through the connected tools, so no local
 - `184ac37` — add deterministic options strategy selection
 - `f7f8db8` — add option contract lot size
 - `db37677` — add deterministic multi-leg payoff engine
-- `350627e` — fix Pydantic options quantity validation
-- `465bb6a` — align startup tests with liveness/readiness separation
-- `a2a392d` — options contracts, Greeks and liquidity foundation
 
 ## Next execution
 
-1. Inspect GitHub Actions for fresh verification of the latest main commits.
-2. Fix any reported failures.
-3. If clean, continue Stage 6 with a concrete provider adapter boundary only where repository architecture and available credentials support it.
-4. Then begin Stage 7 paper trading, reusing existing execution/risk abstractions rather than creating duplicates.
+1. Inspect fresh CI for `main` and fix actual failures.
+2. Complete paper partial fills and persistent audit/repository integration using existing database abstractions after inspection.
+3. Integrate the existing deterministic risk boundary if present; otherwise add the smallest provider-neutral risk interface required by the blueprint.
+4. Integrate replay-to-paper execution.
+5. Then proceed to provider-neutral broker architecture.
