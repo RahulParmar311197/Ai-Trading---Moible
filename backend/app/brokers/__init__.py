@@ -1,7 +1,10 @@
-"""Provider-neutral broker contracts. Live broker adapters are intentionally separate."""
+"""Provider-neutral broker contracts and explicitly gated adapters."""
 
 from .base import Account, Broker, BrokerOrder, BrokerOrderStatus, BrokerPosition
+from .dhan import DhanBroker
+from .http import BrokerHTTPError, LiveBrokerDisabled
 from .idempotency import BrokerIdempotencyStore, IdempotencyConflict, IdempotentBroker
+from .upstox import UpstoxBroker
 
 __all__ = [
     "Account",
@@ -12,4 +15,8 @@ __all__ = [
     "BrokerIdempotencyStore",
     "IdempotencyConflict",
     "IdempotentBroker",
+    "BrokerHTTPError",
+    "LiveBrokerDisabled",
+    "DhanBroker",
+    "UpstoxBroker",
 ]
