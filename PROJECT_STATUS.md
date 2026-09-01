@@ -24,12 +24,12 @@ Before starting any new implementation task, review this file, `AI_TRADING_PLATF
 - [x] GitHub Actions PostgreSQL 16 service for integration tests
 - [x] Candle persistence migration and repository/tests
 - [x] Tick persistence migration and repository/tests
+- [x] Provider-neutral market-data feed interface and contract test
 
 ## In progress
 
 - [ ] Complete official Gradle wrapper files and validate `./gradlew assembleDebug`
 - [ ] Verify Android CI build passes on GitHub Actions
-- [ ] Implement market-data provider adapter interface
 - [ ] Implement REST market-data endpoints
 - [ ] Implement WebSocket market stream
 - [ ] Add Redis integration for live market state
@@ -46,7 +46,7 @@ Before starting any new implementation task, review this file, `AI_TRADING_PLATF
 - [x] Live PostgreSQL integration validation
 - [x] Candle persistence
 - [x] Tick persistence
-- [ ] Provider adapter interface
+- [x] Provider adapter interface
 - [ ] REST market endpoints
 - [ ] WebSocket market stream
 - [ ] Redis live-state integration
@@ -131,8 +131,8 @@ Live/autonomous trading must not be enabled until replay, backtesting, paper tra
 
 ## Last completed work
 
-Implemented canonical tick persistence as required by the blueprint: PostgreSQL migration with instrument/time indexing and a repository with deterministic upsert/range-query tests. The blueprint defines `ticks` as a core market-data table but does not prescribe provider-specific tick columns, so the implementation uses only fields supported by the existing standard market-event contract plus a deterministic tick ID.
+Implemented `backend/app/market/feed.py` as the provider-neutral adapter contract required by the blueprint. It exposes asynchronous historical candle retrieval and streaming canonical market events, keeping provider-specific transports behind the adapter boundary. Added a contract test without introducing an optional pytest-asyncio dependency.
 
 ## Next task
 
-Implement the market-data provider adapter interface. Before doing so, re-check this status file, the full blueprint, and the current repository.
+Implement the REST market-data endpoints. Before doing so, re-check this status file, the full blueprint, and the current repository.
