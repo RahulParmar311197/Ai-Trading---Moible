@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     market_data_provider: str = ""
     market_data_instrument_ids: str = ""
+    upstox_access_token: str = ""
 
     @property
     def configured_market_data_instruments(self) -> list[str]:
