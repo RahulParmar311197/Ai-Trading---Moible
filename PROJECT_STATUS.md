@@ -16,24 +16,21 @@ Last updated: 2026-09-01
 - Structured market context is built from visible candles plus deterministic SMC/ICT facts.
 - AI has a provider-neutral HTTP/service boundary and `/api/v1/ai/analyze`, `/api/v1/ai/strategy`, `/api/v1/ai/explain-trade` endpoints. AI remains advisory and cannot authorize execution.
 - Options have provider-neutral contracts, deterministic Black-Scholes Greeks, liquidity/spread filtering, deterministic delta-based strike selection, multi-leg expiry payoff, risk metrics, deterministic strategy selection, a provider-neutral option-chain boundary, and options analytics APIs.
-- Paper trading now has deterministic in-memory order/fill/position primitives, configurable fee/slippage simulation, limit-order behavior, duplicate-order protection, P&L accounting, and a paper-only API. Persistent audit/repository integration and broader deterministic risk integration remain unfinished.
+- Paper trading has deterministic in-memory order/fill/position execution, configurable fees/slippage, limit-order behavior, duplicate-order protection, position/account P&L accounting, configurable order-notional and position limits, a kill switch, and a paper-only API. Persistence, partial fills, replay integration, and full risk/audit integration remain unfinished.
 
-## Latest milestone — paper trading foundation
+## Latest milestone — paper risk controls
 
 ### IMPLEMENTED
 
-- Provider-independent paper order, fill and position contracts.
-- Deterministic market/limit order execution.
-- Configurable proportional fees and slippage.
-- Duplicate order-id rejection.
-- Limit-order non-fill and cancellation behavior.
-- Long and short position accounting.
-- Average-price maintenance when adding to a position.
-- Realized P&L on closing trades.
-- Unrealized P&L mark-to-market.
-- Paper account/equity primitives.
-- Paper-only `/api/v1/paper/orders`, cancellation, positions and account endpoints.
-- Unit tests covering lifecycle, fees/slippage, duplicate protection, closing P&L, short mark-to-market and invalid prices.
+- Maximum paper order-notional guard.
+- Maximum absolute paper position-size guard.
+- Persistent in-process realized P&L accumulator for daily-loss decisions.
+- Deterministic kill switch rejecting all new paper orders while halted.
+- Explicit kill-switch clear operation.
+- Automatic paper trading halt when configured realized-loss threshold is reached.
+- Paper account endpoint now reports halted state.
+- Paper API exposes kill-switch activation/clear endpoints.
+- Unit coverage for order/position limits and kill-switch behavior.
 
 ### TESTS RUN
 
@@ -49,7 +46,7 @@ No local build execution claimed.
 
 ### CI
 
-The GitHub Actions run for commit `5b6818d...` was observed as queued. No pass/fail result is claimed yet.
+GitHub Actions for the latest `main` commits is queued/in progress; no pass/fail result is claimed until a completed run is observed.
 
 ## Stage status
 
@@ -146,10 +143,12 @@ The GitHub Actions run for commit `5b6818d...` was observed as queued. No pass/f
 - [x] Realized/unrealized P&L foundation
 - [x] Fees/slippage simulation
 - [x] Duplicate-order protection
+- [x] Order-notional and position-size limits
+- [x] Kill switch and loss-triggered halt foundation
 - [x] Paper API boundary
 - [ ] Persistent order/trade/audit repository
 - [ ] Partial-fill simulation
-- [ ] Deterministic risk-engine integration
+- [ ] Full deterministic risk-engine integration
 - [ ] Replay-to-paper integration
 - [ ] Full paper-trading verification
 
@@ -190,6 +189,9 @@ No Codespace/runtime session is exposed through the connected tools, so no local
 
 ## Recent commits on main
 
+- `1d3644c` — expose paper kill switch status and controls
+- `e53a278` — cover paper risk limits and kill switch
+- `f62a72f` — add deterministic paper risk limits and kill switch
 - `63308d7` — register paper trading API
 - `d29b3f1` — add paper trading API
 - `5b6818d` — add paper trading tests
@@ -201,14 +203,11 @@ No Codespace/runtime session is exposed through the connected tools, so no local
 - `5848bf4` — export options payoff and strategy services
 - `4125705` — add options analytics API
 - `0b8592c` — add provider-neutral option-chain boundary
-- `184ac37` — add deterministic options strategy selection
-- `f7f8db8` — add option contract lot size
-- `db37677` — add deterministic multi-leg payoff engine
 
 ## Next execution
 
-1. Inspect fresh CI for `main` and fix actual failures.
-2. Complete paper partial fills and persistent audit/repository integration using existing database abstractions after inspection.
-3. Integrate the existing deterministic risk boundary if present; otherwise add the smallest provider-neutral risk interface required by the blueprint.
-4. Integrate replay-to-paper execution.
-5. Then proceed to provider-neutral broker architecture.
+1. Inspect completed GitHub Actions for the latest `main` commits and fix any real failures.
+2. Implement deterministic partial-fill behavior in the paper broker where practical.
+3. Add persistent paper order/fill/audit storage using the repository's existing database abstractions after inspection.
+4. Integrate replay with the paper broker.
+5. Then build the provider-neutral broker abstraction before any controlled live functionality.
