@@ -51,11 +51,15 @@ Before starting any new implementation task, review this file, `AI_TRADING_PLATF
 - [x] Upstox live feed-shape normalization tests
 - [x] Explicit application startup provider-selection boundary
 - [x] Safe degraded startup when live market data is not configured
+- [x] Redis live publisher implementation restored on clean branch
+- [x] Redis publisher unit test
+- [x] Project status updated on clean branch
 
 ## In progress
 
+- [ ] Merge verified Redis publisher branch into main
+- [ ] Wire configured provider runner to Redis publisher at startup
 - [ ] Verify official Upstox SDK protobuf import/version in CI
-- [ ] Wire the configured provider runner to the actual live publisher at startup
 - [ ] Complete official Gradle wrapper files and validate `./gradlew assembleDebug`
 - [ ] Verify Android CI build passes on GitHub Actions
 
@@ -78,7 +82,7 @@ Before starting any new implementation task, review this file, `AI_TRADING_PLATF
 - [x] Redis event publisher boundary
 - [x] Concrete Redis runtime wiring
 - [x] Redis → WebSocket runtime wiring
-- [x] Provider → publisher runtime bridge
+- [x] Provider → LiveMarketPublisher runtime bridge
 - [x] Market-data freshness/quality validation rules
 - [x] Provider → quality validation gate
 - [x] Explicit provider-selection boundary
@@ -89,6 +93,8 @@ Before starting any new implementation task, review this file, `AI_TRADING_PLATF
 - [x] Upstox live LTP normalization boundary
 - [x] Upstox decoded LTPC/full-feed extraction
 - [x] Application startup provider-selection boundary
+- [x] Redis publisher implementation
+- [ ] Redis publisher merged to main
 - [ ] Upstox SDK dependency/version CI verification
 - [ ] Provider → live publisher startup integration
 
@@ -171,8 +177,8 @@ Live/autonomous trading must not be enabled until replay, backtesting, paper tra
 
 ## Last completed work
 
-Added application-lifespan initialization for configured market-data providers. Startup now selects the configured provider and stores its runner boundary, while unconfigured live data produces a safe degraded health state instead of silently starting simulated or incomplete live delivery. The actual live publisher remains intentionally separate until its concrete dependency is wired.
+Restored the Redis live-market publisher boundary on `work/redis-publisher-2` from the actual current `main` HEAD. Added its unit test and recorded the work in this status file. The publisher serializes canonical dataclass/Pydantic events and publishes them to the `market.events` channel.
 
 ## Next task
 
-Wire the configured provider runner to the existing concrete live publisher at startup, after verifying the publisher constructor/dependency contract. Then verify the Upstox SDK protobuf import/version in CI. Before each step, re-check this status file, the full blueprint, and the current repository.
+Merge the verified Redis publisher branch into `main`, then wire the configured provider runner to the publisher at application startup. Before each step, re-check this status file, the full blueprint, and the current repository.
