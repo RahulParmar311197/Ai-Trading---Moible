@@ -8,5 +8,6 @@ redis
 httpx
 websockets
 protobuf
+upstox-python-sdk
 pytest
 pytest-asyncio
