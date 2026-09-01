@@ -45,12 +45,16 @@ Before starting any new implementation task, review this file, `AI_TRADING_PLATF
 - [x] Added provider-neutral market-data normalization with UTC/timestamp and OHLC validation
 - [x] Added first market API endpoint for supported timeframes
 - [x] Added market model/API tests
+- [x] Added instrument persistence SQL migration
+- [x] Added instrument repository boundary and in-memory implementation
+- [x] Added instrument service boundary
+- [x] Added repository/service unit tests
 
 ## In progress
 
 - [ ] Complete official Gradle wrapper files and validate `./gradlew assembleDebug`
 - [ ] Verify Android CI build passes on GitHub Actions
-- [ ] Implement instrument repository/model persistence
+- [ ] Implement concrete instrument database repository
 - [ ] Implement candle/tick persistence
 - [ ] Implement market-data provider adapter interface
 - [ ] Implement REST market-data endpoints
@@ -73,7 +77,9 @@ Before starting any new implementation task, review this file, `AI_TRADING_PLATF
 ### Stage 1 — Market data
 - [x] Canonical instrument/timeframe/candle models (initial)
 - [x] Provider-neutral normalization (initial)
-- [ ] Instrument persistence
+- [x] Instrument persistence migration
+- [x] Instrument repository/service boundaries (in-memory implementation)
+- [ ] Concrete instrument database repository
 - [ ] Candle/tick persistence
 - [ ] Provider adapter interface
 - [ ] REST market endpoints
@@ -158,8 +164,8 @@ Live/autonomous trading must not be enabled until replay, backtesting, paper tra
 
 ## Last completed work
 
-Started Stage 1 with canonical market-data models, provider-neutral normalization, and a supported-timeframes API plus tests. The implementation follows the blueprint's normalized market-data architecture and supported timeframe list.
+Implemented the Stage 1 instrument persistence foundation: SQL migration matching the blueprint instrument fields, repository boundary, deterministic in-memory repository for testing, service boundary, and tests.
 
 ## Next task
 
-Implement Stage 1 instrument persistence and repository/service boundaries. Before doing so, re-check this file, the full blueprint, and the current repository.
+Implement the concrete database repository for instruments using the project's configured PostgreSQL persistence approach. Before doing so, re-check this file, the full blueprint, and the current repository.
