@@ -1,6 +1,7 @@
 """Persistence boundary for deterministic backtest reports."""
 
 from collections.abc import Mapping
+from dataclasses import asdict
 from typing import Any
 from uuid import UUID
 
@@ -36,7 +37,7 @@ class PostgresBacktestRepository:
             {
                 "id": str(backtest_id),
                 "request": json.dumps(request, sort_keys=True, separators=(",", ":")),
-                "report": json.dumps(report.__dict__, default=str, sort_keys=True, separators=(",", ":")),
+                "report": json.dumps(asdict(report), default=str, sort_keys=True, separators=(",", ":")),
             },
         )
 
