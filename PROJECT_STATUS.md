@@ -8,7 +8,7 @@ Before every implementation task, check this file, `AI_TRADING_PLATFORM_BLUEPRIN
 
 ## Current stage
 
-**Stage 2 — SMC/ICT**
+**Stage 3 — Replay**
 
 ## Completed
 
@@ -60,38 +60,43 @@ Before every implementation task, check this file, `AI_TRADING_PLATFORM_BLUEPRIN
 - [x] Stage 2 explicit ICT London/New York session windows and session levels
 - [x] Stage 2 deterministic SMC orchestration and structured signal context
 - [x] Stage 2 unit coverage for confirmation, structure, FVG, premium/discount, sessions, and determinism
+- [x] Stage 3 deterministic replay clock with Play/Pause/Reset/Next/Previous controls
+- [x] Stage 3 configurable replay speeds: 0.5x, 1x, 2x, 5x, 10x
+- [x] Stage 3 deterministic historical event ordering with stable tie-breaking
+- [x] Stage 3 timeframe-filtered replay using canonical Candle/Timeframe
+- [x] Stage 3 look-ahead-safe historical market state (only data at or before replay time)
+- [x] Stage 3 deterministic replay statistics foundation
+- [x] Stage 3 replay reset/state lifecycle
+- [x] Stage 3 unit coverage for ordering, look-ahead protection, controls, reset, timeframe filtering, and statistics
 
 ## Stage 1 status
 
 **PARTIAL / UNVERIFIED**
 
-The backend and Android CI verification is complete for the current market-data work, but the repository still contains a placeholder `android/gradlew` and does not contain an official generated `gradle-wrapper.jar`. Runtime execution from this environment is unavailable, so the official wrapper and local end-to-end verification remain `UNVERIFIED`. The latest CI result remains GitHub Actions run `33497383708`, with backend and Android jobs passing.
+The backend and Android CI verification is complete for the current market-data work, but the repository still contains a placeholder `android/gradlew` and does not contain an official generated `gradle-wrapper.jar`. Runtime execution from this environment is unavailable, so the official wrapper and local end-to-end verification remain `UNVERIFIED`.
 
-## Stage 2 checklist
+## Stage 2 status
 
-- [x] Swing detection
-- [x] Market structure
-- [x] BOS
-- [x] MSS/CHoCH
-- [x] Liquidity pools
-- [x] Liquidity sweeps
-- [x] FVG
-- [x] Order blocks
-- [x] Premium/discount
-- [x] ICT session features
-- [x] Deterministic SMC orchestration
+**PARTIAL / UNVERIFIED**
+
+The deterministic SMC/ICT engine and unit coverage are implemented. Runtime/CI verification of the latest Stage 2 commit must be confirmed from GitHub Actions before the stage can be called fully verified. API/client integration remains to be assessed against the complete product flow.
+
+## Stage 3 checklist
+
+- [x] Replay clock
+- [x] Historical market state
+- [x] Deterministic event ordering
+- [x] Timeframe replay
+- [x] Look-ahead protection
+- [x] Play/pause/reset/step controls
+- [x] Replay speed controls
+- [x] Deterministic replay statistics foundation
 - [x] Unit coverage
-- [ ] Runtime/CI verification of Stage 2 implementation
-- [ ] API/client integration if required by the full product flow
+- [ ] Runtime/CI verification of Stage 3 implementation
+- [ ] Full SMC/strategy replay integration
+- [ ] Replay trade execution integration
 
 ## Later stages
-
-### Stage 3 — Replay
-- [ ] Replay clock
-- [ ] Historical market state
-- [ ] Replay execution simulator
-- [ ] Look-ahead protection
-- [ ] Replay statistics
 
 ### Stage 4 — Backtesting
 - [ ] Event loop
@@ -154,8 +159,8 @@ AI remains subordinate to deterministic strategy, validation, risk, and executio
 
 ## Runtime verification
 
-A direct repository clone/runtime was attempted in this environment but network DNS prevented access to GitHub, so no local test command is claimed as executed here. Runtime result: `UNVERIFIED — runtime execution unavailable`.
+GitHub Actions is the available repository verification path. Local Codespace/runtime execution is unavailable from this environment because outbound GitHub access is blocked by network DNS. No local test command is claimed as executed here.
 
 ## Next task
 
-Add Stage 2 runtime/CI verification and then implement the Stage 3 replay clock and historical state using the existing canonical Candle contracts. Keep live/autonomous execution gated.
+Verify the Stage 3 implementation in GitHub Actions, then integrate replay with the existing deterministic SMC engine without introducing a duplicate strategy framework. Continue toward Stage 4 only after replay foundations are verified.
