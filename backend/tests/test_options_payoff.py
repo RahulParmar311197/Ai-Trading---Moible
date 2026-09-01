@@ -48,7 +48,7 @@ def test_bull_call_spread_has_bounded_profit_and_loss() -> None:
 
 def test_lot_size_and_quantity_scale_payoff() -> None:
     leg = OptionLeg(contract=contract("100", OptionType.PUT, 25), quantity=2, premium=Decimal("5"))
-    assert payoff_at([leg], Decimal("80")) == Decimal("-250")
+    assert payoff_at([leg], Decimal("80")) == Decimal("750")
     assert payoff_at([leg], Decimal("120")) == Decimal("-250")
 
 
