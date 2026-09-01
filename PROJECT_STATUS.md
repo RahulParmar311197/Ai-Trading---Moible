@@ -35,11 +35,11 @@ Before starting any new implementation task, review this file, `AI_TRADING_PLATF
 - [x] Runtime Redis → WebSocket publisher wiring
 - [x] Provider → LiveMarketPublisher runtime bridge and test
 - [x] Market-data freshness and quality validation rules
+- [x] Provider runtime quality-validation gate and tests
 
 ## In progress
 
 - [ ] Instantiate/connect a concrete provider adapter in application startup
-- [ ] Integrate quality validation into provider runtime path
 - [ ] Complete official Gradle wrapper files and validate `./gradlew assembleDebug`
 - [ ] Verify Android CI build passes on GitHub Actions
 
@@ -64,7 +64,8 @@ Before starting any new implementation task, review this file, `AI_TRADING_PLATF
 - [x] Redis → WebSocket runtime wiring
 - [x] Provider → publisher runtime bridge
 - [x] Market-data freshness/quality validation rules
-- [ ] Provider → quality validation → publisher startup integration
+- [x] Provider → quality validation gate
+- [ ] Concrete provider → quality validation → publisher startup integration
 
 ## Later stages
 
@@ -145,8 +146,8 @@ Live/autonomous trading must not be enabled until replay, backtesting, paper tra
 
 ## Last completed work
 
-Added provider-neutral market-data freshness and quality validation. It rejects invalid OHLC relationships, negative volume, invalid bid/ask relationships, timezone-naive timestamps, future events, and events older than the configured maximum age. Added deterministic tests for valid, invalid, stale, and future events.
+Integrated the market-data quality gate into `ProviderMarketRunner`: every provider stream event is now validated for canonical OHLC/volume/bid-ask/timestamp/freshness rules before it can reach the live publisher. Added tests proving valid events are forwarded and quality failures are never published.
 
 ## Next task
 
-Integrate quality validation into the provider runtime path, then instantiate/connect a concrete provider adapter in application startup. Before doing so, re-check this status file, the full blueprint, and the current repository.
+Instantiate/connect a concrete provider adapter in application startup. Before doing so, re-check this status file, the full blueprint, and the current repository. Do not invent provider credentials or claim a live external connection without configured credentials.
