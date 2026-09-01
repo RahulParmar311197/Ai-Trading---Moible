@@ -1,8 +1,4 @@
-"""Redis-backed live market state boundary.
-
-The service stores the latest normalized market event per instrument and keeps
-provider-specific transport details out of the state layer.
-"""
+"""Redis-backed live market state boundary."""
 
 from collections.abc import Mapping
 from typing import Any, Protocol
