@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from app.api.ai import router as ai_router
 from app.api.backtest import router as backtest_router
 from app.api.market_data import router as market_data_router
 from app.api.market_stream import router as market_stream_router
@@ -45,6 +46,7 @@ app.include_router(markets_router)
 app.include_router(market_data_router)
 app.include_router(market_stream_router)
 app.include_router(backtest_router)
+app.include_router(ai_router)
 
 
 @app.get("/health")

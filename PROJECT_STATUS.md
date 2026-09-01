@@ -99,6 +99,11 @@ Work directly on `main` only. Before implementation, inspect this file, `AI_TRAD
 - [x] Deterministic structured market-context builder from visible candles and SMC/ICT facts
 - [x] Safe AI-to-DSL translation boundary with strict Pydantic validation
 - [x] Rejection of executable/broker instructions from AI strategy payloads
+- [x] Provider-neutral HTTP AI service boundary with explicit timeout/auth configuration
+- [x] AI analysis/strategy/trade-explanation service layer
+- [x] `/api/v1/ai/analyze`, `/api/v1/ai/strategy`, `/api/v1/ai/explain-trade` endpoints
+- [x] AI provider configuration gate that keeps AI disabled when no endpoint is configured
+- [x] AI service failure and validation unit coverage
 
 ## Stage 1 status
 
@@ -151,9 +156,12 @@ Work directly on `main` only. Before implementation, inspect this file, `AI_TRAD
 - [x] Strategy DSL → replay evaluation boundary
 - [x] Structured market context pipeline from visible/replay market facts
 - [x] Safe AI-to-DSL declarative translation/validation boundary
-- [ ] AI provider/service implementation
-- [ ] AI-to-DSL generation backed by a real AI provider
-- [ ] Trade explanation API
+- [x] Provider-neutral AI service boundary
+- [x] AI analysis endpoint
+- [x] AI strategy endpoint
+- [x] AI trade explanation endpoint
+- [ ] Production AI provider contract compatibility verification
+- [ ] Android AI feature integration
 
 ## Later stages
 
@@ -200,10 +208,11 @@ Live/autonomous trading remains disabled/gated. It must not be enabled until rep
 
 ## Runtime / CI verification
 
-GitHub Actions is the available repository verification path. No Codespace/runtime session is exposed through the connected tools, so no local/Codespace test command is claimed as executed. No workflow run or commit status has yet been reported for the latest implementation commit. The new replay strategy, market-context, AI-to-DSL, and related backtest changes therefore remain **UNVERIFIED** until an actual workflow or runtime executes successfully.
+GitHub Actions is the available repository verification path. No Codespace/runtime session is exposed through the connected tools, so no local/Codespace test command is claimed as executed. GitHub Actions runs for commit `0ff9c41141cc086c566ab9377b289c0b3fd4dda1` are currently in progress; no pass/fail result is claimed yet. The new AI service/API, market-context, replay-strategy, and DSL backtest tests remain **UNVERIFIED** until the workflow completes successfully.
 
 ## Recent commits on main
 
+- `0ff9c41` — deterministic market context, safe AI-to-DSL translation, and replay strategy evaluation
 - `2405bc9` — integrate Strategy DSL with deterministic backtesting
 - `7600193` — status update for AI safety and strategy context milestones
 - `3f481d5` — AI safety validation tests
@@ -228,4 +237,4 @@ GitHub Actions is the available repository verification path. No Codespace/runti
 
 ## Next task
 
-Implement the real provider-neutral AI service boundary and API using the structured market context and safe Strategy DSL translator, without granting AI execution authority. Then continue to the remaining Stage 6 options foundation while preserving all safety gates. Keep runtime/CI verification explicitly UNVERIFIED until an actual workflow or runtime executes successfully.
+After current CI completes, inspect/fix any runtime failures. Then implement the Stage 6 options foundation: provider-neutral option-chain contracts, deterministic Greeks, payoff calculation, and liquidity validation. Keep live/autonomous execution gated.

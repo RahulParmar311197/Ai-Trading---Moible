@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     market_data_provider: str = ""
     market_data_instrument_ids: str = ""
     upstox_access_token: str = ""
+    ai_provider_url: str = ""
+    ai_provider_api_key: str = ""
+    ai_provider_model: str = ""
+    ai_provider_timeout_seconds: float = 20.0
 
     @property
     def configured_market_data_instruments(self) -> list[str]:
