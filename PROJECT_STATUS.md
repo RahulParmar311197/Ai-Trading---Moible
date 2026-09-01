@@ -28,14 +28,14 @@ Before starting any new implementation task, review this file, `AI_TRADING_PLATF
 - [x] REST market-data API contract
 - [x] REST candle endpoint wired to PostgreSQL repository dependency
 - [x] REST candle endpoint API tests
-- [x] WebSocket market stream endpoint and in-process event hub
-- [x] WebSocket event-hub contract test
+- [x] WebSocket market stream
+- [x] Redis live-market-state boundary and tests
 
 ## In progress
 
 - [ ] Complete official Gradle wrapper files and validate `./gradlew assembleDebug`
 - [ ] Verify Android CI build passes on GitHub Actions
-- [ ] Add Redis integration for live market state
+- [ ] Wire Redis implementation into WebSocket/provider event flow
 - [ ] Add market-data freshness/quality checks
 
 ## Stage 1 checklist
@@ -52,8 +52,9 @@ Before starting any new implementation task, review this file, `AI_TRADING_PLATF
 - [x] Provider adapter interface
 - [x] REST market-data API contract
 - [x] REST market-data persistence wiring
-- [x] WebSocket market stream transport
-- [ ] Redis live-state integration
+- [x] WebSocket market stream
+- [x] Redis live-state boundary
+- [ ] Redis runtime wiring/fan-out
 - [ ] Market-data freshness/quality controls
 
 ## Later stages
@@ -135,8 +136,8 @@ Live/autonomous trading must not be enabled until replay, backtesting, paper tra
 
 ## Last completed work
 
-Implemented the WebSocket market-stream transport at `/api/v1/market-data/stream/{instrument_id}`. It subscribes clients to normalized `MarketEvent` messages through an in-process event hub. Added a contract test without introducing an async pytest plugin dependency. Redis fan-out remains pending and is intentionally separate from this transport milestone.
+Added a Redis-backed live market-state boundary that stores the latest normalized `MarketEvent` per instrument, with a fake-client round-trip test. This is intentionally a persistence/state boundary only; runtime WebSocket/provider fan-out is not marked complete until the concrete Redis client is wired into the event flow.
 
 ## Next task
 
-Implement Redis integration for live market state/fan-out. Before doing so, re-check this status file, the full blueprint, and the current repository.
+Wire Redis into the live WebSocket/provider event flow. Before doing so, re-check this status file, the full blueprint, and the current repository.
