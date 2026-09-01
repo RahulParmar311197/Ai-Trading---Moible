@@ -2,8 +2,9 @@
 
 from datetime import datetime
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
+from app.api.dependencies import get_candle_repository
 from app.market.candle_repository import PostgresCandleRepository
 from app.market.models import Timeframe
 
@@ -21,15 +22,12 @@ def candles(
     timeframe: Timeframe = Query(...),
     start_time: datetime | None = None,
     end_time: datetime | None = None,
+    repository: PostgresCandleRepository = Depends(get_candle_repository),
 ) -> dict[str, object]:
-    """Return the normalized candle query contract.
-
-    Persistence wiring is deliberately not hidden here: until a concrete DB
-    dependency is installed, this endpoint returns a clear 503 rather than
-    silently returning fabricated market data.
-    """
     if start_time is None or end_time is None:
         raise HTTPException(status_code=400, detail="start_time and end_time are required")
     if start_time >= end_time:
         raise HTTPException(status_code=400, detail="start_time must be before end_time")
-    raise HTTPException(status_code=503, detail="market-data persistence dependency is not configured")
+
+    candles = repository.list_range(instrument_id, timeframe.value, start_time, end_time)
+    return {"instrument_id": instrument_id, "timeframe": timeframe.value, "candles": candles}
