@@ -44,14 +44,15 @@ Before every implementation task, check this file, `AI_TRADING_PLATFORM_BLUEPRIN
 - [x] Canonical deterministic candle timeframe aggregation for 1m–4h, 1D and 1W
 - [x] Timeframe aggregation unit coverage
 - [x] Credential-free degraded startup path exercised through the FastAPI lifespan in unit coverage
+- [x] Confirmed and fixed CI Python import-path failure caused by `PYTHONPATH=backend` while the job already runs in `backend`
 
 ## In progress
 
 - [ ] Verify official Upstox SDK protobuf import/version in CI
-- [ ] Verify complete backend test suite on current `main`
+- [ ] Verify complete backend test suite on current `main` after CI path fix
 - [ ] Verify live provider startup path without external credentials
 - [ ] Complete official Gradle wrapper files and validate `./gradlew assembleDebug`
-- [ ] Verify Android CI build passes on GitHub Actions
+- [ ] Verify Android CI build passes on GitHub Actions after the latest commit
 
 ## Stage 1 checklist
 
@@ -82,6 +83,7 @@ Before every implementation task, check this file, `AI_TRADING_PLATFORM_BLUEPRIN
 - [x] Provider validation/publisher integration coverage
 - [x] Timeframe aggregation
 - [x] Android CI build job
+- [x] CI Python import path corrected
 - [ ] SDK dependency/version CI verification
 - [ ] Full backend CI verification
 - [ ] Android CI execution verification
@@ -166,12 +168,12 @@ Live/autonomous trading must not be enabled until replay, backtesting, paper tra
 
 ## Last completed work
 
-Credential-free startup verification exercises the actual FastAPI lifespan with provider and instrument configuration disabled. The current `main` tree also contains deterministic canonical candle aggregation and its unit coverage.
+The latest confirmed CI failure was not a market-data implementation defect: every non-integration test failed during collection because the workflow set `PYTHONPATH=backend` while its default working directory was already `backend`, producing `ModuleNotFoundError: No module named 'app'`. The official Upstox protobuf import step passed, and the Android `assembleDebug` CI job passed. The CI workflow was corrected to use `PYTHONPATH=.`.
 
 ## Verification run
 
-A fresh `main` commit has been made to trigger the repository's configured backend and Android CI workflow. CI results remain `UNVERIFIED` until GitHub reports the run outcome.
+Confirmed GitHub Actions run `33496104806` for commit `8959785deb7ed6dcea01959729cd818c309be58e` failed only because of the backend import-path configuration; Android succeeded and Upstox protobuf import succeeded. A new `main` commit (`d032e94bb2a1b87cb963c2e9b496ccc072e8f739`) contains the CI fix and should be verified by the next workflow run.
 
 ## Next task
 
-Inspect the CI run for the latest `main` commit. Fix only confirmed failures. Once Stage 1 verification is genuinely complete, proceed to Stage 2 SMC/ICT in dependency order without waiting for another user prompt.
+Inspect the workflow run for `d032e94bb2a1b87cb963c2e9b496ccc072e8f739`. Fix only confirmed failures, then complete remaining Stage 1 verification. Do not move to Stage 2 until Stage 1 is genuinely verified.
