@@ -1,19 +1,38 @@
+from decimal import Decimal
+
+import pytest
+
 from app.brokers.base import BrokerOrder, BrokerOrderStatus, BrokerOrderType, BrokerSide
 from app.brokers.dhan import DhanBroker
 from app.brokers.http import LiveBrokerDisabled
+from app.brokers.order_config import BrokerInstrument, ExchangeSegment, InstrumentResolver, OrderValidity, ProductType
 from app.brokers.upstox import UpstoxBroker
-import pytest
 
 
-def order() -> BrokerOrder:
+def order(symbol: str = "NIFTY") -> BrokerOrder:
     return BrokerOrder(
         order_id="local-1",
         client_order_id="client-1",
-        symbol="1333",
+        symbol=symbol,
         side=BrokerSide.BUY,
-        order_type=BrokerOrderType.MARKET,
+        order_type=BrokerOrderType.LIMIT,
         quantity=1,
+        average_price=Decimal("101.25"),
         status=BrokerOrderStatus.NEW,
+    )
+
+
+def resolver() -> InstrumentResolver:
+    return InstrumentResolver(
+        (
+            BrokerInstrument(
+                canonical_symbol="NIFTY",
+                provider_symbol="NSE_FO|NIFTY_TEST",
+                exchange_segment=ExchangeSegment.NSE_FNO,
+                product_type=ProductType.DELIVERY,
+                validity=OrderValidity.IOC,
+            ),
+        )
     )
 
 
@@ -21,14 +40,14 @@ def order() -> BrokerOrder:
 async def test_upstox_live_submission_is_gated_by_default() -> None:
     broker = UpstoxBroker("token")
     with pytest.raises(LiveBrokerDisabled):
-        await broker.place_order(order())
+        await broker.place_order(order("1333"))
 
 
 @pytest.mark.asyncio
 async def test_dhan_live_submission_is_gated_by_default() -> None:
     broker = DhanBroker("client", "token")
     with pytest.raises(LiveBrokerDisabled):
-        await broker.place_order(order())
+        await broker.place_order(order("1333"))
 
 
 def test_upstox_order_mapping_is_provider_neutral() -> None:
@@ -65,3 +84,29 @@ def test_dhan_order_mapping_is_provider_neutral() -> None:
     assert mapped.client_order_id == "client-1"
     assert mapped.status is BrokerOrderStatus.PARTIALLY_FILLED
     assert mapped.filled_quantity == 2
+
+
+def test_upstox_payload_uses_resolved_provider_configuration() -> None:
+    payload = UpstoxBroker._order_payload(order(), resolver().resolve("NIFTY"))
+    assert payload["instrument_token"] == "NSE_FO|NIFTY_TEST"
+    assert payload["product"] == "D"
+    assert payload["validity"] == "IOC"
+    assert payload["price"] == 101.25
+
+
+def test_dhan_payload_uses_resolved_provider_configuration() -> None:
+    broker = DhanBroker("client-42", "token", instrument_resolver=resolver())
+    payload = broker._order_payload(order(), resolver().resolve("NIFTY"))
+    assert payload["dhanClientId"] == "client-42"
+    assert payload["securityId"] == "NSE_FO|NIFTY_TEST"
+    assert payload["exchangeSegment"] == "NSE_FNO"
+    assert payload["productType"] == "CNC"
+    assert payload["validity"] == "IOC"
+
+
+def test_enabled_broker_rejects_unknown_instrument_before_network_call() -> None:
+    broker = DhanBroker("client", "token", allow_live_orders=True)
+    with pytest.raises(KeyError, match="instrument mapping not configured"):
+        # Resolver lookup occurs before the HTTP request.
+        import asyncio
+        asyncio.run(broker.place_order(order("UNKNOWN")))
