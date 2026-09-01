@@ -3,7 +3,7 @@ from decimal import Decimal
 
 import pytest
 
-from app.backtest.engine import BacktestEngine, MarketOrder, Side
+from app.backtest.engine import BacktestEngine, BacktestReport, MarketOrder, Side
 from app.market.models import Candle, Timeframe
 
 
@@ -112,3 +112,13 @@ def test_explicit_quantity_remains_authoritative_when_risk_sizing_enabled():
     strategy = OneShot(MarketOrder(Side.LONG, Decimal("3"), Decimal("100"), stop_price=Decimal("95")))
     result = BacktestEngine([candle(0)], starting_balance=Decimal("1000"), risk_per_trade=Decimal("1")).run(strategy)
     assert result.trades[0].quantity == Decimal("3")
+
+
+def test_backtest_report_is_a_stable_projection_of_result():
+    result = BacktestEngine([candle(0, high="101", close="101")]).run(
+        OneShot(MarketOrder(Side.LONG, Decimal("1"), Decimal("100"))))
+    report = BacktestReport.from_result(result)
+    assert report.trade_count == 1
+    assert report.net_pnl == result.net_pnl
+    assert report.trades == tuple(result.trades)
+    assert report.order_events == tuple(result.order_events)
