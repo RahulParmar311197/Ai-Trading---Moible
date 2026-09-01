@@ -47,14 +47,15 @@ Before every implementation task, check this file, `AI_TRADING_PLATFORM_BLUEPRIN
 - [x] Confirmed and fixed CI Python import-path failure caused by `PYTHONPATH=backend` while the job already runs in `backend`
 - [x] Added internal `Timeframe.TICK` contract required by live LTP normalization
 - [x] Kept internal `TICK` out of the public candle-timeframe API
+- [x] Official Upstox protobuf import/version verification passed in CI
+- [x] Backend non-integration test suite passed in CI after timeframe API fix
+- [x] Backend integration test suite passed in CI after timeframe API fix
+- [x] Android `assembleDebug` passed in CI after timeframe API fix
 
 ## In progress
 
-- [ ] Verify official Upstox SDK protobuf import/version in CI
-- [ ] Verify complete backend test suite on current `main` after the timeframe API fix
 - [ ] Verify live provider startup path without external credentials
 - [ ] Complete official Gradle wrapper files and validate `./gradlew assembleDebug`
-- [ ] Verify Android CI build passes on GitHub Actions after the latest commit
 - [ ] Complete Stage 1 final integration verification
 
 ## Stage 1 checklist
@@ -89,9 +90,9 @@ Before every implementation task, check this file, `AI_TRADING_PLATFORM_BLUEPRIN
 - [x] CI Python import path corrected
 - [x] Internal tick event timeframe support
 - [x] Public candle timeframe API excludes tick events
-- [ ] SDK dependency/version CI verification
-- [ ] Full backend CI verification
-- [ ] Android CI execution verification
+- [x] SDK dependency/version CI verification
+- [x] Full backend CI verification
+- [x] Android CI execution verification
 - [ ] Stage 1 final integration verification
 
 ## Later stages
@@ -173,12 +174,10 @@ Live/autonomous trading must not be enabled until replay, backtesting, paper tra
 
 ## Last confirmed CI result
 
-GitHub Actions run `33497106611` for commit `a97581064dceb19d251797a0c6a30485a055a736` confirmed that the official Upstox protobuf import step passed, but the backend non-integration suite failed with 51 passed, 1 failed, and 1 deselected. The failure was `tests/test_markets_api.py::test_supported_timeframes`: adding the required internal `Timeframe.TICK` enum caused the public `/api/v1/markets/timeframes` endpoint to expose `tick`. This was corrected by filtering `Timeframe.TICK` from the public candle-timeframe response.
+GitHub Actions run `33497383708` for the current market-data verification work completed successfully. Both jobs passed: `backend-tests` completed the official Upstox protobuf import check, non-integration pytest suite, and integration pytest suite successfully; `android-build` completed `assembleDebug` successfully. This confirms the timeframe API fix on `main` is no longer failing in CI.
 
-## Current verification run
-
-Commit `79792fa7f9e1e65417e9ec44cb34607a9b7e8870` on `main` contains the API fix. GitHub Actions run `33497328952` is currently in progress; Android is building and backend verification has not yet been reported for this commit. Therefore the fix is currently `UNVERIFIED` until the runtime result completes.
+The remaining Stage 1 verification gap is the official Gradle wrapper artifact/path and final end-to-end integration audit. The repository currently has `android/gradlew` as a placeholder that delegates to an installed `gradle` command, so the official wrapper requirement remains unverified and must not be marked complete without generating/validating it through real Gradle tooling.
 
 ## Next task
 
-Verify GitHub Actions run `33497328952`. Fix only confirmed failures. If backend and Android verification pass, perform the remaining Stage 1 integration audit and then proceed to the next dependency only when Stage 1 evidence supports it.
+Complete the Stage 1 final integration audit and, where the repository/runtime permits, replace the Android wrapper placeholder with an official generated Gradle wrapper. Do not fabricate `gradle-wrapper.jar`. After Stage 1 is genuinely verified, begin Stage 2 SMC/ICT using the existing strategy architecture and search-before-create rule.
