@@ -36,10 +36,12 @@ Before starting any new implementation task, review this file, `AI_TRADING_PLATF
 - [x] Provider → LiveMarketPublisher runtime bridge and test
 - [x] Market-data freshness and quality validation rules
 - [x] Provider runtime quality-validation gate and tests
+- [x] Explicit market-data provider configuration boundary
 
 ## In progress
 
-- [ ] Instantiate/connect a concrete provider adapter in application startup
+- [ ] Implement concrete external provider adapter
+- [ ] Connect configured provider to application startup
 - [ ] Complete official Gradle wrapper files and validate `./gradlew assembleDebug`
 - [ ] Verify Android CI build passes on GitHub Actions
 
@@ -65,7 +67,9 @@ Before starting any new implementation task, review this file, `AI_TRADING_PLATF
 - [x] Provider → publisher runtime bridge
 - [x] Market-data freshness/quality validation rules
 - [x] Provider → quality validation gate
-- [ ] Concrete provider → quality validation → publisher startup integration
+- [x] Explicit provider-selection boundary
+- [ ] Concrete provider adapter
+- [ ] Provider startup integration
 
 ## Later stages
 
@@ -146,8 +150,8 @@ Live/autonomous trading must not be enabled until replay, backtesting, paper tra
 
 ## Last completed work
 
-Integrated the market-data quality gate into `ProviderMarketRunner`: every provider stream event is now validated for canonical OHLC/volume/bid-ask/timestamp/freshness rules before it can reach the live publisher. Added tests proving valid events are forwarded and quality failures are never published.
+Added an explicit market-data provider configuration boundary and settings for provider selection and instrument IDs. The application now has a deterministic place to select a concrete adapter, while refusing to silently fall back to simulated data when no real provider adapter is installed.
 
 ## Next task
 
-Instantiate/connect a concrete provider adapter in application startup. Before doing so, re-check this status file, the full blueprint, and the current repository. Do not invent provider credentials or claim a live external connection without configured credentials.
+Implement the first concrete external market-data provider adapter supported by the repository/project requirements, then wire it into startup. Do not invent credentials or provider APIs; verify the provider contract before implementation.
