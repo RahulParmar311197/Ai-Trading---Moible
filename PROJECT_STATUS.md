@@ -8,7 +8,7 @@ Last updated: 2026-09-01
 
 ## Current stage
 
-**Stage 7 — Paper Trading Foundation**
+**Stage 8 — Broker Boundary Foundation**
 
 ## Latest implementation state
 
@@ -16,37 +16,19 @@ Last updated: 2026-09-01
 - Structured market context is built from visible candles plus deterministic SMC/ICT facts.
 - AI has a provider-neutral HTTP/service boundary and `/api/v1/ai/analyze`, `/api/v1/ai/strategy`, `/api/v1/ai/explain-trade` endpoints. AI remains advisory and cannot authorize execution.
 - Options have provider-neutral contracts, deterministic Black-Scholes Greeks, liquidity/spread filtering, deterministic delta-based strike selection, multi-leg expiry payoff, risk metrics, deterministic strategy selection, a provider-neutral option-chain boundary, and options analytics APIs.
-- Paper trading has deterministic in-memory order/fill/position execution, configurable fees/slippage, limit-order behavior, duplicate-order protection, position/account P&L accounting, configurable order-notional and position limits, a kill switch, and a paper-only API. Persistence, partial fills, replay integration, and full risk/audit integration remain unfinished.
+- Paper trading has deterministic in-memory order/fill/position execution, configurable fees/slippage, limit-order behavior, duplicate-order protection, P&L accounting, configurable order-notional and position limits, a kill switch, and a paper-only API. Persistence, partial fills, replay integration, and full risk/audit integration remain unfinished.
+- Stage 8 now has a provider-neutral account/order/position/broker protocol. No live broker adapter has been enabled.
 
-## Latest milestone — paper risk controls
+## CI evidence
 
-### IMPLEMENTED
+For commit `5b6818d`, GitHub Actions completed with:
 
-- Maximum paper order-notional guard.
-- Maximum absolute paper position-size guard.
-- Persistent in-process realized P&L accumulator for daily-loss decisions.
-- Deterministic kill switch rejecting all new paper orders while halted.
-- Explicit kill-switch clear operation.
-- Automatic paper trading halt when configured realized-loss threshold is reached.
-- Paper account endpoint now reports halted state.
-- Paper API exposes kill-switch activation/clear endpoints.
-- Unit coverage for order/position limits and kill-switch behavior.
+- Android build: **SUCCESS**; `gradle assembleDebug` completed successfully.
+- Backend tests: **FAILURE** at `pytest -q -m 'not integration'`; the job stopped before integration tests. The failure output is not exposed by the connected GitHub log endpoint, so the exact failing assertion is **UNVERIFIED** from the available tool surface.
 
-### TESTS RUN
+For the latest status commit `aad451d`, the separate Android CI workflow completed **SUCCESS**. The backend CI result for the latest `main` head is not yet available in the connected results.
 
-`UNVERIFIED — no Codespace/runtime session is exposed through the connected tools.`
-
-### TESTS PASSED
-
-No local test execution claimed for this milestone.
-
-### BUILDS
-
-No local build execution claimed.
-
-### CI
-
-GitHub Actions for the latest `main` commits is queued/in progress; no pass/fail result is claimed until a completed run is observed.
+No local/Codespace test execution is claimed.
 
 ## Stage status
 
@@ -154,11 +136,12 @@ GitHub Actions for the latest `main` commits is queued/in progress; no pass/fail
 
 ### Stage 8 — Brokers
 
-- [ ] Provider-neutral broker abstraction
+- [x] Provider-neutral account/order/position/broker protocol
+- [ ] Authentication boundary
+- [ ] Idempotency/reconciliation boundary
 - [ ] Dhan adapter
 - [ ] Upstox order/position/account adapter
-- [ ] Authentication boundary
-- [ ] Reconciliation/idempotency
+- [ ] Live broker runtime verification
 
 ### Stage 9 — Controlled Live Trading
 
@@ -181,14 +164,15 @@ GitHub Actions for the latest `main` commits is queued/in progress; no pass/fail
 
 ## Safety status
 
-**LIVE/AUTONOMOUS TRADING REMAINS GATED.** Paper trading is isolated from real broker execution. AI remains subordinate to deterministic strategy, validation, risk and execution controls.
+**LIVE/AUTONOMOUS TRADING REMAINS GATED.** Paper trading is isolated from real broker execution. The new broker protocol is only a boundary; no real broker can place live orders through it yet. AI remains subordinate to deterministic strategy, validation, risk and execution controls.
 
 ## Runtime limitation
 
-No Codespace/runtime session is exposed through the connected tools, so no local test command is claimed. GitHub Actions is the runtime verification path available through the repository integration.
+No Codespace/runtime session is exposed through the connected tools, so no local test command is claimed. GitHub Actions is the available runtime verification path.
 
 ## Recent commits on main
 
+- `aad451d` — record paper risk controls and current status
 - `1d3644c` — expose paper kill switch status and controls
 - `e53a278` — cover paper risk limits and kill switch
 - `f62a72f` — add deterministic paper risk limits and kill switch
@@ -202,12 +186,10 @@ No Codespace/runtime session is exposed through the connected tools, so no local
 - `d423f3e` — add options payoff and strategy tests
 - `5848bf4` — export options payoff and strategy services
 - `4125705` — add options analytics API
-- `0b8592c` — add provider-neutral option-chain boundary
 
 ## Next execution
 
-1. Inspect completed GitHub Actions for the latest `main` commits and fix any real failures.
-2. Implement deterministic partial-fill behavior in the paper broker where practical.
-3. Add persistent paper order/fill/audit storage using the repository's existing database abstractions after inspection.
-4. Integrate replay with the paper broker.
-5. Then build the provider-neutral broker abstraction before any controlled live functionality.
+1. Inspect backend CI for the latest `main` head and fix actual failures.
+2. Complete broker authentication/idempotency boundaries without adding any live execution.
+3. Add Dhan and Upstox adapters only behind the provider-neutral interface and only using current official APIs when verified.
+4. Return to paper persistence/replay integration before controlled live trading.
