@@ -45,8 +45,14 @@ class OptionChain(BaseModel):
 
 class OptionLeg(BaseModel):
     contract: OptionContract
-    quantity: int = Field(ne=0)
+    quantity: int
     premium: Decimal = Field(ge=0)
+
+    @model_validator(mode="after")
+    def validate_quantity(self) -> "OptionLeg":
+        if self.quantity == 0:
+            raise ValueError("option leg quantity cannot be zero")
+        return self
 
 
 class OptionPayoffReport(BaseModel):
