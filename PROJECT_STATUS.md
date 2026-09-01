@@ -8,7 +8,7 @@ Before every implementation task, check this file, `AI_TRADING_PLATFORM_BLUEPRIN
 
 ## Current stage
 
-**Stage 1 — Market data**
+**Stage 2 — SMC/ICT**
 
 ## Completed
 
@@ -51,62 +51,40 @@ Before every implementation task, check this file, `AI_TRADING_PLATFORM_BLUEPRIN
 - [x] Backend non-integration test suite passed in CI after timeframe API fix
 - [x] Backend integration test suite passed in CI after timeframe API fix
 - [x] Android `assembleDebug` passed in CI after timeframe API fix
+- [x] Stage 2 deterministic swing detection with right-side confirmation
+- [x] Stage 2 market-structure break detection (BOS/MSS/CHOCH)
+- [x] Stage 2 equal-high/equal-low liquidity pools and sweep detection
+- [x] Stage 2 three-candle FVG detection
+- [x] Stage 2 displacement-based order-block candidates with strength scoring
+- [x] Stage 2 premium/discount dealing-range calculation
+- [x] Stage 2 explicit ICT London/New York session windows and session levels
+- [x] Stage 2 deterministic SMC orchestration and structured signal context
+- [x] Stage 2 unit coverage for confirmation, structure, FVG, premium/discount, sessions, and determinism
 
-## In progress
+## Stage 1 status
 
-- [ ] Verify live provider startup path without external credentials
-- [ ] Complete official Gradle wrapper files and validate `./gradlew assembleDebug`
-- [ ] Complete Stage 1 final integration verification
+**PARTIAL / UNVERIFIED**
 
-## Stage 1 checklist
+The backend and Android CI verification is complete for the current market-data work, but the repository still contains a placeholder `android/gradlew` and does not contain an official generated `gradle-wrapper.jar`. Runtime execution from this environment is unavailable, so the official wrapper and local end-to-end verification remain `UNVERIFIED`. The latest CI result remains GitHub Actions run `33497383708`, with backend and Android jobs passing.
 
-- [x] Canonical market-data models
-- [x] Provider-neutral normalization
-- [x] Instrument persistence
-- [x] Candle persistence
-- [x] Tick persistence
-- [x] Provider adapter interface
-- [x] REST market-data API
-- [x] REST persistence wiring
-- [x] WebSocket market stream
-- [x] Redis live-state boundary
-- [x] Redis event publisher
-- [x] Redis → WebSocket wiring
-- [x] Provider → publisher bridge
-- [x] Freshness/quality validation
-- [x] Provider selection boundary
-- [x] Upstox historical adapter
-- [x] Upstox live transport boundary
-- [x] Upstox protobuf decoder boundary
-- [x] Upstox SDK decoder adapter
-- [x] Upstox live normalization
-- [x] Upstox feed-field extraction
-- [x] Application startup provider wiring
-- [x] Redis publisher startup wiring
-- [x] Provider startup integration test
-- [x] Provider validation/publisher integration coverage
-- [x] Timeframe aggregation
-- [x] Android CI build job
-- [x] CI Python import path corrected
-- [x] Internal tick event timeframe support
-- [x] Public candle timeframe API excludes tick events
-- [x] SDK dependency/version CI verification
-- [x] Full backend CI verification
-- [x] Android CI execution verification
-- [ ] Stage 1 final integration verification
+## Stage 2 checklist
+
+- [x] Swing detection
+- [x] Market structure
+- [x] BOS
+- [x] MSS/CHoCH
+- [x] Liquidity pools
+- [x] Liquidity sweeps
+- [x] FVG
+- [x] Order blocks
+- [x] Premium/discount
+- [x] ICT session features
+- [x] Deterministic SMC orchestration
+- [x] Unit coverage
+- [ ] Runtime/CI verification of Stage 2 implementation
+- [ ] API/client integration if required by the full product flow
 
 ## Later stages
-
-### Stage 2 — SMC/ICT
-- [ ] Swing detection
-- [ ] Market structure
-- [ ] BOS
-- [ ] MSS/CHoCH
-- [ ] Liquidity
-- [ ] FVG
-- [ ] Order blocks
-- [ ] Premium/discount
-- [ ] ICT session features
 
 ### Stage 3 — Replay
 - [ ] Replay clock
@@ -172,12 +150,12 @@ Before every implementation task, check this file, `AI_TRADING_PLATFORM_BLUEPRIN
 
 Live/autonomous trading must not be enabled until replay, backtesting, paper trading, risk controls, broker reconciliation, failure handling, and explicit user activation are implemented and tested.
 
-## Last confirmed CI result
+AI remains subordinate to deterministic strategy, validation, risk, and execution gates.
 
-GitHub Actions run `33497383708` for the current market-data verification work completed successfully. Both jobs passed: `backend-tests` completed the official Upstox protobuf import check, non-integration pytest suite, and integration pytest suite successfully; `android-build` completed `assembleDebug` successfully. This confirms the timeframe API fix on `main` is no longer failing in CI.
+## Runtime verification
 
-The remaining Stage 1 verification gap is the official Gradle wrapper artifact/path and final end-to-end integration audit. The repository currently has `android/gradlew` as a placeholder that delegates to an installed `gradle` command, so the official wrapper requirement remains unverified and must not be marked complete without generating/validating it through real Gradle tooling.
+A direct repository clone/runtime was attempted in this environment but network DNS prevented access to GitHub, so no local test command is claimed as executed here. Runtime result: `UNVERIFIED — runtime execution unavailable`.
 
 ## Next task
 
-Complete the Stage 1 final integration audit and, where the repository/runtime permits, replace the Android wrapper placeholder with an official generated Gradle wrapper. Do not fabricate `gradle-wrapper.jar`. After Stage 1 is genuinely verified, begin Stage 2 SMC/ICT using the existing strategy architecture and search-before-create rule.
+Add Stage 2 runtime/CI verification and then implement the Stage 3 replay clock and historical state using the existing canonical Candle contracts. Keep live/autonomous execution gated.
