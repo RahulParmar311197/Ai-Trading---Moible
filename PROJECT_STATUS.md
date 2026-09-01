@@ -39,6 +39,7 @@ Before every implementation task, check this file, `AI_TRADING_PLATFORM_BLUEPRIN
 - [x] Redis publisher implementation
 - [x] Provider → Redis publisher startup wiring on `main`
 - [x] Provider → Redis startup integration test
+- [x] Provider → validation → publisher integration coverage aligned with actual runtime API
 
 ## In progress
 
@@ -74,6 +75,7 @@ Before every implementation task, check this file, `AI_TRADING_PLATFORM_BLUEPRIN
 - [x] Application startup provider wiring
 - [x] Redis publisher startup wiring
 - [x] Provider startup integration test
+- [x] Provider validation/publisher integration coverage
 - [ ] SDK dependency/version CI verification
 - [ ] Full backend CI verification
 - [ ] Stage 1 final integration verification
@@ -157,7 +159,7 @@ Live/autonomous trading must not be enabled until replay, backtesting, paper tra
 
 ## Last completed work
 
-Added and committed the FastAPI lifespan integration test on `main`. It verifies that configured provider startup creates the provider runner, injects the Redis publisher callback, uses the configured instrument list, and exposes the runner task.
+Corrected the market pipeline integration test directly on `main` after comparing it with the actual `ProviderMarketRunner` API. The test now uses a fake feed and exercises the real `run()` path, verifying valid events reach the publisher and stale events are rejected before publication.
 
 ## Next task
 
