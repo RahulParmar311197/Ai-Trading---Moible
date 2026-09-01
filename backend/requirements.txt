@@ -6,4 +6,7 @@ sqlalchemy
 psycopg[binary]
 redis
 httpx
+websockets
+protobuf
 pytest
+pytest-asyncio
