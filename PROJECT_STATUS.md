@@ -16,8 +16,8 @@ Last updated: 2026-09-01
 - Structured market context is built from visible candles plus deterministic SMC/ICT facts.
 - AI has a provider-neutral HTTP/service boundary and `/api/v1/ai/analyze`, `/api/v1/ai/strategy`, `/api/v1/ai/explain-trade` endpoints. AI remains advisory and cannot authorize execution.
 - Options have provider-neutral contracts, deterministic Black-Scholes Greeks, liquidity/spread filtering, deterministic delta-based strike selection, multi-leg expiry payoff, risk metrics, deterministic strategy selection, a provider-neutral option-chain boundary, and options analytics APIs.
-- Paper trading has deterministic in-memory order/fill/position execution, configurable fees/slippage, limit-order behavior, duplicate-order protection, P&L accounting, configurable order-notional and position limits, a kill switch, and a paper-only API. Persistence, partial fills, replay integration, and full risk/audit integration remain unfinished.
-- Stage 8 now has a provider-neutral account/order/position/broker protocol. No live broker adapter has been enabled.
+- Paper trading has deterministic in-memory order/fill/position execution, configurable fees/slippage, limit-order behavior, duplicate-order protection, P&L accounting, configurable order-notional and position limits, a kill switch, and a paper-only API. Persistence, partial fills, replay-to-paper, and full risk/audit integration remain unfinished.
+- Stage 8 has a provider-neutral account/order/position/broker protocol. The boundary now explicitly models non-secret authentication context and deterministic order reconciliation. No live broker adapter has been enabled.
 
 ## CI evidence
 
@@ -26,7 +26,7 @@ For commit `5b6818d`, GitHub Actions completed with:
 - Android build: **SUCCESS**; `gradle assembleDebug` completed successfully.
 - Backend tests: **FAILURE** at `pytest -q -m 'not integration'`; the job stopped before integration tests. The failure output is not exposed by the connected GitHub log endpoint, so the exact failing assertion is **UNVERIFIED** from the available tool surface.
 
-For the latest status commit `aad451d`, the separate Android CI workflow completed **SUCCESS**. The backend CI result for the latest `main` head is not yet available in the connected results.
+For the latest status commit `aad451d`, the separate Android CI workflow completed **SUCCESS**. No workflow run is exposed yet for broker commit `fa94c8d` through the connected commit workflow endpoint.
 
 No local/Codespace test execution is claimed.
 
@@ -137,8 +137,9 @@ No local/Codespace test execution is claimed.
 ### Stage 8 — Brokers
 
 - [x] Provider-neutral account/order/position/broker protocol
-- [ ] Authentication boundary
-- [ ] Idempotency/reconciliation boundary
+- [x] Non-secret authentication context boundary
+- [x] Deterministic order reconciliation result boundary
+- [ ] Idempotency enforcement implementation
 - [ ] Dhan adapter
 - [ ] Upstox order/position/account adapter
 - [ ] Live broker runtime verification
@@ -164,7 +165,7 @@ No local/Codespace test execution is claimed.
 
 ## Safety status
 
-**LIVE/AUTONOMOUS TRADING REMAINS GATED.** Paper trading is isolated from real broker execution. The new broker protocol is only a boundary; no real broker can place live orders through it yet. AI remains subordinate to deterministic strategy, validation, risk and execution controls.
+**LIVE/AUTONOMOUS TRADING REMAINS GATED.** Paper trading is isolated from real broker execution. The broker protocol is only a provider-neutral boundary; no real broker can place live orders through it yet. AI remains subordinate to deterministic strategy, validation, risk and execution controls.
 
 ## Runtime limitation
 
@@ -172,24 +173,16 @@ No Codespace/runtime session is exposed through the connected tools, so no local
 
 ## Recent commits on main
 
+- `fa94c8d` — strengthen broker authentication and reconciliation boundary
+- `81c6041` — record broker boundary and CI evidence
+- `ffd067f` — define account/order/position/execution contracts
+- `6b74209` — add provider-neutral broker boundary
 - `aad451d` — record paper risk controls and current status
 - `1d3644c` — expose paper kill switch status and controls
-- `e53a278` — cover paper risk limits and kill switch
-- `f62a72f` — add deterministic paper risk limits and kill switch
-- `63308d7` — register paper trading API
-- `d29b3f1` — add paper trading API
-- `5b6818d` — add paper trading tests
-- `76875d0` — implement deterministic paper execution
-- `f203bca` — define paper order/fill/position contracts
-- `e26408f` — add paper trading package
-- `7b479bb` — correct options payoff test expectations
-- `d423f3e` — add options payoff and strategy tests
-- `5848bf4` — export options payoff and strategy services
-- `4125705` — add options analytics API
 
 ## Next execution
 
-1. Inspect backend CI for the latest `main` head and fix actual failures.
-2. Complete broker authentication/idempotency boundaries without adding any live execution.
-3. Add Dhan and Upstox adapters only behind the provider-neutral interface and only using current official APIs when verified.
-4. Return to paper persistence/replay integration before controlled live trading.
+1. Implement broker idempotency enforcement at the provider-neutral boundary without enabling live execution.
+2. Add Dhan and Upstox adapters only behind the common interface and only after inspecting/validating current official API contracts.
+3. Return to paper persistence, audit, partial fills, and replay-to-paper integration.
+4. Re-run CI verification after the next stable milestone.
