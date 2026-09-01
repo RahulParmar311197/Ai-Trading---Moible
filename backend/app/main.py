@@ -9,6 +9,7 @@ from app.api.market_data import router as market_data_router
 from app.api.market_stream import router as market_stream_router
 from app.api.markets import router as markets_router
 from app.api.options import router as options_router
+from app.api.paper import router as paper_router
 from app.config import settings
 from app.market.provider_runtime import ProviderMarketRunner
 from app.market.providers import ProviderConfigurationError, get_market_data_feed
@@ -49,6 +50,7 @@ app.include_router(market_stream_router)
 app.include_router(backtest_router)
 app.include_router(ai_router)
 app.include_router(options_router)
+app.include_router(paper_router)
 
 
 @app.get("/health")
