@@ -40,12 +40,13 @@ Before starting any new implementation task, review this file and the current re
 - [x] Added full uploaded blueprint to repository as `AI_TRADING_PLATFORM_BLUEPRINT_FULL.md`
 - [x] Verified the full blueprint file exists in the repository
 - [x] Updated this status tracker to point to the repository blueprint
-- [x] Re-checked repository status after blueprint integration
+- [x] Added pinned Gradle distribution configuration for Android
+- [x] Added Android CI build workflow using Java 17 and Gradle 8.10.2
 
 ## In progress
 
-- [ ] Make Android project locally buildable with a checked-in Gradle wrapper
-- [ ] Expand CI to validate Android when Gradle wrapper is available
+- [ ] Add the official Gradle wrapper executable/scripts and validate `./gradlew assembleDebug`
+- [ ] Verify Android CI build passes on GitHub Actions
 - [ ] Add remaining Stage 0 documentation/foundation files
 
 ## Pending roadmap
@@ -142,6 +143,10 @@ Before starting any new implementation task, review this file and the current re
 
 Live/autonomous trading must not be enabled until replay, backtesting, paper trading, risk controls, broker reconciliation, failure handling, and explicit user activation are implemented and tested.
 
+## Last completed work
+
+Pinned the Android Gradle distribution and added a dedicated GitHub Actions Android build job. The repository still needs the official Gradle wrapper scripts/JAR before claiming the local `./gradlew` workflow is complete.
+
 ## Next task
 
-Finish Stage 0 validation: verify the Android build strategy and CI assumptions, complete the remaining foundation documentation, then re-check this status file and repository before beginning Stage 1 market-data implementation.
+Finish the official Gradle wrapper files and validate the Android build in CI. Then re-check this status file and repository before beginning Stage 1 market-data implementation.
