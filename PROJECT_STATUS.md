@@ -8,7 +8,9 @@ Before starting any new implementation task, review this file and the current re
 
 ## Source of truth
 
-- Product/architecture blueprint: `AI_TRADING_PLATFORM_BLUEPRINT.md` (uploaded project source; not yet copied into repo)
+- **Full project blueprint:** `AI_TRADING_PLATFORM_BLUEPRINT_FULL.md`
+- **Blueprint implementation summary:** `AI_TRADING_PLATFORM_BLUEPRINT.md`
+- **Detailed uploaded blueprint:** the uploaded master blueprint remains the authoritative detailed reference.
 - Repository: `RahulParmar311197/Ai-Trading---Moible`
 - Default branch: `main`
 
@@ -34,7 +36,11 @@ Before starting any new implementation task, review this file and the current re
 - [x] Added PostgreSQL migration foundation and migration policy
 - [x] Added architecture documentation foundation
 - [x] Added GitHub Actions backend test workflow
-- [x] Re-checked repository contents and newly created files after this milestone
+- [x] Added development rules and blueprint usage documentation
+- [x] Added full uploaded blueprint to repository as `AI_TRADING_PLATFORM_BLUEPRINT_FULL.md`
+- [x] Verified the full blueprint file exists in the repository
+- [x] Updated this status tracker to point to the repository blueprint
+- [x] Re-checked repository status after blueprint integration
 
 ## In progress
 
@@ -50,6 +56,8 @@ Before starting any new implementation task, review this file and the current re
 - [x] Initial Android skeleton
 - [x] Initial database foundation
 - [x] Initial CI/test foundation
+- [x] Full blueprint repository copy
+- [x] Blueprint review workflow documented
 - [ ] Production-ready Stage 0 validation
 
 ### Stage 1 — Market data
@@ -136,4 +144,4 @@ Live/autonomous trading must not be enabled until replay, backtesting, paper tra
 
 ## Next task
 
-Finish Stage 0 validation: add/verify Gradle wrapper strategy, expand documentation, and validate CI assumptions. Re-check this status file and repository before beginning Stage 1 market-data implementation.
+Finish Stage 0 validation: verify the Android build strategy and CI assumptions, complete the remaining foundation documentation, then re-check this status file and repository before beginning Stage 1 market-data implementation.
