@@ -4,7 +4,7 @@ Last updated: 2026-09-01
 
 ## Working rule
 
-Before starting any new implementation task, review this file and the current repository state. Update this file after each completed milestone or meaningful change.
+Before starting any new implementation task, review this file, `AI_TRADING_PLATFORM_BLUEPRINT_FULL.md`, and the current repository state. Update this file after each completed milestone or meaningful change.
 
 ## Source of truth
 
@@ -16,14 +16,13 @@ Before starting any new implementation task, review this file and the current re
 
 ## Current stage
 
-**Stage 0 — Architecture / repository foundation**
+**Stage 1 — Market data (initial implementation)**
 
 ## Completed
 
 - [x] Confirmed GitHub repository access
-- [x] Confirmed repository was initially empty
 - [x] Created project status tracker
-- [x] Defined staged development rule: inspect status + repository before every next task
+- [x] Defined staged development rule: inspect blueprint + status + repository before every next task
 - [x] Added root README
 - [x] Added `.gitignore` with secret/build protection
 - [x] Added `.env.example`
@@ -39,15 +38,25 @@ Before starting any new implementation task, review this file and the current re
 - [x] Added development rules and blueprint usage documentation
 - [x] Added full uploaded blueprint to repository as `AI_TRADING_PLATFORM_BLUEPRINT_FULL.md`
 - [x] Verified the full blueprint file exists in the repository
-- [x] Updated this status tracker to point to the repository blueprint
 - [x] Added pinned Gradle distribution configuration for Android
 - [x] Added Android CI build workflow using Java 17 and Gradle 8.10.2
+- [x] Added initial market domain package
+- [x] Added canonical instrument, candle, timeframe, and market-event models
+- [x] Added provider-neutral market-data normalization with UTC/timestamp and OHLC validation
+- [x] Added first market API endpoint for supported timeframes
+- [x] Added market model/API tests
 
 ## In progress
 
-- [ ] Add the official Gradle wrapper executable/scripts and validate `./gradlew assembleDebug`
+- [ ] Complete official Gradle wrapper files and validate `./gradlew assembleDebug`
 - [ ] Verify Android CI build passes on GitHub Actions
-- [ ] Add remaining Stage 0 documentation/foundation files
+- [ ] Implement instrument repository/model persistence
+- [ ] Implement candle/tick persistence
+- [ ] Implement market-data provider adapter interface
+- [ ] Implement REST market-data endpoints
+- [ ] Implement WebSocket market stream
+- [ ] Add Redis integration for live market state
+- [ ] Add market-data freshness/quality checks
 
 ## Pending roadmap
 
@@ -62,11 +71,15 @@ Before starting any new implementation task, review this file and the current re
 - [ ] Production-ready Stage 0 validation
 
 ### Stage 1 — Market data
-- [ ] Instrument model
-- [ ] Candle/tick models
-- [ ] Market-data normalization
+- [x] Canonical instrument/timeframe/candle models (initial)
+- [x] Provider-neutral normalization (initial)
+- [ ] Instrument persistence
+- [ ] Candle/tick persistence
+- [ ] Provider adapter interface
 - [ ] REST market endpoints
 - [ ] WebSocket market stream
+- [ ] Redis live-state integration
+- [ ] Market-data freshness/quality controls
 
 ### Stage 2 — SMC/ICT
 - [ ] Swing detection
@@ -145,8 +158,8 @@ Live/autonomous trading must not be enabled until replay, backtesting, paper tra
 
 ## Last completed work
 
-Pinned the Android Gradle distribution and added a dedicated GitHub Actions Android build job. The repository still needs the official Gradle wrapper scripts/JAR before claiming the local `./gradlew` workflow is complete.
+Started Stage 1 with canonical market-data models, provider-neutral normalization, and a supported-timeframes API plus tests. The implementation follows the blueprint's normalized market-data architecture and supported timeframe list.
 
 ## Next task
 
-Finish the official Gradle wrapper files and validate the Android build in CI. Then re-check this status file and repository before beginning Stage 1 market-data implementation.
+Implement Stage 1 instrument persistence and repository/service boundaries. Before doing so, re-check this file, the full blueprint, and the current repository.
