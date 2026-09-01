@@ -1,7 +1,7 @@
 """Concrete Upstox protobuf decoder adapter.
 
-The generated ``MarketDataFeedV3_pb2`` module is intentionally supplied by the
-official Upstox SDK/dependency rather than copied or hand-written here.
+The generated ``MarketDataFeedV3_pb2`` module is supplied by the official
+Upstox Python SDK. The SDK currently exposes it under ``upstox_client.feeder.proto``.
 """
 
 from app.market.upstox_proto import UpstoxProtoDecoder
@@ -9,15 +9,13 @@ from app.market.upstox_proto import UpstoxProtoDecoder
 
 def decode_upstox_feed(payload: bytes) -> object:
     try:
-        from upstox_client.feeder.market_data_feed_v3_pb2 import FeedResponse
+        from upstox_client.feeder.proto import MarketDataFeedV3_pb2
     except ImportError as exc:
         raise RuntimeError(
             "Install the official Upstox SDK protobuf module before enabling live feed"
         ) from exc
 
-    response = FeedResponse()
-    response.ParseFromString(payload)
-    return response
+    return MarketDataFeedV3_pb2.FeedResponse.FromString(payload)
 
 
 def create_upstox_decoder() -> UpstoxProtoDecoder:
