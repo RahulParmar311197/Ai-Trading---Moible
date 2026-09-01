@@ -20,7 +20,8 @@ Last updated: 2026-09-01
 - Stage 8 has a provider-neutral account/order/position/broker protocol with non-secret authentication context and deterministic order reconciliation.
 - Provider-neutral idempotency enforcement is implemented as an opt-in decorator/store: repeated successful submissions with the same client order ID return the original result, conflicting reuse is rejected, and failed submissions release the reservation for safe retry.
 - Official Upstox and Dhan API contracts were reviewed before adding adapters. The adapters map provider account/position/order responses into the common broker models and keep live mutation disabled by default.
-- Added a provider-neutral `BrokerInstrument`/`InstrumentResolver` boundary with explicit exchange segment, product type, validity enum, and lot-size metadata. Unknown canonical symbols are rejected rather than guessed. This is the foundation for wiring provider-specific security IDs into live order payloads without enabling live execution.
+- Added a provider-neutral `BrokerInstrument`/`InstrumentResolver` boundary with explicit exchange segment, product type, validity enum, and lot-size metadata. Unknown canonical symbols are rejected rather than guessed.
+- Wired the resolver into the explicit Upstox/Dhan live-order construction path. When live mutation is explicitly enabled, provider security IDs plus exchange/product/validity configuration now come from the resolver rather than hard-coded defaults. Unknown instruments fail before the network request. Live mutation remains disabled by default.
 
 ## CI evidence
 
@@ -29,7 +30,9 @@ For commit `5b6818d`, GitHub Actions completed with:
 - Android build: **SUCCESS**; `gradle assembleDebug` completed successfully.
 - Backend tests: **FAILURE** at `pytest -q -m 'not integration'`; the job stopped before integration tests. The failure output is not exposed by the connected GitHub log endpoint, so the exact failing assertion is **UNVERIFIED** from the available tool surface.
 
-For status commit `aad451d`, the separate Android CI workflow completed **SUCCESS**. No workflow run is exposed yet for the latest broker commits through the connected commit workflow endpoint.
+For status commit `aad451d`, the separate Android CI workflow completed **SUCCESS**.
+
+For the latest broker test commit `ee6816f`, GitHub Actions run `33505513022` (Android CI) is currently **IN PROGRESS**. No result is claimed yet. The backend workflow result for this commit is also not yet verified.
 
 No local/Codespace test execution is claimed.
 
@@ -148,7 +151,7 @@ No local/Codespace test execution is claimed.
 - [x] Live mutation gating by default
 - [x] Provider-neutral instrument/security-ID resolution boundary
 - [x] Explicit exchange/product/validity order configuration boundary
-- [ ] Wire resolver into Upstox/Dhan live order payloads
+- [x] Resolver wired into Upstox/Dhan live-order payload construction
 - [ ] Provider-specific instrument catalogue ingestion
 - [ ] Auth/session lifecycle integration
 - [ ] Live broker runtime verification
@@ -183,22 +186,17 @@ No Codespace/runtime session is exposed through the connected tools, so no local
 
 ## Recent commits on main
 
+- `ee6816f` — verify provider order payload resolution
+- `4412867` — preserve Dhan client identity in resolved order payload
+- `946e70e` — add instrument validity configuration
+- `eb2e69f` — wire Upstox resolver into live order construction
+- `0b5f849` — record previous broker instrument milestone
 - `b09bd7a` — add broker instrument resolution tests
 - `748c7b7` — add provider-neutral instrument/order configuration
-- `47a0c4a` — record broker idempotency milestone
-- `525cb66` — expose gated Dhan/Upstox adapters
-- `b07d46b` — add broker adapter mapping/gating tests
-- `1618870` — add gated Dhan account/portfolio adapter
-- `211b4d5` — add gated Upstox account/portfolio adapter
-- `6bdd3fa` — add safe broker HTTP transport boundary
-- `3981c1e` — export broker idempotency boundary
-- `e480a77` — add broker idempotency tests
-- `ecbe960` — implement provider-neutral broker idempotency
 
 ## Next execution
 
-1. Wire the explicit instrument resolver into Upstox/Dhan live-order payloads without enabling live execution.
-2. Add provider-specific instrument catalogue ingestion behind the resolver boundary.
-3. Integrate broker authentication/session lifecycle through existing application configuration, keeping credentials out of domain models/logs.
-4. Return to paper persistence, audit, partial fills, and replay-to-paper integration.
-5. Re-run CI verification after the next stable milestone.
+1. Add provider-specific instrument catalogue ingestion behind the resolver boundary, without embedding credentials or live mutation.
+2. Integrate broker authentication/session lifecycle through existing application configuration, keeping credentials out of domain models/logs.
+3. Return to paper persistence, audit, partial fills, and replay-to-paper integration.
+4. Re-run CI verification after the next stable milestone.
