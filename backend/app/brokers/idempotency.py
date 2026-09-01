@@ -1,0 +1,86 @@
+from __future__ import annotations
+
+import hashlib
+import json
+from typing import Awaitable, Callable
+
+from .base import BrokerOrder
+
+
+class IdempotencyConflict(ValueError):
+    """Raised when a client reuses an idempotency key for a different order."""
+
+
+class BrokerIdempotencyStore:
+    """In-memory idempotency registry for a single broker process.
+
+    The registry never creates or authorizes orders. It only prevents the same
+    client_order_id from being submitted twice and rejects conflicting reuse.
+    A durable implementation can replace this store without changing the
+    provider-neutral broker contract.
+    """
+
+    def __init__(self) -> None:
+        self._requests: dict[str, str] = {}
+        self._results: dict[str, BrokerOrder] = {}
+
+    @staticmethod
+    def fingerprint(order: BrokerOrder) -> str:
+        payload = {
+            "client_order_id": order.client_order_id,
+            "symbol": order.symbol,
+            "side": order.side.value,
+            "order_type": order.order_type.value,
+            "quantity": order.quantity,
+        }
+        encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+        return hashlib.sha256(encoded).hexdigest()
+
+    def begin(self, order: BrokerOrder) -> BrokerOrder | None:
+        key = order.client_order_id
+        fingerprint = self.fingerprint(order)
+        previous = self._requests.get(key)
+        if previous is not None and previous != fingerprint:
+            raise IdempotencyConflict(
+                f"client_order_id already used for a different order: {key}"
+            )
+        self._requests[key] = fingerprint
+        return self._results.get(key)
+
+    def complete(self, order: BrokerOrder, result: BrokerOrder) -> BrokerOrder:
+        key = order.client_order_id
+        self._requests[key] = self.fingerprint(order)
+        self._results[key] = result
+        return result
+
+    def clear(self, client_order_id: str) -> None:
+        self._requests.pop(client_order_id, None)
+        self._results.pop(client_order_id, None)
+
+
+class IdempotentBroker:
+    """Provider-neutral broker decorator enforcing client-order idempotency."""
+
+    def __init__(self, broker: object, store: BrokerIdempotencyStore | None = None) -> None:
+        self._broker = broker
+        self._idempotency = store or BrokerIdempotencyStore()
+
+    @property
+    def idempotency(self) -> BrokerIdempotencyStore:
+        return self._idempotency
+
+    async def place_order(self, order: BrokerOrder) -> BrokerOrder:
+        cached = self._idempotency.begin(order)
+        if cached is not None:
+            return cached
+        try:
+            result = await self._broker.place_order(order)
+        except Exception:
+            # A failed submission is not a successful idempotent operation.
+            # Remove the reservation so a caller can safely retry the same key.
+            self._idempotency.clear(order.client_order_id)
+            raise
+        return self._idempotency.complete(order, result)
+
+    def __getattr__(self, name: str) -> object:
+        return getattr(self._broker, name)
