@@ -8,7 +8,7 @@ Before starting any new implementation task, review this file and the current re
 
 ## Source of truth
 
-- Product/architecture blueprint: `AI_TRADING_PLATFORM_BLUEPRINT.md`
+- Product/architecture blueprint: `AI_TRADING_PLATFORM_BLUEPRINT.md` (uploaded project source; not yet copied into repo)
 - Repository: `RahulParmar311197/Ai-Trading---Moible`
 - Default branch: `main`
 
@@ -28,24 +28,29 @@ Before starting any new implementation task, review this file and the current re
 - [x] Added initial FastAPI application
 - [x] Added backend dependency manifest
 - [x] Added first backend health test
-- [x] Re-checked repository contents after foundation changes
+- [x] Added Android Gradle project skeleton
+- [x] Added Android application module and Compose entry point
+- [x] Added Android manifest and base theme
+- [x] Added PostgreSQL migration foundation and migration policy
+- [x] Added architecture documentation foundation
+- [x] Added GitHub Actions backend test workflow
+- [x] Re-checked repository contents and newly created files after this milestone
 
 ## In progress
 
-- [ ] Repository foundation files
-- [ ] Android application skeleton
-- [ ] Database/migration foundation
-- [ ] CI/test foundation
-- [ ] Documentation structure
+- [ ] Make Android project locally buildable with a checked-in Gradle wrapper
+- [ ] Expand CI to validate Android when Gradle wrapper is available
+- [ ] Add remaining Stage 0 documentation/foundation files
 
 ## Pending roadmap
 
 ### Stage 0 — Architecture
-- [ ] Repository foundation
-- [ ] Backend skeleton
-- [ ] Android skeleton
-- [ ] Database foundation
-- [ ] CI/test foundation
+- [x] Repository foundation
+- [x] Initial backend skeleton
+- [x] Initial Android skeleton
+- [x] Initial database foundation
+- [x] Initial CI/test foundation
+- [ ] Production-ready Stage 0 validation
 
 ### Stage 1 — Market data
 - [ ] Instrument model
@@ -131,4 +136,4 @@ Live/autonomous trading must not be enabled until replay, backtesting, paper tra
 
 ## Next task
 
-Finish Stage 0 foundation: Android skeleton, database/migration foundation, documentation structure, and CI/test foundation. Then re-check this file and repository before beginning Stage 1 market-data implementation.
+Finish Stage 0 validation: add/verify Gradle wrapper strategy, expand documentation, and validate CI assumptions. Re-check this status file and repository before beginning Stage 1 market-data implementation.
