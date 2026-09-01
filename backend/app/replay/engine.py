@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Callable, Iterable, Protocol
 
+from app.backtest.engine import BacktestStrategy, MarketOrder
 from app.market.models import Candle, Timeframe
 from app.smc.engine import SmcEngine, SmcAnalysis
 
@@ -17,6 +18,13 @@ class HistoricalCandleSource(Protocol):
 class ReplayEvent:
     sequence: int
     candle: Candle
+
+
+@dataclass(frozen=True)
+class ReplayStrategySignal:
+    sequence: int
+    timestamp: datetime
+    order: MarketOrder
 
 
 class ReplayEngine:
@@ -105,3 +113,22 @@ class ReplayEngine:
                 analyses.append(analyzer.analyze(list(state.candles)))
         self.clock.pause()
         return analyses
+
+    def run_strategy(self, strategy: BacktestStrategy) -> list[ReplayStrategySignal]:
+        """Evaluate the existing strategy protocol on each replay-visible state.
+
+        This is evaluation only: replay does not submit orders. Because the
+        strategy receives exactly ``state.candles``, it cannot inspect future
+        events.
+        """
+        signals: list[ReplayStrategySignal] = []
+        self.reset()
+        while not self.clock.finished:
+            state = self.step()
+            if state is None:
+                continue
+            order = strategy.on_candle(state.candles)
+            if order is not None:
+                signals.append(ReplayStrategySignal(state.index, state.timestamp, order))
+        self.clock.pause()
+        return signals

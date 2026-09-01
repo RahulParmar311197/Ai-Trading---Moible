@@ -95,6 +95,10 @@ Work directly on `main` only. Before implementation, inspect this file, `AI_TRAD
 - [x] Backtest API accepts validated `StrategyDefinition` without creating a second strategy framework
 - [x] Strategy condition equality semantics for declarative value matching
 - [x] Strategy-to-backtest deterministic adapter tests
+- [x] Replay strategy evaluation boundary using the existing `BacktestStrategy` protocol
+- [x] Deterministic structured market-context builder from visible candles and SMC/ICT facts
+- [x] Safe AI-to-DSL translation boundary with strict Pydantic validation
+- [x] Rejection of executable/broker instructions from AI strategy payloads
 
 ## Stage 1 status
 
@@ -106,11 +110,11 @@ Work directly on `main` only. Before implementation, inspect this file, `AI_TRAD
 
 ## Stage 3 status
 
-**PARTIAL / UNVERIFIED** — replay foundation and SMC integration exist; latest runtime/CI verification and replay-to-trade execution integration remain outstanding.
+**PARTIAL / UNVERIFIED** — replay foundation, SMC integration, and reusable strategy evaluation boundary exist; latest runtime/CI verification and replay-to-paper execution remain outstanding.
 
 ## Stage 4 status
 
-**PARTIAL / UNVERIFIED** — deterministic engine, risk sizing, report projection, persistence migration/repository, API endpoints, and reusable Strategy DSL backtest adapter now exist. The backtest API can select the validated DSL strategy instead of requiring explicit order plans, while preserving the existing order-plan transport for compatibility. Latest runtime/CI verification remains unavailable.
+**PARTIAL / UNVERIFIED** — deterministic engine, risk sizing, report projection, persistence migration/repository, API endpoints, and reusable Strategy DSL backtest adapter exist. The backtest API can select a validated DSL strategy instead of requiring explicit order plans, while preserving the existing order-plan transport for compatibility. Latest runtime/CI verification remains unavailable.
 
 ## Stage 4 checklist
 
@@ -133,8 +137,8 @@ Work directly on `main` only. Before implementation, inspect this file, `AI_TRAD
 - [x] GET backtest report API
 - [x] API/repository unit coverage
 - [x] Integrate reusable Strategy DSL into backtest strategy evaluation
+- [x] Integrate reusable strategy protocol into replay evaluation
 - [ ] Full runtime/CI verification of latest Stage 4 changes
-- [ ] Integrate reusable Strategy DSL into replay strategy evaluation
 - [ ] Broader risk-engine integration required by later trading stages
 
 ## Stage 5 — AI / Strategy
@@ -144,9 +148,11 @@ Work directly on `main` only. Before implementation, inspect this file, `AI_TRAD
 - [x] Structured AI analysis/trade-proposal contracts
 - [x] Deterministic AI output validation gate
 - [x] Strategy DSL → backtest execution adapter
-- [ ] Structured market context pipeline from live/replay market facts
+- [x] Strategy DSL → replay evaluation boundary
+- [x] Structured market context pipeline from visible/replay market facts
+- [x] Safe AI-to-DSL declarative translation/validation boundary
 - [ ] AI provider/service implementation
-- [ ] AI-to-DSL strategy generation with strict schema validation
+- [ ] AI-to-DSL generation backed by a real AI provider
 - [ ] Trade explanation API
 
 ## Later stages
@@ -194,10 +200,11 @@ Live/autonomous trading remains disabled/gated. It must not be enabled until rep
 
 ## Runtime / CI verification
 
-GitHub Actions is the available repository verification path. No Codespace/runtime session is exposed through the connected tools, so no local/Codespace test command is claimed as executed. Existing CI results are historical and do not verify this milestone. The new DSL backtest adapter, API strategy transport, and Strategy DSL equality coverage remain **UNVERIFIED** until an actual workflow or runtime executes successfully.
+GitHub Actions is the available repository verification path. No Codespace/runtime session is exposed through the connected tools, so no local/Codespace test command is claimed as executed. No workflow run or commit status has yet been reported for the latest implementation commit. The new replay strategy, market-context, AI-to-DSL, and related backtest changes therefore remain **UNVERIFIED** until an actual workflow or runtime executes successfully.
 
 ## Recent commits on main
 
+- `2405bc9` — integrate Strategy DSL with deterministic backtesting
 - `7600193` — status update for AI safety and strategy context milestones
 - `3f481d5` — AI safety validation tests
 - `3b18f9a` — deterministic AI output validation gate
@@ -221,4 +228,4 @@ GitHub Actions is the available repository verification path. No Codespace/runti
 
 ## Next task
 
-Integrate the reusable Strategy DSL into the existing replay strategy boundary without creating a second strategy framework. Then implement the structured market-context pipeline from live/replay facts and the declarative AI-to-DSL translation/validation layer. Keep runtime/CI verification explicitly UNVERIFIED until an actual workflow or runtime executes successfully.
+Implement the real provider-neutral AI service boundary and API using the structured market context and safe Strategy DSL translator, without granting AI execution authority. Then continue to the remaining Stage 6 options foundation while preserving all safety gates. Keep runtime/CI verification explicitly UNVERIFIED until an actual workflow or runtime executes successfully.
