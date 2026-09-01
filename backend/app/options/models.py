@@ -16,6 +16,7 @@ class OptionContract(BaseModel):
     expiry: date
     strike: Decimal = Field(gt=0)
     option_type: OptionType
+    lot_size: int = Field(default=1, gt=0)
     bid: Decimal = Field(default=Decimal("0"), ge=0)
     ask: Decimal = Field(default=Decimal("0"), ge=0)
     ltp: Decimal = Field(default=Decimal("0"), ge=0)
