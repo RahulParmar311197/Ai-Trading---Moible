@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 env:
-  PYTHONPATH: backend
+  PYTHONPATH: .
 
 jobs:
   backend-tests:
