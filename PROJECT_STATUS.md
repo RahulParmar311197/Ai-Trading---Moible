@@ -28,8 +28,8 @@ Last updated: 2026-09-02
 - `BrokerStateSynchronizer` provides a broker-refresh primitive that aggregates provider position P&L and requires an explicit daily realized-P&L baseline when deriving the next risk snapshot; no lifetime broker P&L is silently treated as today's P&L.
 - `PostgresRiskSessionBaselineStore` provides durable, idempotent persistence for an explicitly supplied risk-session baseline. Conflicting reinitialization is rejected and missing sessions fail closed; the store intentionally does not invent market/trading-day boundaries.
 - `risk_snapshot_from_persisted_session` binds fresh broker state to the persisted baseline for an explicitly supplied session ID, so callers cannot silently substitute a wall-clock baseline or broker lifetime P&L.
-- Partial/fill confirmations now require an explicit post-fill state-synchronization callback. Missing or failed synchronization forces the controlled executor into a stopped/kill-switch state and emits an audit event; successful synchronization is audited before the lifecycle remains active. This callback does not attempt to undo a broker fill.
-- `PostFillBrokerStateSynchronizer` is now a concrete provider-neutral composition that refreshes broker state, binds derived risk state to the persisted session baseline, and requires an explicit risk-state sink. It never invents a session/trading-day boundary or derives P&L from the fill.
+- Partial/fill confirmations require an explicit post-fill state-synchronization callback. Missing or failed synchronization forces the controlled executor into a stopped/kill-switch state and emits an audit event; successful synchronization is audited before the lifecycle remains active.
+- `PostFillBrokerStateSynchronizer` is a concrete provider-neutral composition that refreshes broker state, binds derived risk state to the persisted session baseline, and requires an explicit risk-state sink. It never invents a session/trading-day boundary or derives P&L from the fill.
 - Provider-neutral AI HTTP compatibility is covered for generic and OpenAI-style response shapes, malformed responses, sanitized transport failures, and API-key-free operation.
 - Android has an advisory-only AI analysis client and UI; it does not contain broker credentials or order-execution paths.
 
@@ -112,9 +112,9 @@ Last updated: 2026-09-02
 
 ## Latest CI evidence
 
-- Run `33623091606` for documentation commit `f929c6b60bde69dd42d7e5b7a7ce778f01c752fd`: full CI completed successfully. Backend completed official Upstox protobuf verification plus both non-integration and PostgreSQL integration pytest jobs; Android `assembleDebug` completed successfully using the pinned Gradle 8.10.2 setup.
-- Run `33622735238` for implementation commit `d53910b663853246c6a0ec8155df9e0d1b33c900`: full CI completed successfully and verifies the corrected AI provider compatibility tests after the earlier genuine mocked-response fixture failure. No provider credentials were used.
-- Earlier run `33620032069` also verified Android `assembleDebug` for the preceding execution implementation state.
+- Run `33624319414` for implementation commit `ba78f6ff248d6f7e08cb47963997e868868be12f`: **full CI completed successfully**. Backend completed official Upstox protobuf verification plus non-integration and PostgreSQL integration pytest jobs; Android `assembleDebug` completed successfully.
+- Run `33623091606` for documentation commit `f929c6b60bde69dd42d7e5b7a7ce778f01c752fd`: full CI completed successfully.
+- Run `33622735238` for implementation commit `d53910b663853246c6a0ec8155df9e0d1b33c900`: full CI completed successfully.
 
 ## Runtime limitation
 
