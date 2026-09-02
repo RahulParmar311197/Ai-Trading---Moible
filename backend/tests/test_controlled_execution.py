@@ -30,6 +30,18 @@ class SubmissionFailBroker(FakeBroker):
         raise TimeoutError("sensitive provider timeout detail")
 
 
+class ReauthenticationFailBroker(FakeBroker):
+    def __init__(self) -> None:
+        super().__init__()
+        self.auth_calls = 0
+
+    async def authenticate(self) -> BrokerAuthentication:
+        self.auth_calls += 1
+        if self.auth_calls == 1:
+            return BrokerAuthentication(provider="fake", account_id="account-1", authenticated=True)
+        raise ConnectionError("re-authentication unavailable")
+
+
 def make_order(quantity: int = 5) -> BrokerOrder:
     return BrokerOrder(
         order_id="local-1",
@@ -181,3 +193,23 @@ async def test_broker_submission_failure_is_audited_without_leaking_exception_de
     assert [event.event_type for event in events[-2:]] == ["BROKER_SUBMISSION_ATTEMPTED", "BROKER_SUBMISSION_FAILED"]
     assert events[-1].reason == "broker submission failed: TimeoutError"
     assert "sensitive provider timeout detail" not in events[-1].reason
+
+
+@pytest.mark.asyncio
+async def test_failed_reauthentication_disables_previously_active_execution() -> None:
+    events = []
+    broker = ReauthenticationFailBroker()
+    guarded = execution(broker, audit_sink=events.append)
+    await guarded.startup()
+    guarded.activate("CONFIRM-LIVE")
+    assert guarded.active
+
+    with pytest.raises(ConnectionError, match="re-authentication unavailable"):
+        await guarded.startup()
+
+    assert not guarded.started
+    assert not guarded.active
+    assert guarded.kill_switch_active
+    assert events[-1].event_type == "STARTUP_REJECTED"
+    with pytest.raises(ControlledExecutionError, match="startup"):
+        await guarded.submit(make_order(), market_price=Decimal("100"), snapshot=snapshot())
