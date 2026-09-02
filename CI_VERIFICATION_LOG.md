@@ -4,6 +4,8 @@ Last updated: 2026-09-02
 
 ## Verified passing runs
 
+- `33617703355` — status commit `8b92233209548d5121f80b4d1851a27de300a100`: backend and Android jobs both completed successfully. Backend completed dependency installation, official Upstox protobuf verification, the non-integration suite and 4 PostgreSQL integration tests; Android completed `assembleDebug` successfully using the pinned Gradle 8.10.2.
+- `33617703352` — Android-only workflow for status commit `8b92233209548d5121f80b4d1851a27de300a100`: `assembleDebug` completed successfully.
 - `33617134105` — commit `919253298d47ff2708bfb0c540292bff7c80c0cb`: backend completed successfully with **242 non-integration tests passed, 4 deselected, 1 warning**, and **4 PostgreSQL integration tests passed, 242 deselected, 1 warning**; Android completed `assembleDebug` successfully. This verifies the corrected non-finite P&L regression plus the accumulated controlled-live hardening.
 - `33617134090` — commit `919253298d47ff2708bfb0c540292bff7c80c0cb`: Android-only workflow completed `assembleDebug` successfully.
 - `33614791892` — commit `45b0000f10f5afee87157df370afc5d8d5623a7d`: backend completed successfully with **235 non-integration tests passed, 4 deselected, 1 warning**, and **4 PostgreSQL integration tests passed, 235 deselected, 1 warning**; Android completed `assembleDebug` successfully.
@@ -24,15 +26,19 @@ Last updated: 2026-09-02
 
 Run `33617134105` checked out commit `919253298d47ff2708bfb0c540292bff7c80c0cb` on GitHub Actions with Python 3.12.14 and PostgreSQL 16. The official Upstox protobuf import succeeded. The non-integration suite reported **242 passed, 4 deselected, 1 warning in 1.15s**. The integration suite reported **4 passed, 242 deselected, 1 warning in 1.16s**. No provider credentials were used.
 
+The status documentation commit `8b92233209548d5121f80b4d1851a27de300a100` was subsequently verified by run `33617703355`; its backend job completed successfully and its Android job completed `assembleDebug` successfully.
+
 ## Android evidence
 
-Run `33617134105` completed the Android `assembleDebug` job successfully using the CI-installed pinned Gradle 8.10.2. The separate Android-only workflow run `33617134090` for the same commit also completed successfully.
+Run `33617134105` completed the Android `assembleDebug` job successfully using the CI-installed pinned Gradle 8.10.2. The separate Android-only workflow run `33617134090` for the same implementation commit also completed successfully. Status commit `8b92233209548d5121f80b4d1851a27de300a100` was separately verified by runs `33617703355` and `33617703352`, both of which completed the Android build successfully.
 
 ## Current verification
 
-The latest implementation commit on `main` is `919253298d47ff2708bfb0c540292bff7c80c0cb`; its CI run `33617134105` and Android-only run `33617134090` are fully green. The predecessor implementation verification run `33617011571` failed because the newly hardened `RiskSnapshot` rejected non-finite P&L before the old test could exercise the gate; that test was corrected and the corrected commit is now green.
+The latest main documentation/status commit is `be15bd33f9c4750a102e11a8121ee213bdcef310`, which records the completed verification of status commit `8b92233209548d5121f80b4d1851a27de300a100`. The latest implementation commit remains `919253298d47ff2708bfb0c540292bff7c80c0cb`; its CI run `33617134105` and Android-only run `33617134090` are fully green.
 
 ## Historical failed verification
+
+The predecessor implementation verification run `33617011571` failed because the newly hardened `RiskSnapshot` rejected non-finite P&L before the old test could exercise the gate. The test was corrected rather than weakening validation, and the corrected commit is green.
 
 The initial position-refresh contract verification run `33614542133` failed with fixture incompatibilities after the intentional safety hardening. The failure was investigated and corrected; it is retained here as evidence of genuine test-driven verification rather than hidden.
 
@@ -42,4 +48,4 @@ No local/Codespace runtime is exposed through the connected tools. These are Git
 
 ## Safety
 
-CI success does not authorize live or autonomous trading. Production broker runtime verification, real live activation, and Stage 10 autonomous prerequisites remain gated. Durable idempotency has CI coverage for restart persistence, unresolved pending reservations, terminal reconciliation clearing, and concurrent reservation exclusivity. Position state is refreshed before controlled-live submission and mismatches fail closed. Broker-state synchronization now has dedicated tests and requires an explicit daily-P&L baseline; authoritative baseline persistence/lifecycle and post-fill propagation into controlled execution remain unimplemented rather than inferred. Recovery-provider failures remain fail-closed and credential-free.
+CI success does not authorize live or autonomous trading. Production broker runtime verification, real live activation, and Stage 10 autonomous prerequisites remain gated. Durable idempotency has CI coverage for restart persistence, unresolved pending reservations, terminal reconciliation clearing, and concurrent reservation exclusivity. Position state is refreshed before controlled-live submission and mismatches fail closed. Broker-state synchronization has dedicated tests and requires an explicit daily-P&L baseline; authoritative baseline persistence/lifecycle and post-fill propagation into controlled execution remain unimplemented rather than inferred. Recovery-provider failures remain fail-closed and credential-free.
