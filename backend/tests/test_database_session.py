@@ -19,4 +19,10 @@ def test_sqlalchemy_executor_reads_and_writes() -> None:
     row = executor.fetch_one("SELECT * FROM items WHERE id = :id", {"id": 1})
     assert row == {"id": 1, "name": "NIFTY"}
     assert executor.fetch_all("SELECT * FROM items", {}) == [row]
+    returned = executor.execute_returning(
+        "UPDATE items SET name = :name WHERE id = :id RETURNING id, name",
+        {"id": 1, "name": "NIFTY-FUT"},
+    )
+    assert returned == {"id": 1, "name": "NIFTY-FUT"}
+    assert executor.fetch_one("SELECT * FROM items WHERE id = :id", {"id": 1}) == returned
     engine.dispose()
