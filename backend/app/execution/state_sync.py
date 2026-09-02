@@ -7,6 +7,7 @@ from decimal import Decimal
 from typing import Awaitable, Callable
 
 from app.brokers.base import Account, BrokerPosition
+from .gate import RiskSnapshot
 
 
 class StateSynchronizationError(RuntimeError):
@@ -70,3 +71,31 @@ class BrokerStateSynchronizer:
             realized_pnl=realized_pnl,
             unrealized_pnl=unrealized_pnl,
         )
+
+
+def risk_snapshot_from_broker_state(
+    state: BrokerRiskState,
+    *,
+    symbol: str,
+    daily_realized_pnl_baseline: Decimal,
+    halted: bool = False,
+) -> RiskSnapshot:
+    """Build the next deterministic risk snapshot from a fresh broker state.
+
+    The daily-loss baseline is explicit; absolute broker lifetime realized P&L
+    is never silently treated as today's P&L.
+    """
+    if not daily_realized_pnl_baseline.is_finite():
+        raise StateSynchronizationError("daily realized pnl baseline must be finite")
+    position_quantity = sum(
+        position.quantity for position in state.positions if position.symbol == symbol
+    )
+    daily_realized_pnl = state.realized_pnl - daily_realized_pnl_baseline
+    if not daily_realized_pnl.is_finite():
+        raise StateSynchronizationError("derived daily realized pnl must be finite")
+    return RiskSnapshot(
+        balance=state.account.balance,
+        realized_pnl=daily_realized_pnl,
+        halted=halted,
+        position_quantity=position_quantity,
+    )

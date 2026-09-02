@@ -3,7 +3,12 @@ from decimal import Decimal
 import pytest
 
 from app.brokers.base import Account, BrokerPosition
-from app.execution.state_sync import BrokerStateSynchronizer, StateSynchronizationError
+from app.execution.state_sync import (
+    BrokerRiskState,
+    BrokerStateSynchronizer,
+    StateSynchronizationError,
+    risk_snapshot_from_broker_state,
+)
 
 
 @pytest.mark.asyncio
@@ -42,6 +47,59 @@ async def test_refresh_returns_fresh_positions_and_aggregated_pnl() -> None:
     assert state.positions == positions
     assert state.realized_pnl == Decimal("35")
     assert state.unrealized_pnl == Decimal("2")
+
+
+def test_risk_snapshot_uses_explicit_daily_realized_pnl_baseline() -> None:
+    account = Account(
+        account_id="paper",
+        balance=Decimal("100000"),
+        available_margin=Decimal("80000"),
+    )
+    state = BrokerRiskState(
+        account=account,
+        positions=(
+            BrokerPosition(
+                symbol="NIFTY",
+                quantity=7,
+                average_price=Decimal("100"),
+                realized_pnl=Decimal("25"),
+            ),
+        ),
+        realized_pnl=Decimal("25"),
+        unrealized_pnl=Decimal("-3"),
+    )
+
+    snapshot = risk_snapshot_from_broker_state(
+        state,
+        symbol="NIFTY",
+        daily_realized_pnl_baseline=Decimal("40"),
+    )
+
+    assert snapshot.balance == Decimal("100000")
+    assert snapshot.position_quantity == 7
+    assert snapshot.realized_pnl == Decimal("-15")
+    assert not snapshot.halted
+
+
+def test_risk_snapshot_rejects_non_finite_daily_baseline() -> None:
+    account = Account(
+        account_id="paper",
+        balance=Decimal("100000"),
+        available_margin=Decimal("80000"),
+    )
+    state = BrokerRiskState(
+        account=account,
+        positions=(),
+        realized_pnl=Decimal("0"),
+        unrealized_pnl=Decimal("0"),
+    )
+
+    with pytest.raises(StateSynchronizationError, match="baseline"):
+        risk_snapshot_from_broker_state(
+            state,
+            symbol="NIFTY",
+            daily_realized_pnl_baseline=Decimal("NaN"),
+        )
 
 
 @pytest.mark.asyncio
