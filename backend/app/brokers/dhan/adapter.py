@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
@@ -13,17 +14,15 @@ from ..base import (
 )
 from ..http import HTTPBrokerClient, LiveBrokerDisabled, decimal_value
 from ..order_config import BrokerInstrument, InstrumentResolver, ProductType
+from ..session import StaticTokenBrokerSession
 
 
 class DhanBroker:
     """Provider adapter for DhanHQ v2 account/portfolio/order APIs.
 
     Read operations are available with an access token. Live order mutation is
-    explicitly disabled by default and is not enabled by the application.
-
-    ``BrokerOrder.symbol`` remains the canonical symbol. When mutation is
-    explicitly enabled, the configured ``InstrumentResolver`` supplies Dhan's
-    security ID plus exchange/product/validity configuration.
+    explicitly disabled by default. Authentication state is owned by a
+    secret-safe session boundary and never returned in domain DTOs.
     """
 
     provider = "dhan"
@@ -36,18 +35,24 @@ class DhanBroker:
         timeout: float = 10.0,
         allow_live_orders: bool = False,
         instrument_resolver: InstrumentResolver | None = None,
+        session_expires_at: datetime | None = None,
     ) -> None:
         self.client_id = client_id
-        self._client = HTTPBrokerClient("https://api.dhan.co/v2", access_token, timeout=timeout)
+        self._session = StaticTokenBrokerSession(
+            self.provider, client_id, access_token, expires_at=session_expires_at
+        )
+        self._client = HTTPBrokerClient(
+            "https://api.dhan.co/v2", session=self._session, timeout=timeout
+        )
         self._allow_live_orders = allow_live_orders
         self._instrument_resolver = instrument_resolver or InstrumentResolver()
 
+    @property
+    def session(self) -> StaticTokenBrokerSession:
+        return self._session
+
     async def authenticate(self) -> BrokerAuthentication:
-        return BrokerAuthentication(
-            provider=self.provider,
-            account_id=self.client_id,
-            authenticated=bool(self.client_id.strip()) and self._client.authenticated,
-        )
+        return self._session.authentication()
 
     async def get_account(self) -> Account:
         payload = await self._client.request("GET", "/fundlimit")
