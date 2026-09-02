@@ -10,228 +10,106 @@ Last updated: 2026-09-02
 
 **Stage 9 — Controlled Live Trading Foundation**
 
-## Latest implementation state
+## Verified implementation state
 
-- Strategy DSL is integrated with deterministic backtesting and replay evaluation.
-- Structured market context is built from visible candles plus deterministic SMC/ICT facts.
-- AI has a provider-neutral HTTP/service boundary and `/api/v1/ai/analyze`, `/api/v1/ai/strategy`, `/api/v1/ai/explain-trade` endpoints. AI remains advisory and cannot authorize execution.
-- Options have provider-neutral contracts, deterministic Black-Scholes Greeks, liquidity/spread filtering, deterministic delta-based strike selection, multi-leg expiry payoff, risk metrics, deterministic strategy selection, a provider-neutral option-chain boundary, and options analytics APIs.
-- Paper trading has deterministic in-memory order/fill/position execution, configurable fees/slippage, limit-order behavior, duplicate-order protection, P&L accounting, configurable order-notional and position limits, a kill switch, and a paper-only API.
-- Paper trading now has durable order/fill/position/audit persistence, deterministic partial-fill simulation, and restart hydration. Account balance, cumulative realized P&L, and halt state are persisted separately so restoration does not replay orders or contact live brokers.
-- Replay-to-paper execution is implemented through a paper-only adapter. Replay-visible candles drive deterministic strategy evaluation; signals are translated into paper market orders, and optional stop/target brackets are evaluated on later replay candles. The adapter cannot route replay orders to live brokers.
-- `DeterministicExecutionGate` is provider-neutral and performs pure pre-trade order-notional, position-quantity, daily-loss, halt, price and quantity checks. It never submits an order itself.
-- The deterministic execution gate is an optional pre-trade gate on `PaperBroker.place_order`; rejected orders stop before paper persistence.
-- Provider-specific authentication boundaries now cover Upstox authorization-code exchange and daily token-expiry calculation, plus Dhan consent generation, consent consumption, and supported token renewal. Credential values remain transport-only.
-- Successful broker tokens can be converted directly into the existing secret-safe `StaticTokenBrokerSession` boundary without changing broker domain models.
-- Stage 8 has provider-neutral account/order/position/broker protocols, non-secret authentication context, deterministic reconciliation, idempotency enforcement, Upstox/Dhan adapters, instrument resolution/catalogue ingestion, and mutation disabled by default.
-- Added `ControlledBrokerExecution`: construction is inert, startup verifies the broker authentication boundary without enabling mutation, activation requires an exact explicit confirmation phrase, a kill switch defaults active, risk approval is mandatory before broker mutation, broker confirmation is required, idempotency wraps the mutation boundary, audit events are emitted through an optional sink, and shutdown fails closed.
-- Controlled execution now has a provider-neutral durable audit repository/sink plus a dedicated PostgreSQL migration. Audit persistence stores only execution event type, client order id, reason, timestamp and a safe JSON payload; credential values are excluded.
-- Controlled execution recovery now fails closed: recovery disables new entries, re-authenticates, refreshes positions/orders, reconciles requested client orders, and requires explicit reactivation after a healthy recovery. Reconciliation mismatch or unavailable recovery boundaries keep execution stopped.
-- Recovery also fails closed when the broker reports an unexpected live order (`NEW`, `OPEN`, or `PARTIALLY_FILLED`) outside the explicit expected local client-order set; terminal historical broker orders do not block recovery.
-- Broker idempotency now treats submission exceptions as potentially ambiguous: a failed provider call keeps the client-order key reserved and blocks both identical retries and conflicting reuse until the state is externally reconciled and explicitly cleared.
-- Added a PostgreSQL-backed broker idempotency repository and migration so reserved client-order keys survive process restart; CI integration testing verifies a second repository instance can recover a completed result and still rejects conflicting reuse.
-- Controlled live execution now requires an explicitly supplied idempotency store at construction, preventing a live executor from silently falling back to process-local idempotency state that disappears after restart. Test-only executors explicitly inject the in-memory store.
-- Durable idempotency completion now uses a committing database operation and verifies the persisted result, preventing a successful completion call from returning before the reservation is durably recorded.
-- Controlled execution remains an integration boundary only; no production/live activation has been enabled or configured.
-
-## CI evidence
-
-GitHub Actions run `33599917698` for commit `ce63a7a2eed00f171d1800fb2fab318ebc392a27` completed successfully. The backend job completed dependency installation, official Upstox protobuf verification, 192 non-integration tests, and 3 PostgreSQL integration tests. The Android job completed `gradle assembleDebug` using the pinned Gradle 8.10.2 CI setup. This run verifies durable idempotency completion persistence and its reservation-guard regression coverage.
-
-The prior successful run `33599202340` verified unexpected-live-order recovery hardening. Run `33598262758` verified the explicit controlled idempotency-store requirement. Earlier durable-idempotency verification was covered by successful run `33597951805`; earlier controlled-execution recovery/audit implementation was covered by successful run `33595826727`. Earlier idempotency-safety commits were verified by successful runs `33597117321`, `33597128224`, `33597128231`, `33597156260`, and `33597156289`.
-
-No local/Codespace test execution is claimed.
+- Deterministic strategy/backtest/replay foundations are integrated; AI remains advisory and cannot authorize execution.
+- Options analytics and provider-neutral option-chain contracts are implemented; live option-chain integration remains unverified.
+- Paper trading has deterministic order/fill/position/P&L/risk/kill-switch behavior, durable persistence, restart hydration, and replay-to-paper execution.
+- Provider-neutral broker contracts, authentication boundaries, reconciliation, idempotency, Upstox/Dhan adapters, instrument resolution/catalogue ingestion, and secret-safe session handling are implemented.
+- Upstox and Dhan live mutation remains disabled by default.
+- `ControlledBrokerExecution` is inert until authenticated startup and exact explicit activation. The kill switch defaults active, deterministic risk approval is mandatory before mutation, broker order-id confirmation is required, audit events are emitted, and shutdown/recovery fail closed. fileciteturn583file0L2-L2
+- Controlled live construction requires an explicitly supplied idempotency store; there is no silent process-local fallback.
+- Ambiguous broker submission exceptions preserve the idempotency reservation and force fail-closed reconciliation before reuse. fileciteturn588file0L2-L2
+- Durable PostgreSQL idempotency uses an atomic `INSERT ... ON CONFLICT DO NOTHING RETURNING` reservation and a transactional returning executor, so concurrent callers cannot both claim a new client-order key. fileciteturn585file0L2-L2 fileciteturn586file0L2-L2
+- Durable idempotency completion persists and verifies broker results; terminal reconciled `REJECTED`/`CANCELLED` reservations are explicitly cleared, while live/pending states remain reserved.
+- Recovery refreshes broker positions/orders, reconciles requested IDs, and rejects unexpected live broker orders outside the explicit expected local order set. It never auto-activates trading.
 
 ## Stage status
 
 ### Stage 1 — Market Data
 
-- [x] Canonical Candle/Timeframe contracts
-- [x] Provider-neutral market-data interface
-- [x] Upstox historical/live boundaries
-- [x] Normalization and quality validation
-- [x] Duplicate/out-of-order/freshness handling
-- [x] Timeframe aggregation for 1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 1D, 1W
-- [x] Redis live state/event publishing boundaries
-- [x] PostgreSQL persistence/repositories
-- [x] REST/WebSocket market APIs
-- [x] Safe degraded startup
-- [x] Historical CI verification for major market-data milestones
-- [ ] Final Stage 1 verification including official Gradle wrapper artifact requirement
+- [x] Canonical contracts, provider-neutral interfaces, Upstox boundaries, normalization/quality validation, aggregation, Redis live-state boundaries, PostgreSQL persistence, REST/WebSocket APIs, safe degraded startup, historical CI verification
+- [ ] Final verification including the official Gradle wrapper artifact requirement
 
 ### Stage 2 — SMC/ICT
 
-- [x] Swing structure
-- [x] BOS/MSS/CHOCH
-- [x] Equal-high/equal-low liquidity pools and sweeps
-- [x] FVG
-- [x] Displacement/order-block candidates
-- [x] Premium/discount
-- [x] ICT London/New York session levels
-- [x] Deterministic orchestration and tests
+- [x] Swing structure, BOS/MSS/CHOCH, liquidity pools/sweeps, FVG, displacement/order-block candidates, premium/discount, session levels, deterministic orchestration/tests
 - [ ] Fresh full product-flow verification
 
 ### Stage 3 — Replay
 
-- [x] Deterministic replay clock and controls
-- [x] Replay speeds
-- [x] Stable event ordering
-- [x] Look-ahead-safe visible history
-- [x] SMC replay
-- [x] Reusable strategy evaluation boundary
-- [x] Replay-to-paper execution
-- [x] Fresh backend CI verification at `33592488680`
+- [x] Deterministic replay clock/controls, speeds, event ordering, look-ahead-safe history, SMC replay, reusable strategy evaluation, replay-to-paper
 
 ### Stage 4 — Backtesting
 
-- [x] Event-driven candle loop
-- [x] Strategy protocol
-- [x] Deterministic order validation/fills
-- [x] Fees/slippage
-- [x] Position lifecycle
-- [x] P&L/win rate/expectancy/drawdown foundation
-- [x] Trade ledger/order events
-- [x] Risk-based sizing
-- [x] Out-of-sample split
-- [x] Persisted reports/repository/API
-- [x] Strategy DSL execution adapter
-- [x] Fresh backend CI verification at `33592488680`
-- [x] Deterministic risk-gate foundation
+- [x] Event-driven loop, strategy protocol, deterministic fills, fees/slippage, positions, P&L metrics, ledger/order events, risk sizing, OOS split, persisted reports/API, strategy DSL adapter, deterministic risk gate
 
 ### Stage 5 — AI
 
-- [x] Declarative Strategy DSL
-- [x] SMC signal-context adapter
-- [x] Structured AI contracts
-- [x] AI output validation/safety gate
-- [x] Structured market-context builder
-- [x] Safe AI-to-DSL translation boundary
-- [x] Provider-neutral AI service
-- [x] Analyze/strategy/explain-trade APIs
-- [ ] Real external provider compatibility verification
+- [x] Strategy DSL, SMC context adapter, structured contracts, output safety gate, market-context builder, safe AI-to-DSL boundary, provider-neutral service, analyze/strategy/explain APIs
+- [ ] Real external-provider compatibility verification
 - [ ] Android AI integration
 
 ### Stage 6 — Options
 
-- [x] OptionContract / OptionChain / OptionLeg contracts
-- [x] Strike/expiry/OI/volume/IV/quote fields
-- [x] Contract lot-size support
-- [x] Deterministic Black-Scholes price/Greeks foundation
-- [x] Liquidity/spread validation
-- [x] Deterministic delta-based strike selection
-- [x] Multi-leg payoff engine
-- [x] Maximum profit/loss and breakeven calculations
-- [x] Capital requirement and risk/reward foundation
-- [x] Risk-profile-aware strategy selection
-- [x] Options analytics API
-- [x] Provider-neutral option-chain interface
-- [x] Options unit coverage
+- [x] Contracts, quotes/OI/volume/IV fields, lot sizes, Black-Scholes Greeks, liquidity/spread validation, delta strike selection, multi-leg payoff/risk metrics, strategy selection, analytics API, provider-neutral chain interface
 - [ ] Live option-chain provider integration
-- [ ] Fresh runtime/CI verification of latest options changes
+- [ ] Fresh runtime verification of latest options changes
 
 ### Stage 7 — Paper Trading
 
-- [x] Paper broker foundation
-- [x] Simulated market/limit order lifecycle
-- [x] Long/short positions and average price
-- [x] Realized/unrealized P&L foundation
-- [x] Fees/slippage simulation
-- [x] Duplicate-order protection
-- [x] Order-notional and position-size limits
-- [x] Kill switch and loss-triggered halt foundation
-- [x] Paper API boundary
-- [x] Durable order/fill/position/audit repository boundary
-- [x] Deterministic partial-fill simulation
-- [x] Repository restart hydration and persisted account state
-- [x] Deterministic risk-gate foundation
-- [x] Optional risk-gate enforcement before paper order persistence
-- [x] Replay-to-paper execution
-- [x] Backend CI verification at `33592488680`
+- [x] Paper broker, market/limit lifecycle, long/short positions, P&L, fees/slippage, duplicate protection, notional/position limits, kill switch/loss halt, paper API, durable persistence, partial fills, restart hydration, risk-gate enforcement, replay-to-paper, CI verification
 
 ### Stage 8 — Brokers
 
-- [x] Provider-neutral account/order/position/broker protocol
-- [x] Non-secret authentication context boundary
-- [x] Deterministic order reconciliation result boundary
-- [x] Provider-neutral idempotency enforcement decorator/store
-- [x] Durable PostgreSQL idempotency repository/migration
-- [x] Ambiguous submission protection: failed broker calls remain reserved until reconciliation
-- [x] Upstox adapter structure and read-side account/position/order mapping
-- [x] Dhan adapter structure and read-side account/position/order mapping
-- [x] Live mutation gating by default
-- [x] Provider-neutral instrument/security-ID resolution boundary
-- [x] Explicit exchange/product/validity order configuration boundary
-- [x] Resolver wired into Upstox/Dhan live-order payload construction
-- [x] Upstox BOD/Dhan scrip-master catalogue ingestion boundary
-- [x] Secret-safe broker session lifecycle boundary
-- [x] Upstox authorization-code token exchange boundary
-- [x] Dhan consent/consume-token boundary
-- [x] Dhan supported token renewal boundary
-- [x] Token-to-session hydration boundary
-- [x] CI verification of authentication implementation at `33592488680`
-- [x] CI verification of latest idempotency-safety and durable-idempotency changes
-- [x] CI verification of explicit controlled-execution idempotency-store requirement at `33598262758`
+- [x] Provider-neutral broker/auth/reconciliation contracts, idempotency, durable PostgreSQL idempotency, ambiguous-submission protection, Upstox/Dhan adapters, mutation gating, instrument resolution/catalogues, secret-safe sessions, token exchange/renewal boundaries, CI verification
 - [ ] Live broker runtime verification
 
 ### Stage 9 — Controlled Live Trading
 
-- [x] Explicit activation boundary requiring exact confirmation
-- [x] Deterministic risk gate before broker mutation
-- [x] Position-limit enforcement through deterministic risk gate
-- [x] Broker response/order-id confirmation boundary
-- [x] Kill switch defaults active and can trip execution
-- [x] Audit-event boundary for activation/rejection/broker confirmation
-- [x] Idempotency boundary around broker mutation
-- [x] Fail-closed startup authentication check
-- [x] Fail-closed shutdown boundary
-- [x] CI verification of controlled execution lifecycle tests at `33594099456`
-- [x] Recovery boundary: reconnect/authenticate, refresh broker state, reconcile requested orders, and remain gated until explicit reactivation
-- [x] Recovery fails closed on unexpected broker-reported live orders outside the explicit local expected-order set
-- [x] Durable audit sink/repository boundary and PostgreSQL migration
-- [x] Durable audit PostgreSQL integration test executed successfully in CI run `33595826727`
-- [x] Durable broker idempotency repository and restart-persistence integration test executed successfully in CI run `33597951805`
-- [x] Ambiguous broker submission is fail-closed at the idempotency boundary
-- [x] Controlled execution requires an explicit idempotency store; no silent process-local fallback in the controlled-live constructor
-- [x] Regression test for unexpected broker live-order recovery executed successfully in CI run `33599202340`
-- [x] Durable completion persistence fix and reservation-guard regression executed successfully in CI run `33599917698`
+- [x] Explicit activation boundary
+- [x] Deterministic risk gate and position limits before broker mutation
+- [x] Broker order-id confirmation
+- [x] Kill switch and fail-closed startup/shutdown
+- [x] Audit-event boundary and durable audit repository
+- [x] Recovery/reconciliation boundary
+- [x] Unexpected-live-order recovery rejection
+- [x] Durable idempotency persistence across restart
+- [x] Ambiguous broker submission fail-closed behavior
+- [x] Explicit idempotency-store requirement
+- [x] Atomic durable reservation and concurrency regression coverage
+- [x] Terminal `REJECTED`/`CANCELLED` reservation clearing after reconciliation
+- [x] CI verification of the above safety regressions
 - [ ] Production broker runtime verification
 - [ ] Real live activation
 
 ### Stage 10 — Autonomous Trading
 
 - [ ] Autonomous decision pipeline
-- [ ] Portfolio-level risk
-- [ ] Correlation exposure
-- [ ] Position monitoring
+- [ ] Portfolio-level risk/correlation exposure/position monitoring
 - [ ] Emergency controls
 - [ ] Production validation
 
-## Safety status
+## Latest CI evidence
 
-**LIVE/AUTONOMOUS TRADING REMAINS GATED.** The controlled executor is inert until startup succeeds and explicit activation is supplied; recovery and startup leave the kill switch active; shutdown fails closed. Recovery also refuses to proceed when the broker reports unexpected live orders not belonging to the explicit local expected-order set. Dhan and Upstox adapters remain mutation-disabled by default. AI remains subordinate to deterministic strategy, validation, risk and execution controls. Ambiguous broker submission errors cannot be retried through the same idempotency key until broker state is explicitly resolved. Controlled live construction also requires an explicit idempotency store so restart-safe persistence cannot be accidentally omitted.
+- Commit `1ef8f592fab8ea58dcc151d85d1f814aebe03541` / run `33602457519`: **211 non-integration passed, 3 integration passed; Android `assembleDebug` passed**.
+- Commit `b3d90cec9a460a31ba6e055c909be559720e7b0b` / run `33611174894`: **211 non-integration passed, 4 integration passed**. The added fourth integration test verifies that concurrent durable reservation attempts produce exactly one reservation and one pending result.
+- Separate Android workflow run `33611174841` for `b3d90cec9a460a31ba6e055c909be559720e7b0b` was still running when this status was updated; no completed Android result is claimed for that commit.
+- Documentation commit `326e21774774a94ae81b87cbf8f317250fbbbcb7` triggered a new CI run; that run must be verified before this status can be considered fully current.
 
 ## Runtime limitation
 
-No Codespace/runtime session is exposed through the connected tools, so no local test command is claimed. GitHub Actions is the available runtime verification path.
+No local/Codespace runtime is exposed through the connected tools. No local test execution is claimed; GitHub Actions is the available runtime verification path.
 
-## Recent commits on main
+## Safety status
 
-- `ce63a7a` — fix: persist durable idempotency completion
-- `4218757` — docs: record durable completion CI verification
-- `8b241e9` — test: cover unexpected broker live-order recovery
-- `0021aea` — fix: fail closed on unexpected broker live orders
-- `ed5d538` — docs: record latest controlled execution CI verification
-- `82a01ee` — test: require explicit controlled idempotency store
-- `aa3bfd9` — docs: record durable idempotency CI verification
-- `1c906d6` — fix: export broker side contract
-- `47f3b29` — fix: expose durable broker idempotency store
-- `d781243` — test: verify durable broker idempotency
-- `467c4bb` — feat: add broker idempotency persistence migration
-- `f7401cc` — feat: add durable broker idempotency repository
+**LIVE/AUTONOMOUS TRADING REMAINS GATED.** Controlled execution requires successful authenticated startup plus exact explicit activation; recovery/startup keep the kill switch active; shutdown and ambiguous broker failures fail closed. Dhan/Upstox live mutation remains disabled by default. AI remains subordinate to deterministic validation, strategy, risk and execution controls. Production broker runtime verification and real live activation have not been performed.
 
-## Next execution
+## Remaining blockers / unverified items
 
-1. Continue Stage 9 reconciliation/failure-semantic review for deterministic safety gaps that can be covered without live credentials.
-2. Review broker-disconnect/reconciliation behavior and provider adapter status mapping before any controlled-live activation.
-3. Keep Stage 1 official Gradle wrapper artifact and Stage 5/6/8 external-provider/runtime gaps explicitly unverified.
-4. Keep real live activation and autonomous trading disabled until all required evidence exists.
+1. Official Gradle wrapper artifact (`gradle-wrapper.jar`) is still absent; CI installs Gradle 8.10.2 directly, so final Stage 1 wrapper verification remains blocked.
+2. Production broker runtime and real live activation are unverified because no sandbox/test broker credentials are available through the connected tools.
+3. Stage 5 external AI-provider compatibility and Android AI integration remain unverified.
+4. Stage 6 live option-chain provider integration remains unverified.
+5. Stage 2 fresh full product-flow verification remains unverified.
+6. Stage 10 autonomous trading remains gated and must not be enabled without all blueprint prerequisites and evidence.
