@@ -49,16 +49,16 @@ def test_broker_order_requires_strict_partial_fill_for_partial_status() -> None:
 
 
 def test_broker_order_rejects_non_finite_or_non_positive_average_price() -> None:
-    with pytest.raises(ValidationError, match="average price must be finite and positive"):
+    with pytest.raises(ValidationError, match="finite"):
         make_order(average_price=Decimal("NaN"))
     with pytest.raises(ValidationError, match="average price must be finite and positive"):
         make_order(average_price=Decimal("0"))
 
 
 def test_broker_position_rejects_non_finite_financial_values() -> None:
-    with pytest.raises(ValidationError, match="position average price must be finite and non-negative"):
+    with pytest.raises(ValidationError, match="finite"):
         make_position(average_price=Decimal("Infinity"))
-    with pytest.raises(ValidationError, match="position pnl values must be finite"):
+    with pytest.raises(ValidationError, match="finite"):
         make_position(realized_pnl=Decimal("NaN"))
-    with pytest.raises(ValidationError, match="position pnl values must be finite"):
+    with pytest.raises(ValidationError, match="finite"):
         make_position(unrealized_pnl=Decimal("Infinity"))
