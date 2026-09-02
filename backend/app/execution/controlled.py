@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Callable, Protocol, Sequence
+from typing import Awaitable, Callable, Protocol, Sequence
 
 from app.brokers.base import BrokerAuthentication, BrokerOrder, BrokerOrderStatus, BrokerPosition, BrokerReconciliation
 from app.brokers.idempotency import BrokerIdempotencyStore, IdempotentBroker
@@ -25,6 +25,9 @@ class ExecutionRecoveryBroker(ExecutionLifecycleBroker, Protocol):
     async def get_orders(self) -> tuple[BrokerOrder, ...]: ...
 
     async def reconcile_order(self, client_order_id: str) -> BrokerReconciliation: ...
+
+
+PostFillStateSynchronizer = Callable[[BrokerOrder], Awaitable[None]]
 
 
 @dataclass(frozen=True)
@@ -50,6 +53,7 @@ class ControlledBrokerExecution:
         confirmation_phrase: str,
         audit_sink: Callable[[ExecutionAuditEvent], None] | None = None,
         idempotency_store: BrokerIdempotencyStore,
+        post_fill_state_sync: PostFillStateSynchronizer | None = None,
     ) -> None:
         if not confirmation_phrase.strip():
             raise ValueError("confirmation phrase must be non-empty")
@@ -58,6 +62,7 @@ class ControlledBrokerExecution:
         self._risk_gate = risk_gate
         self._confirmation_phrase = confirmation_phrase
         self._audit_sink = audit_sink
+        self._post_fill_state_sync = post_fill_state_sync
         self._activated = False
         self._kill_switch = True
         self._started = False
@@ -238,8 +243,36 @@ class ControlledBrokerExecution:
         if result.status is BrokerOrderStatus.REJECTED:
             self._audit("BROKER_REJECTED", order.client_order_id, "broker rejected order")
             raise ControlledExecutionError("broker rejected order")
+        if result.status in {BrokerOrderStatus.PARTIALLY_FILLED, BrokerOrderStatus.FILLED}:
+            await self._synchronize_post_fill_state(result)
         self._audit("BROKER_CONFIRMED", order.client_order_id, result.status.value)
         return result
+
+    async def _synchronize_post_fill_state(self, result: BrokerOrder) -> None:
+        """Refresh/propagate broker state after any confirmed fill; never infer it locally."""
+        if self._post_fill_state_sync is None:
+            self._started = False
+            self._activated = False
+            self._kill_switch = True
+            self._audit(
+                "POST_FILL_STATE_SYNC_REQUIRED",
+                result.client_order_id,
+                "filled broker confirmation requires an explicit post-fill state synchronizer; execution fail-closed",
+            )
+            raise ControlledExecutionError("post-fill broker state synchronization is required")
+        try:
+            await self._post_fill_state_sync(result)
+        except Exception as exc:
+            self._started = False
+            self._activated = False
+            self._kill_switch = True
+            self._audit(
+                "POST_FILL_STATE_SYNC_FAILED",
+                result.client_order_id,
+                f"post-fill broker state synchronization failed: {type(exc).__name__}; execution fail-closed",
+            )
+            raise ControlledExecutionError("post-fill broker state synchronization failed") from exc
+        self._audit("POST_FILL_STATE_SYNCHRONIZED", result.client_order_id, "post-fill broker state synchronization completed")
 
     async def _validate_fresh_position(self, order: BrokerOrder, snapshot: RiskSnapshot) -> None:
         get_positions = getattr(self._broker, "get_positions", None)
