@@ -72,6 +72,12 @@ class ControlledBrokerExecution:
 
     async def startup(self) -> BrokerAuthentication:
         """Verify broker authentication without enabling order mutation."""
+        # Re-authentication is a safety boundary too: invalidate any previous
+        # active state before contacting the provider so a failed restart can
+        # never leave an earlier live session enabled.
+        self._started = False
+        self._activated = False
+        self._kill_switch = True
         authenticate = getattr(self._broker, "authenticate", None)
         if not callable(authenticate):
             self._audit("STARTUP_REJECTED", "", "broker authentication boundary unavailable")
