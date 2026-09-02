@@ -43,12 +43,11 @@ class DurableBrokerIdempotencyStore:
 
     def complete(self, order: BrokerOrder, result: BrokerOrder) -> BrokerOrder:
         """Persist a broker result only against an existing matching reservation."""
-        row = self.db.fetch_one(
+        self.db.execute(
             """
             UPDATE broker_idempotency_keys
             SET result = CAST(:result AS JSONB), updated_at = :updated_at
             WHERE client_order_id = :client_order_id AND fingerprint = :fingerprint
-            RETURNING client_order_id
             """,
             {
                 "client_order_id": order.client_order_id,
@@ -56,6 +55,10 @@ class DurableBrokerIdempotencyStore:
                 "result": json.dumps(result.model_dump(mode="json"), sort_keys=True, separators=(",", ":")),
                 "updated_at": datetime.now(timezone.utc),
             },
+        )
+        row = self.db.fetch_one(
+            "SELECT client_order_id FROM broker_idempotency_keys WHERE client_order_id = :client_order_id AND fingerprint = :fingerprint AND result IS NOT NULL",
+            {"client_order_id": order.client_order_id, "fingerprint": self.fingerprint(order)},
         )
         if row is None:
             raise RuntimeError("idempotency reservation missing or fingerprint mismatch")
