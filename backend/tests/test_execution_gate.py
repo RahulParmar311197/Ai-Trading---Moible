@@ -1,5 +1,7 @@
 from decimal import Decimal
 
+import pytest
+
 from app.execution import DeterministicExecutionGate, RiskLimits, RiskSnapshot
 from app.paper.models import Order, OrderSide, OrderType
 
@@ -38,3 +40,25 @@ def test_gate_accounts_for_existing_short_position() -> None:
     gate = DeterministicExecutionGate(RiskLimits(max_position_quantity=5))
     decision = gate.evaluate(order(2, OrderSide.SELL), Decimal("100"), snapshot(position_quantity=-4))
     assert decision.approved is False
+
+
+def test_gate_rejects_non_finite_market_price_and_pnl() -> None:
+    gate = DeterministicExecutionGate(RiskLimits(max_order_notional=Decimal("1000"), max_daily_loss=Decimal("500")))
+    assert gate.evaluate(order(1), Decimal("NaN"), snapshot()).reason == "market price must be finite and positive"
+    assert gate.evaluate(order(1), Decimal("Infinity"), snapshot()).reason == "market price must be finite and positive"
+    assert gate.evaluate(order(1), Decimal("100"), snapshot(realized_pnl=Decimal("NaN"))).reason == "realized pnl must be finite"
+
+
+def test_gate_rejects_unknown_order_side_instead_of_treating_it_as_sell() -> None:
+    gate = DeterministicExecutionGate(RiskLimits(max_position_quantity=5))
+    invalid_order = order(1)
+    object.__setattr__(invalid_order, "side", "UNKNOWN")
+    decision = gate.evaluate(invalid_order, Decimal("100"), snapshot(position_quantity=5))
+    assert decision == decision.__class__(False, "order side must be BUY or SELL")
+
+
+def test_risk_limits_reject_non_finite_values() -> None:
+    with pytest.raises(ValueError, match="finite and positive"):
+        RiskLimits(max_order_notional=Decimal("NaN"))
+    with pytest.raises(ValueError, match="finite and positive"):
+        RiskLimits(max_daily_loss=Decimal("Infinity"))
