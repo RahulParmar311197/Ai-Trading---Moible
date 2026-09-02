@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
@@ -13,18 +14,15 @@ from ..base import (
 )
 from ..http import HTTPBrokerClient, LiveBrokerDisabled, decimal_value
 from ..order_config import BrokerInstrument, InstrumentResolver, OrderValidity, ProductType
+from ..session import StaticTokenBrokerSession
 
 
 class UpstoxBroker:
     """Provider adapter for Upstox v2 account/portfolio/order APIs.
 
-    The adapter is read-capable when a token is supplied. Live mutation is
-    intentionally disabled unless the caller explicitly opts in; this class
-    does not itself provide a route that enables live trading.
-
-    ``BrokerOrder.symbol`` remains the canonical symbol. When mutation is
-    explicitly enabled, the configured ``InstrumentResolver`` supplies the
-    provider instrument token and order configuration instead of guessing it.
+    Read operations are available with a token. Live mutation is intentionally
+    disabled unless the caller explicitly opts in. Authentication state is
+    owned by a secret-safe session boundary and never returned in domain DTOs.
     """
 
     provider = "upstox"
@@ -36,17 +34,23 @@ class UpstoxBroker:
         timeout: float = 10.0,
         allow_live_orders: bool = False,
         instrument_resolver: InstrumentResolver | None = None,
+        session_expires_at: datetime | None = None,
     ) -> None:
-        self._client = HTTPBrokerClient("https://api.upstox.com/v2", access_token, timeout=timeout)
+        self._session = StaticTokenBrokerSession(
+            self.provider, "upstox", access_token, expires_at=session_expires_at
+        )
+        self._client = HTTPBrokerClient(
+            "https://api.upstox.com/v2", session=self._session, timeout=timeout
+        )
         self._allow_live_orders = allow_live_orders
         self._instrument_resolver = instrument_resolver or InstrumentResolver()
 
+    @property
+    def session(self) -> StaticTokenBrokerSession:
+        return self._session
+
     async def authenticate(self) -> BrokerAuthentication:
-        return BrokerAuthentication(
-            provider=self.provider,
-            account_id="upstox",
-            authenticated=self._client.authenticated,
-        )
+        return self._session.authentication()
 
     async def get_account(self) -> Account:
         payload = await self._client.request("GET", "/user/get-funds-and-margin")
