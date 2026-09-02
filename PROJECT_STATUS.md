@@ -27,6 +27,7 @@ Last updated: 2026-09-02
 - Added `ControlledBrokerExecution`: construction is inert, startup verifies the broker authentication boundary without enabling mutation, activation requires an exact explicit confirmation phrase, a kill switch defaults active, risk approval is mandatory before broker mutation, broker confirmation is required, idempotency wraps the mutation boundary, audit events are emitted through an optional sink, and shutdown fails closed.
 - Controlled execution now has a provider-neutral durable audit repository/sink plus a dedicated PostgreSQL migration. Audit persistence stores only execution event type, client order id, reason, timestamp and a safe JSON payload; credential values are excluded.
 - Controlled execution recovery now fails closed: recovery disables new entries, re-authenticates, refreshes positions/orders, reconciles requested client orders, and requires explicit reactivation after a healthy recovery. Reconciliation mismatch or unavailable recovery boundaries keep execution stopped.
+- Recovery also fails closed when the broker reports an unexpected live order (`NEW`, `OPEN`, or `PARTIALLY_FILLED`) outside the explicit expected local client-order set; terminal historical broker orders do not block recovery.
 - Broker idempotency now treats submission exceptions as potentially ambiguous: a failed provider call keeps the client-order key reserved and blocks both identical retries and conflicting reuse until the state is externally reconciled and explicitly cleared.
 - Added a PostgreSQL-backed broker idempotency repository and migration so reserved client-order keys survive process restart; CI integration testing verifies a second repository instance can recover a completed result and still rejects conflicting reuse.
 - Controlled live execution now requires an explicitly supplied idempotency store at construction, preventing a live executor from silently falling back to process-local idempotency state that disappears after restart. Test-only executors explicitly inject the in-memory store.
@@ -34,11 +35,9 @@ Last updated: 2026-09-02
 
 ## CI evidence
 
-GitHub Actions run `33598262758` for commit `82a01ee059ad765bafdd7a454eea0a3229b42e3e` completed successfully. The backend job completed dependency installation, official Upstox protobuf verification, 190 non-integration tests, and 3 PostgreSQL integration tests. The Android job completed `gradle assembleDebug` using the pinned Gradle 8.10.2 CI setup.
+GitHub Actions run `33599202340` for commit `8b241e958ddc98a821c80e82f34b2e4f281eb286` completed successfully. The backend job completed dependency installation, official Upstox protobuf verification, 192 non-integration tests, and 3 PostgreSQL integration tests. The Android job completed `gradle assembleDebug` using the pinned Gradle 8.10.2 CI setup. This run verifies the unexpected-live-order recovery hardening and its regression coverage.
 
-The prior run `33598239655` exposed a test-fixture mismatch after the explicit idempotency-store requirement was introduced; the repository test helper was corrected before the successful `33598262758` verification. Do not count the failed run as verification evidence.
-
-Earlier durable-idempotency verification was covered by successful GitHub Actions run `33597951805`. Earlier controlled-execution recovery/audit implementation was covered by successful GitHub Actions run `33595826727`. Earlier idempotency-safety commits were verified by successful runs `33597117321`, `33597128224`, `33597128231`, `33597156260`, and `33597156289`.
+The prior successful run `33598262758` verified the explicit controlled idempotency-store requirement. Earlier durable-idempotency verification was covered by successful run `33597951805`; earlier controlled-execution recovery/audit implementation was covered by successful run `33595826727`. Earlier idempotency-safety commits were verified by successful runs `33597117321`, `33597128224`, `33597128231`, `33597156260`, and `33597156289`.
 
 No local/Codespace test execution is claimed.
 
@@ -186,11 +185,13 @@ No local/Codespace test execution is claimed.
 - [x] Fail-closed shutdown boundary
 - [x] CI verification of controlled execution lifecycle tests at `33594099456`
 - [x] Recovery boundary: reconnect/authenticate, refresh broker state, reconcile requested orders, and remain gated until explicit reactivation
+- [x] Recovery fails closed on unexpected broker-reported live orders outside the explicit local expected-order set
 - [x] Durable audit sink/repository boundary and PostgreSQL migration
 - [x] Durable audit PostgreSQL integration test executed successfully in CI run `33595826727`
 - [x] Durable broker idempotency repository and restart-persistence integration test executed successfully in CI run `33597951805`
 - [x] Ambiguous broker submission is fail-closed at the idempotency boundary
 - [x] Controlled execution requires an explicit idempotency store; no silent process-local fallback in the controlled-live constructor
+- [x] Regression test for unexpected broker live-order recovery executed successfully in CI run `33599202340`
 - [ ] Production broker runtime verification
 - [ ] Real live activation
 
@@ -205,7 +206,7 @@ No local/Codespace test execution is claimed.
 
 ## Safety status
 
-**LIVE/AUTONOMOUS TRADING REMAINS GATED.** The controlled executor is inert until startup succeeds and explicit activation is supplied; recovery and startup leave the kill switch active; shutdown fails closed. Dhan and Upstox adapters remain mutation-disabled by default. AI remains subordinate to deterministic strategy, validation, risk and execution controls. Ambiguous broker submission errors cannot be retried through the same idempotency key until broker state is explicitly resolved. Controlled live construction also requires an explicit idempotency store so restart-safe persistence cannot be accidentally omitted.
+**LIVE/AUTONOMOUS TRADING REMAINS GATED.** The controlled executor is inert until startup succeeds and explicit activation is supplied; recovery and startup leave the kill switch active; shutdown fails closed. Recovery also refuses to proceed when the broker reports unexpected live orders not belonging to the explicit local expected-order set. Dhan and Upstox adapters remain mutation-disabled by default. AI remains subordinate to deterministic strategy, validation, risk and execution controls. Ambiguous broker submission errors cannot be retried through the same idempotency key until broker state is explicitly resolved. Controlled live construction also requires an explicit idempotency store so restart-safe persistence cannot be accidentally omitted.
 
 ## Runtime limitation
 
@@ -213,6 +214,8 @@ No Codespace/runtime session is exposed through the connected tools, so no local
 
 ## Recent commits on main
 
+- `8b241e9` — test: cover unexpected broker live-order recovery
+- `0021aea` — fix: fail closed on unexpected broker live orders
 - `ed5d538` — docs: record latest controlled execution CI verification
 - `82a01ee` — test: require explicit controlled idempotency store
 - `aa3bfd9` — docs: record durable idempotency CI verification
@@ -223,11 +226,10 @@ No Codespace/runtime session is exposed through the connected tools, so no local
 - `f7401cc` — feat: add durable broker idempotency repository
 - `73158d3` — docs: record verified idempotency CI evidence
 - `85d9892` — update controlled execution verification status
-- `b354ebc` — test ambiguous submission idempotency safety
 
 ## Next execution
 
 1. Continue Stage 9 reconciliation/failure-semantic review for deterministic safety gaps that can be covered without live credentials.
-2. Review whether broker-reported unknown/manual orders need an explicit fail-closed reconciliation policy before controlled live activation.
+2. Review durable idempotency completion semantics and broker-disconnect/reconciliation behavior before any controlled-live activation.
 3. Keep Stage 1 official Gradle wrapper artifact and Stage 5/6/8 external-provider/runtime gaps explicitly unverified.
 4. Keep real live activation and autonomous trading disabled until all required evidence exists.
