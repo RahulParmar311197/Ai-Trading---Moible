@@ -23,9 +23,11 @@ class FailingBroker(FakeBroker):
     async def authenticate(self) -> BrokerAuthentication:
         raise ConnectionError("broker unavailable")
 
+
+class SubmissionFailBroker(FakeBroker):
     async def place_order(self, order: BrokerOrder) -> BrokerOrder:
         self.calls += 1
-        raise TimeoutError("broker timed out")
+        raise TimeoutError("sensitive provider timeout detail")
 
 
 def make_order(quantity: int = 5) -> BrokerOrder:
@@ -154,8 +156,28 @@ async def test_shutdown_fails_closed_and_blocks_future_submission() -> None:
 
 
 @pytest.mark.asyncio
+async def test_startup_failure_is_audited_without_exposing_provider_error() -> None:
+    events = []
+    guarded = execution(FailingBroker(), audit_sink=events.append)
+    with pytest.raises(ConnectionError, match="broker unavailable"):
+        await guarded.startup()
+    assert events[-1].event_type == "STARTUP_REJECTED"
+    assert events[-1].reason == "broker authentication failed: ConnectionError"
+    assert "broker unavailable" not in events[-1].reason
+    assert not guarded.started
+    assert guarded.kill_switch_active
+
+
+@pytest.mark.asyncio
 async def test_broker_submission_failure_is_audited_without_leaking_exception_details() -> None:
     events = []
-    broker = FailingBroker()
+    broker = SubmissionFailBroker()
     guarded = execution(broker, audit_sink=events.append)
-    await guarded.startup if False else pytest.fail("unreachable")
+    await guarded.startup()
+    guarded.activate("CONFIRM-LIVE")
+    with pytest.raises(TimeoutError, match="sensitive provider timeout detail"):
+        await guarded.submit(make_order(), market_price=Decimal("100"), snapshot=snapshot())
+    assert broker.calls == 1
+    assert [event.event_type for event in events[-2:]] == ["BROKER_SUBMISSION_ATTEMPTED", "BROKER_SUBMISSION_FAILED"]
+    assert events[-1].reason == "broker submission failed: TimeoutError"
+    assert "sensitive provider timeout detail" not in events[-1].reason
