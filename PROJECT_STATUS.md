@@ -23,7 +23,7 @@ Last updated: 2026-09-02
 - Durable PostgreSQL idempotency uses an atomic `INSERT ... ON CONFLICT DO NOTHING RETURNING` reservation and a transactional returning executor, so concurrent callers cannot both claim a new client-order key.
 - Durable idempotency completion persists and verifies broker results; terminal reconciled `REJECTED`/`CANCELLED` reservations are explicitly cleared, while live/pending states remain reserved.
 - Recovery refreshes broker positions/orders, reconciles requested IDs, and rejects unexpected live broker orders outside the explicit expected local order set. It never auto-activates trading.
-- Before every controlled live submission, the execution boundary now refreshes broker positions and requires the submitted `RiskSnapshot.position_quantity` to match the current broker position for the order symbol. Refresh failures, malformed position responses, or mismatches fail closed before broker mutation.
+- Before every controlled live submission, the execution boundary refreshes broker positions and requires the submitted `RiskSnapshot.position_quantity` to match the current broker position for the order symbol. Refresh failures, malformed position responses, or mismatches fail closed before broker mutation.
 
 ## Stage status
 
@@ -82,7 +82,7 @@ Last updated: 2026-09-02
 - [x] Atomic durable reservation and concurrency regression coverage
 - [x] Terminal `REJECTED`/`CANCELLED` reservation clearing after reconciliation
 - [x] Regression test for stale/mismatched position snapshot
-- [ ] CI verification of the latest position-state hardening commit
+- [x] CI verification of the latest position-state hardening commit
 - [ ] Production broker runtime verification
 - [ ] Real live activation
 
@@ -95,9 +95,9 @@ Last updated: 2026-09-02
 
 ## Latest CI evidence
 
-- Run `33614031579` for commit `f7c9d3b2f6d0158bab4ed0b7555952a25b0d73c7`: **234 non-integration passed, 4 integration passed; Android `assembleDebug` passed**.
-- Run `33614542133` for commit `ea304cebf903679dd2ab9cb17779f58d121e16ae`: **failed as expected during verification of the new position-refresh contract**; backend reported 222 passed and 13 fixture failures because older confirmation-test brokers lacked the newly required position boundary. Android was not yet complete when the backend failed.
-- Commit `dcfbb2f04c23d2f12e908dae37298aadccace544` updates those confirmation fixtures with a provider-neutral zero position response. Its dedicated Android workflow `33614684143` was still in progress when this status was written. The main CI rerun for this commit is expected from the push and is not yet claimed as passing.
+- Run `33614791892` for commit `45b0000f10f5afee87157df370afc5d8d5623a7d`: **235 non-integration passed, 4 integration passed, 1 warning; Android `assembleDebug` passed**. This verifies the latest position-state hardening plus corrected test fixtures and status documentation.
+- Earlier run `33614031579` for commit `f7c9d3b2f6d0158bab4ed0b7555952a25b0d73c7`: **234 non-integration passed, 4 integration passed; Android `assembleDebug` passed**.
+- The earlier intentionally failing verification run for the initial position-refresh contract is retained as historical evidence and is not treated as a green result.
 
 ## Runtime limitation
 
@@ -114,5 +114,4 @@ No local/Codespace runtime is exposed through the connected tools. No local test
 3. Stage 5 external AI-provider compatibility and Android AI integration remain unverified.
 4. Stage 6 live option-chain provider integration remains unverified.
 5. Stage 2 fresh full product-flow verification remains unverified.
-6. Latest position-state hardening CI is pending after fixture correction.
-7. Stage 10 autonomous trading remains gated and must not be enabled without all blueprint prerequisites and evidence.
+6. Stage 10 autonomous trading remains gated and must not be enabled without all blueprint prerequisites and evidence.
