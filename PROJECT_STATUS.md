@@ -25,15 +25,18 @@ Last updated: 2026-09-02
 - Successful broker tokens can be converted directly into the existing secret-safe `StaticTokenBrokerSession` boundary without changing broker domain models.
 - Stage 8 has provider-neutral account/order/position/broker protocols, non-secret authentication context, deterministic reconciliation, idempotency enforcement, Upstox/Dhan adapters, instrument resolution/catalogue ingestion, and mutation disabled by default.
 - Added `ControlledBrokerExecution`: construction is inert, startup verifies the broker authentication boundary without enabling mutation, activation requires an exact explicit confirmation phrase, a kill switch defaults active, risk approval is mandatory before broker mutation, broker confirmation is required, idempotency wraps the mutation boundary, audit events are emitted through an optional sink, and shutdown fails closed.
+- Controlled execution now has a provider-neutral durable audit repository/sink plus a dedicated PostgreSQL migration. Audit persistence stores only execution event type, client order id, reason, timestamp and a safe JSON payload; credential values are excluded.
 - Controlled execution remains an integration boundary only; no production/live activation has been enabled or configured.
 
 ## CI evidence
 
 GitHub Actions run `33592488680` for commit `1c31b7de847f62f0b578db64c74879563d3aa322` completed successfully. The backend job passed both non-integration and integration suites, and the Android job completed `gradle assembleDebug` successfully.
 
-GitHub Actions run `33593414507` for commit `8175ae6d512d2391a9296a8a4442807af99631b2` completed successfully with the Android build job. This verified the controlled-execution status update commit.
+GitHub Actions run `33594099456` for commit `805c1f2ed9cf3c4d0bc363e79343cbd8cdca7df4` completed successfully. The backend CI passed the controlled-execution lifecycle test changes, and the corresponding Android run `33594099416` completed `gradle assembleDebug` successfully.
 
-A newer backend-triggering run for commit `805c1f2ed9cf3c4d0bc363e79343cbd8cdca7df4` is currently in progress; no backend pass is claimed for the latest lifecycle test changes until that run completes.
+GitHub Actions run `33594128342` for commit `cd4dbdc6a4b511893b6196dfdcdd83394bc41b05` completed successfully, including the backend CI job. The corresponding Android run `33594128311` also completed successfully.
+
+The durable-audit implementation commits are newer than the latest recorded CI evidence and require a fresh backend CI run before their tests are marked verified.
 
 No local/Codespace test execution is claimed.
 
@@ -175,9 +178,10 @@ No local/Codespace test execution is claimed.
 - [x] Idempotency boundary around broker mutation
 - [x] Fail-closed startup authentication check
 - [x] Fail-closed shutdown boundary
-- [ ] CI verification of latest controlled execution lifecycle tests
+- [x] CI verification of controlled execution lifecycle tests at `33594099456`
 - [ ] Production broker runtime verification
-- [ ] Durable audit sink integration
+- [x] Durable audit sink/repository boundary and PostgreSQL migration
+- [ ] Durable audit runtime verification against PostgreSQL
 - [ ] Real live activation
 
 ### Stage 10 — Autonomous Trading
@@ -199,20 +203,20 @@ No Codespace/runtime session is exposed through the connected tools, so no local
 
 ## Recent commits on main
 
+- `3f5c32b` — test durable controlled execution audit sink
+- `b15e723` — export durable execution audit boundary
+- `469b165` — add controlled execution audit migration
+- `ca92a69` — add durable controlled execution audit repository
+- `cd4dbdc` — update controlled execution verification status
 - `805c1f2` — test fail-closed controlled execution lifecycle
 - `c5b158b` — add fail-closed controlled execution lifecycle
 - `8175ae6` — update controlled execution stage status
 - `4b22efb` — export controlled execution boundary
 - `386d115` — test controlled broker execution safety boundary
-- `b6bf158` — add controlled broker execution safety boundary
-- `53eb81d` — make execution risk gate provider-neutral
-- `1c31b7d` — connect broker tokens to secret-safe sessions
-- `ef810a7` — test broker OAuth exchange and token renewal
-- `57c3a0c` — export broker OAuth authentication boundaries
 
 ## Next execution
 
-1. Verify the latest controlled-execution lifecycle tests in GitHub Actions and fix only observed failures.
-2. Add durable audit handling without enabling live trading.
+1. Run and verify fresh CI for the durable controlled-execution audit implementation; fix only observed failures.
+2. Add/verify PostgreSQL runtime coverage for the new audit table and persistence boundary where the available CI environment supports it.
 3. Perform provider sandbox/runtime verification where credentials and broker test environments are explicitly available.
 4. Keep real live activation and autonomous trading disabled until all required evidence exists.
