@@ -28,14 +28,9 @@ Last updated: 2026-09-02
 
 ## CI evidence
 
-For commit `5b6818d`, GitHub Actions completed with:
+For commit `33589103436` (CI run), GitHub Actions executed the backend test suite with the current partial-fill implementation and reported **159 passed, 1 failed, 1 deselected**. The failure was `test_process_market_fills_resting_limit_orders_in_stable_order`: after an initial capped fill, `process_market()` did not revisit `PARTIALLY_FILLED` orders. This was a real implementation defect and was fixed in commit `32260bc`.
 
-- Android build: **SUCCESS**; `gradle assembleDebug` completed successfully.
-- Backend tests: **FAILURE** at `pytest -q -m 'not integration'`; the job stopped before integration tests. The failure output was not exposed by the connected GitHub log endpoint, so the exact failing assertion remains **UNVERIFIED** from that historical run.
-
-For status commit `aad451d`, the separate Android CI workflow completed **SUCCESS**.
-
-The later CI run covering the broker-session milestone was observed **IN PROGRESS** when last checked. Its Android job had reached `gradle assembleDebug`; backend was still in checkout/setup. No completion result is claimed for that run.
+The Android job for that run was still in progress when the backend failure was observed; no Android result is claimed for that run.
 
 No local/Codespace test execution is claimed.
 
@@ -141,7 +136,7 @@ No local/Codespace test execution is claimed.
 - [x] Deterministic partial-fill simulation
 - [ ] Full deterministic risk-engine integration
 - [ ] Replay-to-paper integration
-- [ ] Full paper-trading verification
+- [ ] Full paper-trading verification after latest partial-fill fix
 
 ### Stage 8 — Brokers
 
@@ -190,6 +185,7 @@ No Codespace/runtime session is exposed through the connected tools, so no local
 
 ## Recent commits on main
 
+- `32260bc` — fix paper market processing for partial orders
 - `2b8788e` — test deterministic paper partial fills
 - `ec831aa` — keep invalid paper limits out of order book
 - `4562c1a` — add deterministic paper partial fills
@@ -199,11 +195,10 @@ No Codespace/runtime session is exposed through the connected tools, so no local
 - `c6487bc` — add durable paper repository
 - `bba0854` — add durable paper schema
 - `b684c0a` — export broker session lifecycle contract
-- `40d5bf0` — integrate Dhan session lifecycle
 
 ## Next execution
 
-1. Re-run/check GitHub Actions after the partial-fill milestone and fix only observed failures.
+1. Verify the new `32260bc` partial-fill fix in GitHub Actions and fix only observed failures.
 2. Add repository hydration/restart recovery for durable paper state using existing database boundaries.
 3. Integrate replay-to-paper after persistence and partial-fill semantics are verified.
 4. Add controlled risk/execution integration only after deterministic risk boundaries are verified.
