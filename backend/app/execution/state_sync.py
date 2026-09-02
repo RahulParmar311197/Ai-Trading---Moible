@@ -1,4 +1,4 @@
-"""Fail-closed post-fill broker state synchronization primitives."""
+"""Fail-closed broker state synchronization primitives."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from typing import Awaitable, Callable
 
 from app.brokers.base import Account, BrokerPosition
 from .gate import RiskSnapshot
+from .risk_session import RiskSessionBaselineStore
 
 
 class StateSynchronizationError(RuntimeError):
@@ -32,8 +33,8 @@ class BrokerStateSynchronizer:
     """Refresh account and positions from the broker before the next decision.
 
     P&L is aggregated from provider position records rather than invented from
-    fills. The caller remains responsible for persisting the snapshot and for
-    defining the daily-loss baseline used by RiskSnapshot.
+    fills. The caller remains responsible for choosing the explicit risk-session
+    identity; the persisted baseline is resolved separately.
     """
 
     def __init__(
@@ -80,11 +81,7 @@ def risk_snapshot_from_broker_state(
     daily_realized_pnl_baseline: Decimal,
     halted: bool = False,
 ) -> RiskSnapshot:
-    """Build the next deterministic risk snapshot from a fresh broker state.
-
-    The daily-loss baseline is explicit; absolute broker lifetime realized P&L
-    is never silently treated as today's P&L.
-    """
+    """Build a deterministic risk snapshot from fresh broker state."""
     if not daily_realized_pnl_baseline.is_finite():
         raise StateSynchronizationError("daily realized pnl baseline must be finite")
     position_quantity = sum(
@@ -98,4 +95,31 @@ def risk_snapshot_from_broker_state(
         realized_pnl=daily_realized_pnl,
         halted=halted,
         position_quantity=position_quantity,
+    )
+
+
+def risk_snapshot_from_persisted_session(
+    state: BrokerRiskState,
+    *,
+    baseline_store: RiskSessionBaselineStore,
+    session_id: str,
+    symbol: str,
+    halted: bool = False,
+) -> RiskSnapshot:
+    """Build risk state only from a persisted, explicitly identified session.
+
+    Missing or conflicting session state is never replaced with a wall-clock
+    default or broker lifetime P&L value.
+    """
+    try:
+        baseline = baseline_store.get(session_id)
+    except Exception as exc:
+        raise StateSynchronizationError(
+            f"risk session baseline lookup failed: {type(exc).__name__}"
+        ) from exc
+    return risk_snapshot_from_broker_state(
+        state,
+        symbol=symbol,
+        daily_realized_pnl_baseline=baseline.daily_realized_pnl_baseline,
+        halted=halted,
     )
