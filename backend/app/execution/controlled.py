@@ -40,14 +40,7 @@ class ControlledExecutionError(RuntimeError):
 
 
 class ControlledBrokerExecution:
-    """Explicitly activated broker execution with deterministic safety gates.
-
-    Construction and startup are inert. Live submission requires an explicit
-    activation phrase, a successful authenticated broker session, a clear kill
-    switch, and an explicitly supplied idempotency store. Requiring the store
-    at construction prevents a live executor from silently falling back to
-    process-local idempotency state that would disappear after a restart.
-    """
+    """Explicitly activated broker execution with deterministic safety gates."""
 
     def __init__(
         self,
@@ -60,6 +53,7 @@ class ControlledBrokerExecution:
     ) -> None:
         if not confirmation_phrase.strip():
             raise ValueError("confirmation phrase must be non-empty")
+        self._idempotency_store = idempotency_store
         self._broker = IdempotentBroker(broker, idempotency_store)
         self._risk_gate = risk_gate
         self._confirmation_phrase = confirmation_phrase
@@ -103,15 +97,7 @@ class ControlledBrokerExecution:
         return authentication
 
     async def recover(self, client_order_ids: Sequence[str] = ()) -> tuple[BrokerReconciliation, ...]:
-        """Reconnect and reconcile broker state without automatically resuming trading.
-
-        Recovery is deliberately fail-closed: authentication is refreshed first,
-        broker orders/positions are refreshed, every supplied local order is
-        reconciled, and every broker-reported live order must belong to that
-        expected local set. An unexpected broker order is treated as an
-        unresolved external/manual order and blocks activation rather than being
-        silently adopted by the trading system.
-        """
+        """Reconnect and reconcile broker state without automatically resuming trading."""
         self._started = False
         self._activated = False
         self._kill_switch = True
@@ -162,6 +148,9 @@ class ControlledBrokerExecution:
                     self._activated = False
                     self._kill_switch = True
                     raise ControlledExecutionError("broker reconciliation mismatch")
+                if reconciliation.broker_status in {BrokerOrderStatus.REJECTED, BrokerOrderStatus.CANCELLED}:
+                    self._idempotency_store.clear(client_order_id)
+                    self._audit("IDEMPOTENCY_RESERVATION_CLEARED", client_order_id, "broker reconciliation reached a terminal non-live status")
             self._started = True
             self._activated = False
             self._kill_switch = True
