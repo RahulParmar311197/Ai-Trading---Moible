@@ -57,7 +57,9 @@ class HTTPBrokerClient:
         except httpx.HTTPError as exc:
             raise BrokerHTTPError(f"broker transport failure: {type(exc).__name__}") from exc
         except RuntimeError as exc:
-            raise BrokerHTTPError(str(exc)) from exc
+            # Session/transport implementations are allowed to raise RuntimeError,
+            # but their messages may contain provider-specific or secret material.
+            raise BrokerHTTPError(f"broker session/transport failure: {type(exc).__name__}") from exc
         if response.is_error:
             raise BrokerHTTPError(f"broker API returned HTTP {response.status_code}")
         try:
