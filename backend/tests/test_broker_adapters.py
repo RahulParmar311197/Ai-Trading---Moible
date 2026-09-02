@@ -86,6 +86,16 @@ def test_dhan_order_mapping_is_provider_neutral() -> None:
     assert mapped.filled_quantity == 2
 
 
+def test_unknown_upstox_status_fails_closed() -> None:
+    with pytest.raises(ValueError, match="unsupported Upstox order status"):
+        UpstoxBroker._map_order({"order_id": "u-unknown", "tag": "client-1", "status": "new-provider-state"})
+
+
+def test_unknown_dhan_status_fails_closed() -> None:
+    with pytest.raises(ValueError, match="unsupported Dhan order status"):
+        DhanBroker._map_order({"orderId": "d-unknown", "correlationId": "client-1", "orderStatus": "new-provider-state"})
+
+
 def test_upstox_payload_uses_resolved_provider_configuration() -> None:
     payload = UpstoxBroker._order_payload(order(), resolver().resolve("NIFTY"))
     assert payload["instrument_token"] == "NSE_FO|NIFTY_TEST"
