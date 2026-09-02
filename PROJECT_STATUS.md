@@ -36,7 +36,7 @@ GitHub Actions run `33596259443` for commit `20c226d9b103aa3616342f81550ba0c18a5
 
 The earlier controlled-execution recovery/audit implementation was covered by successful GitHub Actions run `33595826727`: backend dependency installation, official Upstox protobuf verification, non-integration tests, integration tests, and the Android `gradle assembleDebug` job all passed.
 
-The current idempotency-safety commits `a460713aa17c5e721a278b472bd16ac5c7da466f` and `b354ebc4ad538d3a98817c72f4496b08c06cb8a8` were committed directly to `main`; CI for those commits is expected from the push workflow and must be verified before their tests are recorded as passed.
+The idempotency-safety commits were also verified by successful GitHub Actions runs: `33597117321` for `a460713aa17c5e721a278b472bd16ac5c7da466f` (backend and Android), `33597128224` and `33597128231` for `b354ebc4ad538d3a98817c72f4496b08c06cb8a8` (backend and Android), and `33597156260` and `33597156289` for `85d98926787334ad77319598f3abd9c8c2a359e6` (backend and Android). The backend jobs completed dependency installation, official Upstox protobuf verification, non-integration pytest and integration pytest; Android jobs completed `gradle assembleDebug` using the pinned Gradle 8.10.2 CI setup.
 
 No local/Codespace test execution is claimed.
 
@@ -166,7 +166,7 @@ No local/Codespace test execution is claimed.
 - [x] Dhan supported token renewal boundary
 - [x] Token-to-session hydration boundary
 - [x] CI verification of authentication implementation at `33592488680`
-- [ ] CI verification of latest idempotency-safety commits
+- [x] CI verification of latest idempotency-safety commits
 - [ ] Live broker runtime verification
 
 ### Stage 9 — Controlled Live Trading
@@ -207,6 +207,8 @@ No Codespace/runtime session is exposed through the connected tools, so no local
 
 ## Recent commits on main
 
+- `73158d3` — docs: record verified idempotency CI evidence
+- `85d9892` — update controlled execution verification status
 - `b354ebc` — test ambiguous submission idempotency safety
 - `a460713` — block retries while broker submission is unresolved
 - `20c226d9` — update controlled execution verification status
@@ -215,12 +217,9 @@ No Codespace/runtime session is exposed through the connected tools, so no local
 - `b49177d` — add fail-closed controlled execution recovery
 - `3f5c32b` — test durable controlled execution audit sink
 - `b15e723` — export durable execution audit boundary
-- `469b165` — add controlled execution audit migration
-- `ca92a69` — add durable controlled execution audit repository
 
 ## Next execution
 
-1. Verify GitHub Actions for the latest idempotency-safety commits and record only completed passing jobs.
-2. Continue Stage 9 reconciliation/failure-semantic review for deterministic safety gaps that can be covered without live credentials.
-3. Keep Stage 1 official Gradle wrapper artifact and Stage 5/6/8 external-provider/runtime gaps explicitly unverified.
-4. Keep real live activation and autonomous trading disabled until all required evidence exists.
+1. Continue Stage 9 reconciliation/failure-semantic review for deterministic safety gaps that can be covered without live credentials.
+2. Keep Stage 1 official Gradle wrapper artifact and Stage 5/6/8 external-provider/runtime gaps explicitly unverified.
+3. Keep real live activation and autonomous trading disabled until all required evidence exists.
