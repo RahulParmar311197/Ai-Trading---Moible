@@ -35,6 +35,9 @@ class PaperBroker:
             raise ValueError(f"duplicate order id: {order.order_id}")
         if market_price <= 0:
             raise ValueError("market price must be positive")
+        projected_quantity = self._projected_position_quantity(order)
+        if self.max_position_quantity is not None and abs(projected_quantity) > self.max_position_quantity:
+            raise ValueError("order exceeds paper position limit")
         if self.max_order_notional is not None and market_price * order.quantity > self.max_order_notional:
             raise ValueError("order exceeds paper risk notional limit")
         if order.order_type is OrderType.LIMIT:
@@ -49,9 +52,6 @@ class PaperBroker:
 
         execution_price = market_price * (Decimal("1") + self.slippage if order.side is OrderSide.BUY else Decimal("1") - self.slippage)
         fee = execution_price * order.quantity * self.fee_rate
-        projected_quantity = self._projected_position_quantity(order)
-        if self.max_position_quantity is not None and abs(projected_quantity) > self.max_position_quantity:
-            raise ValueError("order exceeds paper position limit")
         fill = Fill(order_id=order.order_id, quantity=order.quantity, price=execution_price, fee=fee)
         self.orders[order.order_id] = order.model_copy(update={"status": OrderStatus.FILLED, "filled_quantity": order.quantity, "average_fill_price": execution_price})
         self.fills.append(fill)
