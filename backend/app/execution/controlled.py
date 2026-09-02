@@ -43,8 +43,10 @@ class ControlledBrokerExecution:
     """Explicitly activated broker execution with deterministic safety gates.
 
     Construction and startup are inert. Live submission requires an explicit
-    activation phrase, a successful authenticated broker session, and a clear
-    kill switch. Every mutation passes risk evaluation and idempotency.
+    activation phrase, a successful authenticated broker session, a clear kill
+    switch, and an explicitly supplied idempotency store. Requiring the store
+    at construction prevents a live executor from silently falling back to
+    process-local idempotency state that would disappear after a restart.
     """
 
     def __init__(
@@ -54,7 +56,7 @@ class ControlledBrokerExecution:
         *,
         confirmation_phrase: str,
         audit_sink: Callable[[ExecutionAuditEvent], None] | None = None,
-        idempotency_store: BrokerIdempotencyStore | None = None,
+        idempotency_store: BrokerIdempotencyStore,
     ) -> None:
         if not confirmation_phrase.strip():
             raise ValueError("confirmation phrase must be non-empty")
