@@ -30,7 +30,7 @@ def make_order(quantity: int = 10) -> BrokerOrder:
 @pytest.mark.asyncio
 async def test_duplicate_client_order_id_returns_original_result() -> None:
     broker = FakeBroker()
-    guarded = IdempotentBroker(broker)
+    guarded = IdempotentBroker(broker, BrokerIdempotencyStore())
     order = make_order()
 
     first = await guarded.place_order(order)
@@ -44,7 +44,7 @@ async def test_duplicate_client_order_id_returns_original_result() -> None:
 @pytest.mark.asyncio
 async def test_conflicting_reuse_is_rejected() -> None:
     broker = FakeBroker()
-    guarded = IdempotentBroker(broker)
+    guarded = IdempotentBroker(broker, BrokerIdempotencyStore())
     await guarded.place_order(make_order(10))
 
     with pytest.raises(IdempotencyConflict):
@@ -63,7 +63,7 @@ async def test_failed_submission_remains_reserved_until_reconciliation() -> None
             return order.model_copy(update={"status": BrokerOrderStatus.OPEN, "order_id": "broker-2"})
 
     broker = FailingOnceBroker()
-    guarded = IdempotentBroker(broker)
+    guarded = IdempotentBroker(broker, BrokerIdempotencyStore())
     order = make_order()
 
     with pytest.raises(TimeoutError):
@@ -81,6 +81,12 @@ async def test_failed_submission_remains_reserved_until_reconciliation() -> None
     result = await guarded.place_order(order)
     assert result.order_id == "broker-2"
     assert broker.calls == 2
+
+
+@pytest.mark.asyncio
+async def test_idempotent_broker_requires_explicit_store() -> None:
+    with pytest.raises(TypeError):
+        IdempotentBroker(FakeBroker())
 
 
 def test_fingerprint_is_deterministic_and_order_sensitive() -> None:
