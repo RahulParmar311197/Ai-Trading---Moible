@@ -33,3 +33,9 @@ class SQLAlchemyExecutor:
     def execute(self, query: str, params: Mapping[str, Any]) -> None:
         with self.engine.begin() as connection:
             connection.execute(text(query), dict(params))
+
+    def execute_returning(self, query: str, params: Mapping[str, Any]) -> Mapping[str, Any] | None:
+        """Execute a mutating statement and return one row before committing it."""
+        with self.engine.begin() as connection:
+            row = connection.execute(text(query), dict(params)).mappings().first()
+            return None if row is None else dict(row)
