@@ -44,6 +44,8 @@ class PaperBroker:
             raise ValueError(f"duplicate order id: {order.order_id}")
         if market_price <= 0:
             raise ValueError("market price must be positive")
+        if order.order_type is OrderType.LIMIT and order.limit_price is None:
+            raise ValueError("limit order requires limit_price")
         projected_quantity = self._projected_position_quantity(order)
         if self.max_position_quantity is not None and abs(projected_quantity) > self.max_position_quantity:
             raise ValueError("order exceeds paper position limit")
@@ -56,8 +58,6 @@ class PaperBroker:
         self._audit("ORDER_ACCEPTED", order.order_id, {"status": stored.status.value})
 
         if order.order_type is OrderType.LIMIT:
-            if order.limit_price is None:
-                raise ValueError("limit order requires limit_price")
             if order.side is OrderSide.BUY and market_price > order.limit_price:
                 return None
             if order.side is OrderSide.SELL and market_price < order.limit_price:
@@ -102,7 +102,7 @@ class PaperBroker:
         order = self.orders.get(order_id)
         if order is None:
             raise KeyError(order_id)
-        if order.status is not OrderStatus.NEW and order.status is not OrderStatus.PARTIALLY_FILLED:
+        if order.status not in (OrderStatus.NEW, OrderStatus.PARTIALLY_FILLED):
             raise ValueError("only open orders can be filled")
         remaining = order.quantity - order.filled_quantity
         if quantity > remaining:
