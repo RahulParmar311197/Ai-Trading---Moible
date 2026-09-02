@@ -112,8 +112,8 @@ Last updated: 2026-09-02
 
 ## Latest CI evidence
 
-- Run `33622735238` for implementation commit `d53910b663853246c6a0ec8155df9e0d1b33c900`: full CI completed successfully. Backend completed official Upstox protobuf verification plus both non-integration and PostgreSQL integration pytest jobs; Android `assembleDebug` completed successfully.
-- The same run verifies the corrected AI provider compatibility tests after the earlier genuine mocked-response fixture failure. No provider credentials were used.
+- Run `33623091606` for documentation commit `f929c6b60bde69dd42d7e5b7a7ce778f01c752fd`: full CI completed successfully. Backend completed official Upstox protobuf verification plus both non-integration and PostgreSQL integration pytest jobs; Android `assembleDebug` completed successfully using the pinned Gradle 8.10.2 setup.
+- Run `33622735238` for implementation commit `d53910b663853246c6a0ec8155df9e0d1b33c900`: full CI completed successfully and verifies the corrected AI provider compatibility tests after the earlier genuine mocked-response fixture failure. No provider credentials were used.
 - Earlier run `33620032069` also verified Android `assembleDebug` for the preceding execution implementation state.
 
 ## Runtime limitation
