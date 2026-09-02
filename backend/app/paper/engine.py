@@ -184,3 +184,81 @@ class PaperBroker:
 
     def clear_kill_switch(self) -> None:
         self.halted = False
+        self._persist_state()
+        self._audit("KILL_SWITCH_CLEARED", None, {})
+
+    def mark_to_market(self, symbol: str, price: Decimal) -> Position | None:
+        if not price.is_finite() or price <= 0:
+            raise ValueError("mark price must be finite and positive")
+        position = self.positions.get(symbol)
+        if position is None:
+            return None
+        marked = position.mark(price)
+        self._persist_position(marked)
+        return marked
+
+    def equity(self, marks: dict[str, Decimal] | None = None) -> Decimal:
+        total = self.balance
+        for symbol, position in self.positions.items():
+            if marks and symbol in marks:
+                if not marks[symbol].is_finite() or marks[symbol] <= 0:
+                    raise ValueError("equity mark price must be finite and positive")
+                total += position.quantity * marks[symbol]
+        return total
+
+    def _projected_position_quantity(self, order: Order) -> int:
+        current = self.positions.get(order.symbol)
+        existing = current.quantity if current else 0
+        signed = order.quantity if order.side is OrderSide.BUY else -order.quantity
+        return existing + signed
+
+    def _apply_fill(self, order: Order, fill: Fill) -> None:
+        signed = fill.quantity if order.side is OrderSide.BUY else -fill.quantity
+        current = self.positions.get(order.symbol)
+        if current is None:
+            self.positions[order.symbol] = Position(symbol=order.symbol, quantity=signed, average_price=fill.price)
+            self.balance -= fill.price * signed + fill.fee
+            return
+
+        old_qty = current.quantity
+        new_qty = old_qty + signed
+        if old_qty == 0 or (old_qty > 0 and signed > 0) or (old_qty < 0 and signed < 0):
+            total_cost = current.average_price * abs(old_qty) + fill.price * abs(signed)
+            current.average_price = total_cost / abs(new_qty)
+            current.quantity = new_qty
+        else:
+            closing_qty = min(abs(old_qty), abs(signed))
+            direction = Decimal("1") if old_qty > 0 else Decimal("-1")
+            pnl = (fill.price - current.average_price) * closing_qty * direction
+            current.realized_pnl += pnl - fill.fee
+            self.realized_pnl_total += pnl - fill.fee
+            current.quantity = new_qty
+            if new_qty != 0 and (old_qty > 0) != (new_qty > 0):
+                current.average_price = fill.price
+        self.balance -= fill.price * signed + fill.fee
+        if current.quantity == 0:
+            self.positions.pop(order.symbol, None)
+
+    def _persist_order(self, order: Order) -> None:
+        if self.repository is not None:
+            self.repository.save_order(order)
+
+    def _persist_fill(self, fill: Fill) -> None:
+        if self.repository is not None:
+            self.repository.save_fill(fill)
+
+    def _persist_position(self, position: Position) -> None:
+        if self.repository is not None:
+            self.repository.save_position(position)
+
+    def _delete_position(self, symbol: str) -> None:
+        if self.repository is not None:
+            self.repository.delete_position(symbol)
+
+    def _persist_state(self) -> None:
+        if self.repository is not None:
+            self.repository.save_state(self.balance, self.realized_pnl_total, self.halted)
+
+    def _audit(self, event_type: str, entity_id: str | None, payload: dict[str, Any]) -> None:
+        if self.repository is not None:
+            self.repository.append_audit(event_type, entity_id, payload)
