@@ -32,6 +32,7 @@ Last updated: 2026-09-02
 - `PostFillBrokerStateSynchronizer` is a concrete provider-neutral composition that refreshes broker state, binds derived risk state to the persisted session baseline, and requires an explicit risk-state sink. It never invents a session/trading-day boundary or derives P&L from the fill.
 - Provider-neutral AI HTTP compatibility is covered for generic and OpenAI-style response shapes, malformed responses, sanitized transport failures, and API-key-free operation.
 - Android has an advisory-only AI analysis client and UI; it does not contain broker credentials or order-execution paths.
+- Automated broker tests use deterministic synthetic client IDs; real Upstox/Dhan client IDs are reserved for intentional manual UI configuration and are never required by CI. See `docs/BROKER_TEST_IDENTITIES.md`.
 
 ## Stage status
 
@@ -115,6 +116,7 @@ Last updated: 2026-09-02
 - Run `33625211010` for status commit `23b9f479d5f776dd92cc2e73395221d23c0a71e6`: **full CI completed successfully**. GitHub reports both `backend-tests` and `android-build` completed successfully; backend executed official Upstox protobuf verification plus non-integration and PostgreSQL integration pytest jobs, and Android completed `assembleDebug` using pinned Gradle 8.10.2.
 - Run `33624319414` for implementation commit `ba78f6ff248d6f7e08cb47963997e868868be12f`: **full CI completed successfully**. Backend completed official Upstox protobuf verification plus non-integration and PostgreSQL integration pytest jobs; Android `assembleDebug` completed successfully.
 - Run `33623091606` for documentation commit `f929c6b60bde69dd42d7e5b7a7ce778f01c752fd`: full CI completed successfully.
+- The current documentation-only commits `b6c4a1c146ca11a8c729f7b3401c6ece803b02f4` and this status update require fresh GitHub Actions verification; no CI result is claimed until GitHub reports it.
 
 ## Runtime limitation
 
@@ -129,7 +131,7 @@ No local/Codespace runtime is exposed through the connected tools. No local test
 1. Official Gradle wrapper artifact (`gradle-wrapper.jar`) is still absent from the repository; CI installs Gradle 8.10.2 directly, so final Stage 1 wrapper verification remains blocked.
 2. The authoritative upstream trading-session boundary/lifecycle is not implemented. The application must supply session identity rather than silently deriving a market day.
 3. The concrete post-fill synchronizer is implemented and tested, but application/runtime wiring to a concrete durable live-state sink remains unverified.
-4. Production broker runtime and real live activation are unverified because no sandbox/test broker credentials are available through the connected tools.
+4. Production broker runtime and real live activation are unverified because no sandbox/test broker credentials are available through the connected tools. Synthetic test client IDs do not count as broker runtime credentials.
 5. Stage 5 real external AI-provider runtime verification remains unverified; provider contract compatibility and Android integration are now verified.
 6. Stage 6 live option-chain provider integration remains unverified.
 7. Stage 2 fresh full product-flow verification remains unverified.
