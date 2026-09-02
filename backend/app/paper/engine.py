@@ -73,7 +73,7 @@ class PaperBroker:
         fills: list[Fill] = []
         for order_id in sorted(self.orders):
             order = self.orders[order_id]
-            if order.symbol != symbol or order.status is not OrderStatus.NEW:
+            if order.symbol != symbol or order.status not in (OrderStatus.NEW, OrderStatus.PARTIALLY_FILLED):
                 continue
             if order.order_type is OrderType.LIMIT:
                 if order.limit_price is None:
