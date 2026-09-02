@@ -24,8 +24,9 @@ Last updated: 2026-09-02
 - Durable idempotency completion persists and verifies broker results; terminal reconciled `REJECTED`/`CANCELLED` reservations are explicitly cleared, while live/pending states remain reserved.
 - Recovery refreshes broker positions/orders, reconciles requested IDs, and rejects unexpected live broker orders outside the explicit expected local order set. It never auto-activates trading.
 - Before every controlled live submission, the execution boundary refreshes broker positions and requires the submitted `RiskSnapshot.position_quantity` to match the current broker position for the order symbol. Refresh failures, malformed position responses, or mismatches fail closed before broker mutation.
-- `RiskSnapshot` now rejects non-finite balance/P&L and invalid position quantities at construction time, keeping malformed risk state fail-closed before evaluation.
+- `RiskSnapshot` rejects non-finite balance/P&L and invalid position quantities at construction time, keeping malformed risk state fail-closed before evaluation.
 - `BrokerStateSynchronizer` provides a broker-refresh primitive that aggregates provider position P&L and requires an explicit daily realized-P&L baseline when deriving the next risk snapshot; no lifetime broker P&L is silently treated as today's P&L.
+- `PostgresRiskSessionBaselineStore` now provides durable, idempotent persistence for an explicitly supplied risk-session baseline. Conflicting reinitialization is rejected and missing sessions fail closed; the store intentionally does not invent market/trading-day boundaries.
 
 ## Stage status
 
@@ -86,9 +87,10 @@ Last updated: 2026-09-02
 - [x] Regression test for stale/mismatched position snapshot
 - [x] Broker-state synchronization primitive with explicit daily-P&L baseline
 - [x] Fail-closed validation for non-finite risk snapshot inputs
+- [x] Durable risk-session baseline persistence primitive with conflict/missing-session safeguards
+- [x] CI verification of the latest risk-session baseline implementation
 - [x] CI verification of the latest risk-snapshot validation/test hardening
-- [x] CI verification of the latest status documentation commit
-- [ ] Authoritative daily-P&L baseline persistence/lifecycle
+- [ ] Authoritative trading-session boundary/lifecycle integration
 - [ ] Post-fill broker-state propagation into the live execution lifecycle
 - [ ] Production broker runtime verification
 - [ ] Real live activation
@@ -102,11 +104,10 @@ Last updated: 2026-09-02
 
 ## Latest CI evidence
 
-- Run `33617703355` for status commit `8b92233209548d5121f80b4d1851a27de300a100`: **backend and Android jobs both completed successfully**; backend completed dependency installation, official Upstox protobuf verification, the non-integration suite and 4 PostgreSQL integration tests; Android completed `assembleDebug` using the pinned Gradle 8.10.2.
-- Run `33617703352`: Android-only workflow for the same status update completed `assembleDebug` successfully.
-- Run `33617134105` for commit `919253298d47ff2708bfb0c540292bff7c80c0cb`: **242 non-integration passed, 4 deselected, 1 warning; 4 PostgreSQL integration tests passed, 242 deselected, 1 warning; Android `assembleDebug` passed**. This verifies the corrected non-finite P&L regression together with the accumulated Stage 9 hardening.
-- Android-only run `33617134090` for the same implementation commit completed successfully with `assembleDebug`.
-- Run `33617011571` for predecessor commit `c49a16791817542b5f2ea4c19e8090c558616b1a` is retained as a genuine failed verification: the newly hardened `RiskSnapshot` rejected a non-finite P&L before the old test could exercise the gate. The test was corrected rather than weakening validation.
+- Run `33618698177` for commit `ef60eb80518ec8b858fa1b94a756930458bd8043`: **backend and Android jobs both completed successfully**. Backend ran on Python 3.12.14/PostgreSQL 16, verified the official Upstox protobuf package, completed **247 non-integration tests passed, 4 deselected, 1 warning**, and **4 PostgreSQL integration tests passed, 247 deselected, 1 warning**. Android completed `assembleDebug` using the pinned Gradle 8.10.2.
+- Run `33617703355` for status commit `8b92233209548d5121f80b4d1851a27de300a100`: backend and Android jobs both completed successfully.
+- Run `33617134105` for commit `919253298d47ff2708bfb0c540292bff7c80c0cb`: **242 non-integration passed, 4 deselected, 1 warning; 4 PostgreSQL integration tests passed, 242 deselected, 1 warning; Android `assembleDebug` passed**.
+- Run `33617011571` for predecessor commit `c49a16791817542b5f2ea4c19e8090c558616b1a` remains a genuine failed verification and is retained in the CI log.
 
 ## Runtime limitation
 
@@ -119,8 +120,8 @@ No local/Codespace runtime is exposed through the connected tools. No local test
 ## Remaining blockers / unverified items
 
 1. Official Gradle wrapper artifact (`gradle-wrapper.jar`) is still absent; CI installs Gradle 8.10.2 directly, so final Stage 1 wrapper verification remains blocked.
-2. Authoritative daily-P&L baseline persistence/lifecycle is not yet defined by the current runtime architecture; the synchronization helper therefore requires an explicit baseline and does not invent a trading-day boundary.
-3. Post-fill broker-state propagation is not yet wired into `ControlledBrokerExecution`; the existing synchronizer is deliberately a standalone fail-closed primitive until the lifecycle contract is authoritative.
+2. The durable risk-session baseline primitive is implemented and CI-verified, but the runtime architecture still lacks an authoritative upstream trading-session boundary/lifecycle. The application must supply the session identity rather than silently deriving a market day.
+3. Post-fill broker-state propagation is not yet wired into `ControlledBrokerExecution`; no unsafe inferred account/P&L lifecycle has been introduced.
 4. Production broker runtime and real live activation are unverified because no sandbox/test broker credentials are available through the connected tools.
 5. Stage 5 external AI-provider compatibility and Android AI integration remain unverified.
 6. Stage 6 live option-chain provider integration remains unverified.
