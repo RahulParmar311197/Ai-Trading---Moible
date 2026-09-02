@@ -31,6 +31,14 @@ class RiskSnapshot:
     halted: bool
     position_quantity: int = 0
 
+    def __post_init__(self) -> None:
+        if not self.balance.is_finite():
+            raise ValueError("balance must be finite")
+        if not self.realized_pnl.is_finite():
+            raise ValueError("realized pnl must be finite")
+        if not isinstance(self.position_quantity, int):
+            raise ValueError("position quantity must be an integer")
+
 
 @dataclass(frozen=True)
 class ExecutionDecision:
