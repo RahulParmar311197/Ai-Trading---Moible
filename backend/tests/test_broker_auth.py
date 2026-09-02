@@ -4,6 +4,7 @@ import httpx
 import pytest
 
 from app.brokers.auth import BrokerAuthError, DhanOAuth, UpstoxOAuth
+from app.brokers.session import BrokerSessionState
 
 
 def transport_for(handler):
@@ -32,6 +33,9 @@ async def test_upstox_authorization_code_exchange_uses_documented_form_fields_wi
     assert "client_secret=client-secret" in captured["body"]
     assert token.expires_at is not None
     assert token.expires_at.tzinfo is timezone.utc
+    session = token.session("upstox", "account")
+    assert session.state is BrokerSessionState.AUTHENTICATED
+    assert session.authentication().authenticated is True
 
 
 @pytest.mark.asyncio
@@ -52,6 +56,7 @@ async def test_dhan_consent_and_consume_return_expiring_token() -> None:
     assert token.access_token == "secret-token"
     assert token.expires_at is not None
     assert token.expires_at.hour == 12
+    assert token.session("dhan", "client").state is BrokerSessionState.AUTHENTICATED
 
 
 @pytest.mark.asyncio
