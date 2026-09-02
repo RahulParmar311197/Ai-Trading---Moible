@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from .base import BrokerOrder
-from .idempotency import BrokerIdempotencyStore, IdempotencyConflict
+from .idempotency import BrokerIdempotencyStore, IdempotencyConflict, IdempotencyPending
 
 
 class DurableBrokerIdempotencyStore:
@@ -19,16 +19,21 @@ class DurableBrokerIdempotencyStore:
         return BrokerIdempotencyStore.fingerprint(order)
 
     def begin(self, order: BrokerOrder) -> BrokerOrder | None:
+        """Atomically claim a new key; never let two callers submit it."""
         key = order.client_order_id
         fingerprint = self.fingerprint(order)
-        self.db.execute(
+        inserted = self.db.execute_returning(
             """
             INSERT INTO broker_idempotency_keys (client_order_id, fingerprint, result, updated_at)
             VALUES (:client_order_id, :fingerprint, NULL, :updated_at)
             ON CONFLICT (client_order_id) DO NOTHING
+            RETURNING client_order_id
             """,
             {"client_order_id": key, "fingerprint": fingerprint, "updated_at": datetime.now(timezone.utc)},
         )
+        if inserted is not None:
+            return None
+
         row = self.db.fetch_one(
             "SELECT fingerprint, result FROM broker_idempotency_keys WHERE client_order_id = :client_order_id",
             {"client_order_id": key},
@@ -38,7 +43,7 @@ class DurableBrokerIdempotencyStore:
         if row["fingerprint"] != fingerprint:
             raise IdempotencyConflict(f"client_order_id already used for a different order: {key}")
         if row["result"] is None:
-            return None
+            raise IdempotencyPending(f"client_order_id has an unresolved broker submission: {key}")
         return BrokerOrder.model_validate(row["result"])
 
     def complete(self, order: BrokerOrder, result: BrokerOrder) -> BrokerOrder:
