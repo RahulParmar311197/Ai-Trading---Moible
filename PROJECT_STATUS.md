@@ -17,7 +17,8 @@ Last updated: 2026-09-02
 - AI has a provider-neutral HTTP/service boundary and `/api/v1/ai/analyze`, `/api/v1/ai/strategy`, `/api/v1/ai/explain-trade` endpoints. AI remains advisory and cannot authorize execution.
 - Options have provider-neutral contracts, deterministic Black-Scholes Greeks, liquidity/spread filtering, deterministic delta-based strike selection, multi-leg expiry payoff, risk metrics, deterministic strategy selection, a provider-neutral option-chain boundary, and options analytics APIs.
 - Paper trading has deterministic in-memory order/fill/position execution, configurable fees/slippage, limit-order behavior, duplicate-order protection, P&L accounting, configurable order-notional and position limits, a kill switch, and a paper-only API.
-- Paper trading now has a durable repository/schema boundary for orders, fills, positions, and audit events, plus deterministic partial-fill simulation with cumulative filled quantity, weighted average fill price, residual cancellation, and stable market processing order. Replay-to-paper and full risk/audit integration remain unfinished.
+- Paper trading now has durable order/fill/position/audit persistence, deterministic partial-fill simulation, and a restart-hydration boundary backed by the existing SQLAlchemy executor's `fetch_one`/`fetch_all` read methods. Account balance, cumulative realized P&L, and halt state are persisted separately so restoration does not replay orders or contact live brokers.
+- Replay-to-paper and full deterministic risk/audit integration remain unfinished.
 - Stage 8 has a provider-neutral account/order/position/broker protocol with non-secret authentication context and deterministic order reconciliation.
 - Provider-neutral idempotency enforcement is implemented as an opt-in decorator/store: repeated successful submissions with the same client order ID return the original result, conflicting reuse is rejected, and failed submissions release the reservation for safe retry.
 - Official Upstox and Dhan API contracts were reviewed before adding adapters. The adapters map provider account/position/order responses into the common broker models and keep live mutation disabled by default.
@@ -30,7 +31,7 @@ Last updated: 2026-09-02
 
 For commit `33589103436` (CI run), GitHub Actions executed the backend test suite with the current partial-fill implementation and reported **159 passed, 1 failed, 1 deselected**. The failure was `test_process_market_fills_resting_limit_orders_in_stable_order`: after an initial capped fill, `process_market()` did not revisit `PARTIALLY_FILLED` orders. This was a real implementation defect and was fixed in commit `32260bc`.
 
-The Android job for that run was still in progress when the backend failure was observed; no Android result is claimed for that run.
+A new GitHub Actions run was triggered by the restart-hydration test commit `c2181f538c690fe2906aca1060b22e7536480f81`; at the time of this update its Android CI run was still **queued**, so no new pass/fail result is claimed.
 
 No local/Codespace test execution is claimed.
 
@@ -134,9 +135,10 @@ No local/Codespace test execution is claimed.
 - [x] Paper API boundary
 - [x] Durable order/fill/position/audit repository boundary
 - [x] Deterministic partial-fill simulation
+- [x] Repository restart hydration and persisted account state
 - [ ] Full deterministic risk-engine integration
 - [ ] Replay-to-paper integration
-- [ ] Full paper-trading verification after latest partial-fill fix
+- [ ] Full paper-trading verification after latest changes
 
 ### Stage 8 — Brokers
 
@@ -185,22 +187,21 @@ No Codespace/runtime session is exposed through the connected tools, so no local
 
 ## Recent commits on main
 
+- `784a8d1` — allow persisted paper balance to reflect existing risk semantics
+- `c2181f5` — test paper broker restart hydration
+- `b854751` — add deterministic paper broker restart hydration
+- `a3d6cba` — persist paper account state for restart recovery
+- `58f946c` — add durable paper state hydration boundary
 - `32260bc` — fix paper market processing for partial orders
 - `2b8788e` — test deterministic paper partial fills
 - `ec831aa` — keep invalid paper limits out of order book
 - `4562c1a` — add deterministic paper partial fills
 - `c0f1ad8` — export durable paper repository boundary
-- `43ec0cf` — add paper persistence tests
-- `c350fb5` — connect paper engine to durable audit repository
-- `c6487bc` — add durable paper repository
-- `bba0854` — add durable paper schema
-- `b684c0a` — export broker session lifecycle contract
 
 ## Next execution
 
-1. Verify the new `32260bc` partial-fill fix in GitHub Actions and fix only observed failures.
-2. Add repository hydration/restart recovery for durable paper state using existing database boundaries.
-3. Integrate replay-to-paper after persistence and partial-fill semantics are verified.
-4. Add controlled risk/execution integration only after deterministic risk boundaries are verified.
-5. Complete real broker OAuth/refresh integration without exposing or storing secrets in source.
-6. Re-run CI verification after each stable milestone.
+1. Verify the new paper persistence/hydration changes in GitHub Actions and fix only observed failures.
+2. Integrate replay-to-paper after persistence and partial-fill semantics are verified.
+3. Add controlled risk/execution integration only after deterministic risk boundaries are verified.
+4. Complete real broker OAuth/refresh integration without exposing or storing secrets in source.
+5. Re-run CI verification after each stable milestone.
