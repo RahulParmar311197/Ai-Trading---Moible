@@ -41,8 +41,10 @@ def _segment(value: str) -> ExchangeSegment:
         "NSE_FO": ExchangeSegment.NSE_FNO,
         "BSE_FO": ExchangeSegment.BSE_FNO,
     }
+    if normalized in aliases:
+        return aliases[normalized]
     try:
-        return aliases.get(normalized, ExchangeSegment(normalized))
+        return ExchangeSegment(normalized)
     except ValueError as exc:
         raise InstrumentCatalogueError(f"unsupported exchange segment: {value}") from exc
 
