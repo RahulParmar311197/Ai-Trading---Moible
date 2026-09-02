@@ -6,6 +6,15 @@ plugins {
 
 android { namespace = "com.aitrading.app"; compileSdk = 35
     defaultConfig { applicationId = "com.aitrading.app"; minSdk = 26; targetSdk = 35; versionCode = 1; versionName = "0.1.0" }
+    buildFeatures { buildConfig = true }
+    buildTypes {
+        getByName("debug") {
+            buildConfigField("String", "AI_API_BASE_URL", "\"\"")
+        }
+        getByName("release") {
+            buildConfigField("String", "AI_API_BASE_URL", "\"\"")
+        }
+    }
 }
 
 kotlin { jvmToolchain(17) }
