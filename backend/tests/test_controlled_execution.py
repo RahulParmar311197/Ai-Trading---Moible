@@ -10,6 +10,7 @@ from app.brokers.base import (
     BrokerReconciliation,
     BrokerSide,
 )
+from app.brokers.idempotency import BrokerIdempotencyStore
 from app.execution import ControlledBrokerExecution, ControlledExecutionError, DeterministicExecutionGate, RiskLimits, RiskSnapshot
 
 
@@ -102,6 +103,7 @@ def execution(broker: FakeBroker, **kwargs) -> ControlledBrokerExecution:
         broker,
         DeterministicExecutionGate(RiskLimits(max_order_notional=Decimal("1000"), max_position_quantity=10)),
         confirmation_phrase="CONFIRM-LIVE",
+        idempotency_store=BrokerIdempotencyStore(),
         **kwargs,
     )
 
