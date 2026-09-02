@@ -3,36 +3,22 @@ from decimal import Decimal
 import pytest
 
 from app.brokers.base import Account, BrokerPosition
+from app.execution.risk_session import RiskSessionBaseline, RiskSessionBaselineMissing
 from app.execution.state_sync import (
     BrokerRiskState,
     BrokerStateSynchronizer,
     StateSynchronizationError,
     risk_snapshot_from_broker_state,
+    risk_snapshot_from_persisted_session,
 )
 
 
 @pytest.mark.asyncio
 async def test_refresh_returns_fresh_positions_and_aggregated_pnl() -> None:
-    account = Account(
-        account_id="paper",
-        balance=Decimal("100000"),
-        available_margin=Decimal("80000"),
-    )
+    account = Account(account_id="paper", balance=Decimal("100000"), available_margin=Decimal("80000"))
     positions = (
-        BrokerPosition(
-            symbol="NIFTY",
-            quantity=10,
-            average_price=Decimal("100"),
-            realized_pnl=Decimal("25"),
-            unrealized_pnl=Decimal("-5"),
-        ),
-        BrokerPosition(
-            symbol="BANKNIFTY",
-            quantity=-2,
-            average_price=Decimal("200"),
-            realized_pnl=Decimal("10"),
-            unrealized_pnl=Decimal("7"),
-        ),
+        BrokerPosition(symbol="NIFTY", quantity=10, average_price=Decimal("100"), realized_pnl=Decimal("25"), unrealized_pnl=Decimal("-5")),
+        BrokerPosition(symbol="BANKNIFTY", quantity=-2, average_price=Decimal("200"), realized_pnl=Decimal("10"), unrealized_pnl=Decimal("7")),
     )
 
     async def get_account() -> Account:
@@ -50,30 +36,15 @@ async def test_refresh_returns_fresh_positions_and_aggregated_pnl() -> None:
 
 
 def test_risk_snapshot_uses_explicit_daily_realized_pnl_baseline() -> None:
-    account = Account(
-        account_id="paper",
-        balance=Decimal("100000"),
-        available_margin=Decimal("80000"),
-    )
+    account = Account(account_id="paper", balance=Decimal("100000"), available_margin=Decimal("80000"))
     state = BrokerRiskState(
         account=account,
-        positions=(
-            BrokerPosition(
-                symbol="NIFTY",
-                quantity=7,
-                average_price=Decimal("100"),
-                realized_pnl=Decimal("25"),
-            ),
-        ),
+        positions=(BrokerPosition(symbol="NIFTY", quantity=7, average_price=Decimal("100"), realized_pnl=Decimal("25")),),
         realized_pnl=Decimal("25"),
         unrealized_pnl=Decimal("-3"),
     )
 
-    snapshot = risk_snapshot_from_broker_state(
-        state,
-        symbol="NIFTY",
-        daily_realized_pnl_baseline=Decimal("40"),
-    )
+    snapshot = risk_snapshot_from_broker_state(state, symbol="NIFTY", daily_realized_pnl_baseline=Decimal("40"))
 
     assert snapshot.balance == Decimal("100000")
     assert snapshot.position_quantity == 7
@@ -81,25 +52,44 @@ def test_risk_snapshot_uses_explicit_daily_realized_pnl_baseline() -> None:
     assert not snapshot.halted
 
 
-def test_risk_snapshot_rejects_non_finite_daily_baseline() -> None:
-    account = Account(
-        account_id="paper",
-        balance=Decimal("100000"),
-        available_margin=Decimal("80000"),
-    )
+def test_risk_snapshot_from_persisted_session_uses_stored_baseline() -> None:
+    account = Account(account_id="paper", balance=Decimal("100000"), available_margin=Decimal("80000"))
     state = BrokerRiskState(
         account=account,
-        positions=(),
-        realized_pnl=Decimal("0"),
+        positions=(BrokerPosition(symbol="NIFTY", quantity=7, average_price=Decimal("100"), realized_pnl=Decimal("25")),),
+        realized_pnl=Decimal("125"),
         unrealized_pnl=Decimal("0"),
     )
 
+    class Store:
+        def get(self, session_id: str) -> RiskSessionBaseline:
+            assert session_id == "session-1"
+            return RiskSessionBaseline(session_id, Decimal("100"))
+
+    snapshot = risk_snapshot_from_persisted_session(state, baseline_store=Store(), session_id="session-1", symbol="NIFTY")
+
+    assert snapshot.realized_pnl == Decimal("25")
+    assert snapshot.position_quantity == 7
+
+
+def test_risk_snapshot_from_persisted_session_fails_closed_when_missing() -> None:
+    account = Account(account_id="paper", balance=Decimal("100000"), available_margin=Decimal("80000"))
+    state = BrokerRiskState(account=account, positions=(), realized_pnl=Decimal("0"), unrealized_pnl=Decimal("0"))
+
+    class Store:
+        def get(self, session_id: str) -> RiskSessionBaseline:
+            raise RiskSessionBaselineMissing("risk session baseline is not initialized")
+
+    with pytest.raises(StateSynchronizationError, match="RiskSessionBaselineMissing"):
+        risk_snapshot_from_persisted_session(state, baseline_store=Store(), session_id="missing", symbol="NIFTY")
+
+
+def test_risk_snapshot_rejects_non_finite_daily_baseline() -> None:
+    account = Account(account_id="paper", balance=Decimal("100000"), available_margin=Decimal("80000"))
+    state = BrokerRiskState(account=account, positions=(), realized_pnl=Decimal("0"), unrealized_pnl=Decimal("0"))
+
     with pytest.raises(StateSynchronizationError, match="baseline"):
-        risk_snapshot_from_broker_state(
-            state,
-            symbol="NIFTY",
-            daily_realized_pnl_baseline=Decimal("NaN"),
-        )
+        risk_snapshot_from_broker_state(state, symbol="NIFTY", daily_realized_pnl_baseline=Decimal("NaN"))
 
 
 @pytest.mark.asyncio
@@ -117,11 +107,7 @@ async def test_refresh_fails_closed_on_broker_exception() -> None:
 @pytest.mark.asyncio
 async def test_refresh_rejects_malformed_position_response() -> None:
     async def get_account() -> Account:
-        return Account(
-            account_id="paper",
-            balance=Decimal("100000"),
-            available_margin=Decimal("80000"),
-        )
+        return Account(account_id="paper", balance=Decimal("100000"), available_margin=Decimal("80000"))
 
     async def get_positions() -> tuple[BrokerPosition, ...]:
         return ("not-a-position",)  # type: ignore[return-value]
