@@ -87,6 +87,7 @@ Last updated: 2026-09-02
 - [x] Broker-state synchronization primitive with explicit daily-P&L baseline
 - [x] Fail-closed validation for non-finite risk snapshot inputs
 - [x] CI verification of the latest risk-snapshot validation/test hardening
+- [x] CI verification of the latest status documentation commit
 - [ ] Authoritative daily-P&L baseline persistence/lifecycle
 - [ ] Post-fill broker-state propagation into the live execution lifecycle
 - [ ] Production broker runtime verification
@@ -101,8 +102,10 @@ Last updated: 2026-09-02
 
 ## Latest CI evidence
 
+- Run `33617703355` for status commit `8b92233209548d5121f80b4d1851a27de300a100`: **backend and Android jobs both completed successfully**; backend completed dependency installation, official Upstox protobuf verification, the non-integration suite and 4 PostgreSQL integration tests; Android completed `assembleDebug` using the pinned Gradle 8.10.2.
+- Run `33617703352`: Android-only workflow for the same status update completed `assembleDebug` successfully.
 - Run `33617134105` for commit `919253298d47ff2708bfb0c540292bff7c80c0cb`: **242 non-integration passed, 4 deselected, 1 warning; 4 PostgreSQL integration tests passed, 242 deselected, 1 warning; Android `assembleDebug` passed**. This verifies the corrected non-finite P&L regression together with the accumulated Stage 9 hardening.
-- Android-only run `33617134090` for the same commit completed successfully with `assembleDebug`.
+- Android-only run `33617134090` for the same implementation commit completed successfully with `assembleDebug`.
 - Run `33617011571` for predecessor commit `c49a16791817542b5f2ea4c19e8090c558616b1a` is retained as a genuine failed verification: the newly hardened `RiskSnapshot` rejected a non-finite P&L before the old test could exercise the gate. The test was corrected rather than weakening validation.
 
 ## Runtime limitation
