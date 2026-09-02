@@ -221,7 +221,7 @@ async def test_startup_failure_is_audited_without_exposing_provider_error() -> N
 
 
 @pytest.mark.asyncio
-async def test_broker_submission_failure_is_audited_without_leaking_exception_details() -> None:
+async def test_broker_submission_failure_fails_closed_and_is_audited_without_leaking_exception_details() -> None:
     events = []
     broker = SubmissionFailBroker()
     guarded = execution(broker, audit_sink=events.append)
@@ -231,8 +231,14 @@ async def test_broker_submission_failure_is_audited_without_leaking_exception_de
         await guarded.submit(make_order(), market_price=Decimal("100"), snapshot=snapshot())
     assert broker.calls == 1
     assert [event.event_type for event in events[-2:]] == ["BROKER_SUBMISSION_ATTEMPTED", "BROKER_SUBMISSION_FAILED"]
-    assert events[-1].reason == "broker submission failed: TimeoutError"
+    assert events[-1].reason == "broker submission failed: TimeoutError; execution fail-closed pending reconciliation"
     assert "sensitive provider timeout detail" not in events[-1].reason
+    assert not guarded.started
+    assert not guarded.active
+    assert guarded.kill_switch_active
+    with pytest.raises(ControlledExecutionError, match="startup"):
+        await guarded.submit(make_order(6), market_price=Decimal("100"), snapshot=snapshot())
+    assert broker.calls == 1
 
 
 @pytest.mark.asyncio
