@@ -2,7 +2,14 @@ from decimal import Decimal
 
 import pytest
 
-from app.brokers.base import BrokerAuthentication, BrokerOrder, BrokerOrderStatus, BrokerOrderType, BrokerSide
+from app.brokers.base import (
+    BrokerAuthentication,
+    BrokerOrder,
+    BrokerOrderStatus,
+    BrokerOrderType,
+    BrokerReconciliation,
+    BrokerSide,
+)
 from app.execution import ControlledBrokerExecution, ControlledExecutionError, DeterministicExecutionGate, RiskLimits, RiskSnapshot
 
 
@@ -40,6 +47,37 @@ class ReauthenticationFailBroker(FakeBroker):
         if self.auth_calls == 1:
             return BrokerAuthentication(provider="fake", account_id="account-1", authenticated=True)
         raise ConnectionError("re-authentication unavailable")
+
+
+class RecoveryBroker(FakeBroker):
+    def __init__(self, *, matched: bool = True, recovery_auth: bool = True) -> None:
+        super().__init__()
+        self.matched = matched
+        self.recovery_auth = recovery_auth
+        self.positions_calls = 0
+        self.orders_calls = 0
+        self.reconcile_calls: list[str] = []
+
+    async def authenticate(self) -> BrokerAuthentication:
+        return BrokerAuthentication(provider="fake", account_id="account-1", authenticated=self.recovery_auth)
+
+    async def get_positions(self) -> tuple[()]:
+        self.positions_calls += 1
+        return ()
+
+    async def get_orders(self) -> tuple[BrokerOrder, ...]:
+        self.orders_calls += 1
+        return ()
+
+    async def reconcile_order(self, client_order_id: str) -> BrokerReconciliation:
+        self.reconcile_calls.append(client_order_id)
+        return BrokerReconciliation(
+            client_order_id=client_order_id,
+            local_status=BrokerOrderStatus.NEW,
+            broker_status=BrokerOrderStatus.OPEN if self.matched else BrokerOrderStatus.REJECTED,
+            matched=self.matched,
+            reason=None if self.matched else "broker/local status mismatch",
+        )
 
 
 def make_order(quantity: int = 5) -> BrokerOrder:
@@ -213,3 +251,65 @@ async def test_failed_reauthentication_disables_previously_active_execution() ->
     assert events[-1].event_type == "STARTUP_REJECTED"
     with pytest.raises(ControlledExecutionError, match="startup"):
         await guarded.submit(make_order(), market_price=Decimal("100"), snapshot=snapshot())
+
+
+@pytest.mark.asyncio
+async def test_recovery_refreshes_state_and_requires_explicit_reactivation() -> None:
+    broker = RecoveryBroker()
+    events = []
+    guarded = execution(broker, audit_sink=events.append)
+    await guarded.startup()
+    guarded.activate("CONFIRM-LIVE")
+    assert guarded.active
+
+    reconciliations = await guarded.recover(("client-1",))
+
+    assert len(reconciliations) == 1
+    assert reconciliations[0].matched
+    assert broker.positions_calls == 1
+    assert broker.orders_calls == 1
+    assert broker.reconcile_calls == ["client-1"]
+    assert guarded.started
+    assert not guarded.active
+    assert guarded.kill_switch_active
+    assert events[-1].event_type == "RECOVERY_HEALTHY"
+    with pytest.raises(ControlledExecutionError, match="not activated"):
+        await guarded.submit(make_order(), market_price=Decimal("100"), snapshot=snapshot())
+
+    guarded.activate("CONFIRM-LIVE")
+    assert guarded.active
+
+
+@pytest.mark.asyncio
+async def test_recovery_mismatch_stays_fail_closed_and_does_not_resume() -> None:
+    broker = RecoveryBroker(matched=False)
+    events = []
+    guarded = execution(broker, audit_sink=events.append)
+
+    with pytest.raises(ControlledExecutionError, match="reconciliation mismatch"):
+        await guarded.recover(("client-1",))
+
+    assert broker.positions_calls == 1
+    assert broker.orders_calls == 1
+    assert broker.reconcile_calls == ["client-1"]
+    assert not guarded.started
+    assert not guarded.active
+    assert guarded.kill_switch_active
+    assert events[-1].event_type == "RECONCILIATION_REQUIRED"
+
+    with pytest.raises(ControlledExecutionError, match="startup"):
+        await guarded.submit(make_order(), market_price=Decimal("100"), snapshot=snapshot())
+
+
+@pytest.mark.asyncio
+async def test_recovery_requires_provider_reconciliation_boundary() -> None:
+    events = []
+    guarded = execution(FakeBroker(), audit_sink=events.append)
+
+    with pytest.raises(ControlledExecutionError, match="reconciliation boundary"):
+        await guarded.recover()
+
+    assert not guarded.started
+    assert not guarded.active
+    assert guarded.kill_switch_active
+    assert events[-1].event_type == "RECOVERY_REJECTED"
