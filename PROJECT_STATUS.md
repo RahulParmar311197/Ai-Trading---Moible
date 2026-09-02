@@ -26,7 +26,8 @@ Last updated: 2026-09-02
 - Before every controlled live submission, the execution boundary refreshes broker positions and requires the submitted `RiskSnapshot.position_quantity` to match the current broker position for the order symbol. Refresh failures, malformed position responses, or mismatches fail closed before broker mutation.
 - `RiskSnapshot` rejects non-finite balance/P&L and invalid position quantities at construction time, keeping malformed risk state fail-closed before evaluation.
 - `BrokerStateSynchronizer` provides a broker-refresh primitive that aggregates provider position P&L and requires an explicit daily realized-P&L baseline when deriving the next risk snapshot; no lifetime broker P&L is silently treated as today's P&L.
-- `PostgresRiskSessionBaselineStore` now provides durable, idempotent persistence for an explicitly supplied risk-session baseline. Conflicting reinitialization is rejected and missing sessions fail closed; the store intentionally does not invent market/trading-day boundaries.
+- `PostgresRiskSessionBaselineStore` provides durable, idempotent persistence for an explicitly supplied risk-session baseline. Conflicting reinitialization is rejected and missing sessions fail closed; the store intentionally does not invent market/trading-day boundaries.
+- `risk_snapshot_from_persisted_session` binds fresh broker state to the persisted baseline for an explicitly supplied session ID, so callers cannot silently substitute a wall-clock baseline or broker lifetime P&L.
 
 ## Stage status
 
@@ -88,8 +89,8 @@ Last updated: 2026-09-02
 - [x] Broker-state synchronization primitive with explicit daily-P&L baseline
 - [x] Fail-closed validation for non-finite risk snapshot inputs
 - [x] Durable risk-session baseline persistence primitive with conflict/missing-session safeguards
-- [x] CI verification of the latest risk-session baseline implementation
-- [x] CI verification of the latest risk-snapshot validation/test hardening
+- [x] Persisted-session risk snapshot binding
+- [x] CI verification of the risk-session baseline and persisted-session risk snapshot implementation
 - [ ] Authoritative trading-session boundary/lifecycle integration
 - [ ] Post-fill broker-state propagation into the live execution lifecycle
 - [ ] Production broker runtime verification
@@ -104,7 +105,8 @@ Last updated: 2026-09-02
 
 ## Latest CI evidence
 
-- Run `33618698177` for commit `ef60eb80518ec8b858fa1b94a756930458bd8043`: **backend and Android jobs both completed successfully**. Backend ran on Python 3.12.14/PostgreSQL 16, verified the official Upstox protobuf package, completed **247 non-integration tests passed, 4 deselected, 1 warning**, and **4 PostgreSQL integration tests passed, 247 deselected, 1 warning**. Android completed `assembleDebug` using the pinned Gradle 8.10.2.
+- Run `33619172631` for commit `021b82532e3e6efa276268425af7080f94f9bb2a`: backend job completed successfully with **249 non-integration tests passed, 5 deselected, 1 warning** and **5 PostgreSQL integration tests passed, 249 deselected, 1 warning**. Android was still running `assembleDebug` at the time of this status update and is therefore not claimed here as passed.
+- Run `33618698177` for commit `ef60eb80518ec8b858fa1b94a756930458bd8043`: backend and Android jobs both completed successfully; backend recorded **247 non-integration passed** and **4 PostgreSQL integration tests passed**.
 - Run `33617703355` for status commit `8b92233209548d5121f80b4d1851a27de300a100`: backend and Android jobs both completed successfully.
 - Run `33617134105` for commit `919253298d47ff2708bfb0c540292bff7c80c0cb`: **242 non-integration passed, 4 deselected, 1 warning; 4 PostgreSQL integration tests passed, 242 deselected, 1 warning; Android `assembleDebug` passed**.
 - Run `33617011571` for predecessor commit `c49a16791817542b5f2ea4c19e8090c558616b1a` remains a genuine failed verification and is retained in the CI log.
@@ -120,7 +122,7 @@ No local/Codespace runtime is exposed through the connected tools. No local test
 ## Remaining blockers / unverified items
 
 1. Official Gradle wrapper artifact (`gradle-wrapper.jar`) is still absent; CI installs Gradle 8.10.2 directly, so final Stage 1 wrapper verification remains blocked.
-2. The durable risk-session baseline primitive is implemented and CI-verified, but the runtime architecture still lacks an authoritative upstream trading-session boundary/lifecycle. The application must supply the session identity rather than silently deriving a market day.
+2. The durable risk-session baseline primitive and persisted-session risk-snapshot binding are implemented and CI-verified, but the runtime architecture still lacks an authoritative upstream trading-session boundary/lifecycle. The application must supply the session identity rather than silently deriving a market day.
 3. Post-fill broker-state propagation is not yet wired into `ControlledBrokerExecution`; no unsafe inferred account/P&L lifecycle has been introduced.
 4. Production broker runtime and real live activation are unverified because no sandbox/test broker credentials are available through the connected tools.
 5. Stage 5 external AI-provider compatibility and Android AI integration remain unverified.
