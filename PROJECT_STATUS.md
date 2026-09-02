@@ -16,7 +16,8 @@ Last updated: 2026-09-02
 - Structured market context is built from visible candles plus deterministic SMC/ICT facts.
 - AI has a provider-neutral HTTP/service boundary and `/api/v1/ai/analyze`, `/api/v1/ai/strategy`, `/api/v1/ai/explain-trade` endpoints. AI remains advisory and cannot authorize execution.
 - Options have provider-neutral contracts, deterministic Black-Scholes Greeks, liquidity/spread filtering, deterministic delta-based strike selection, multi-leg expiry payoff, risk metrics, deterministic strategy selection, a provider-neutral option-chain boundary, and options analytics APIs.
-- Paper trading has deterministic in-memory order/fill/position execution, configurable fees/slippage, limit-order behavior, duplicate-order protection, P&L accounting, configurable order-notional and position limits, a kill switch, and a paper-only API. Persistence, partial fills, replay-to-paper, and full risk/audit integration remain unfinished.
+- Paper trading has deterministic in-memory order/fill/position execution, configurable fees/slippage, limit-order behavior, duplicate-order protection, P&L accounting, configurable order-notional and position limits, a kill switch, and a paper-only API.
+- Paper trading now has a durable repository/schema boundary for orders, fills, positions, and audit events, plus deterministic partial-fill simulation with cumulative filled quantity, weighted average fill price, residual cancellation, and stable market processing order. Replay-to-paper and full risk/audit integration remain unfinished.
 - Stage 8 has a provider-neutral account/order/position/broker protocol with non-secret authentication context and deterministic order reconciliation.
 - Provider-neutral idempotency enforcement is implemented as an opt-in decorator/store: repeated successful submissions with the same client order ID return the original result, conflicting reuse is rejected, and failed submissions release the reservation for safe retry.
 - Official Upstox and Dhan API contracts were reviewed before adding adapters. The adapters map provider account/position/order responses into the common broker models and keep live mutation disabled by default.
@@ -34,7 +35,7 @@ For commit `5b6818d`, GitHub Actions completed with:
 
 For status commit `aad451d`, the separate Android CI workflow completed **SUCCESS**.
 
-For the current broker-session milestone commit `b684c0a`, GitHub Actions run `33588339917` was observed **IN PROGRESS** when last checked. Android was executing `gradle assembleDebug`; backend was still in checkout/setup. No completion result is claimed yet.
+The later CI run covering the broker-session milestone was observed **IN PROGRESS** when last checked. Its Android job had reached `gradle assembleDebug`; backend was still in checkout/setup. No completion result is claimed for that run.
 
 No local/Codespace test execution is claimed.
 
@@ -136,8 +137,8 @@ No local/Codespace test execution is claimed.
 - [x] Order-notional and position-size limits
 - [x] Kill switch and loss-triggered halt foundation
 - [x] Paper API boundary
-- [ ] Persistent order/trade/audit repository
-- [ ] Partial-fill simulation
+- [x] Durable order/fill/position/audit repository boundary
+- [x] Deterministic partial-fill simulation
 - [ ] Full deterministic risk-engine integration
 - [ ] Replay-to-paper integration
 - [ ] Full paper-trading verification
@@ -189,22 +190,22 @@ No Codespace/runtime session is exposed through the connected tools, so no local
 
 ## Recent commits on main
 
+- `2b8788e` — test deterministic paper partial fills
+- `ec831aa` — keep invalid paper limits out of order book
+- `4562c1a` — add deterministic paper partial fills
+- `c0f1ad8` — export durable paper repository boundary
+- `43ec0cf` — add paper persistence tests
+- `c350fb5` — connect paper engine to durable audit repository
+- `c6487bc` — add durable paper repository
+- `bba0854` — add durable paper schema
 - `b684c0a` — export broker session lifecycle contract
 - `40d5bf0` — integrate Dhan session lifecycle
-- `9a62d07` — integrate Upstox session lifecycle
-- `d61dd3f` — route HTTP transport through sessions
-- `7dd7b53` — cover broker session lifecycle and secret boundary
-- `01b2159` — add secret-safe session lifecycle boundary
-- `532a326` — export instrument catalogue boundary
-- `469ab2c` — cover provider catalogue ingestion
-- `9052438` — add provider instrument catalogue ingestion
-- `ee6816f` — verify provider order payload resolution
 
 ## Next execution
 
-1. Complete verification of the broker-session milestone through GitHub Actions.
-2. Add durable paper order/fill/position/audit persistence using the existing repository/SQL boundaries.
-3. Add deterministic partial-fill simulation without weakening paper/live separation.
-4. Integrate replay-to-paper only after persistence and partial-fill semantics are covered.
-5. Add controlled risk/execution boundary only after deterministic risk integration is verified.
+1. Re-run/check GitHub Actions after the partial-fill milestone and fix only observed failures.
+2. Add repository hydration/restart recovery for durable paper state using existing database boundaries.
+3. Integrate replay-to-paper after persistence and partial-fill semantics are verified.
+4. Add controlled risk/execution integration only after deterministic risk boundaries are verified.
+5. Complete real broker OAuth/refresh integration without exposing or storing secrets in source.
 6. Re-run CI verification after each stable milestone.
