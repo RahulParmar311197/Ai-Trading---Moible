@@ -3,9 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Callable, Protocol
+from typing import Callable, Protocol, Sequence
 
-from app.brokers.base import BrokerAuthentication, BrokerOrder, BrokerOrderStatus
+from app.brokers.base import BrokerAuthentication, BrokerOrder, BrokerOrderStatus, BrokerReconciliation
 from app.brokers.idempotency import BrokerIdempotencyStore, IdempotentBroker
 
 from .gate import DeterministicExecutionGate, RiskSnapshot
@@ -17,6 +17,14 @@ class ExecutionBroker(Protocol):
 
 class ExecutionLifecycleBroker(ExecutionBroker, Protocol):
     async def authenticate(self) -> BrokerAuthentication: ...
+
+
+class ExecutionRecoveryBroker(ExecutionLifecycleBroker, Protocol):
+    async def get_positions(self) -> object: ...
+
+    async def get_orders(self) -> tuple[BrokerOrder, ...]: ...
+
+    async def reconcile_order(self, client_order_id: str) -> BrokerReconciliation: ...
 
 
 @dataclass(frozen=True)
@@ -72,9 +80,6 @@ class ControlledBrokerExecution:
 
     async def startup(self) -> BrokerAuthentication:
         """Verify broker authentication without enabling order mutation."""
-        # Re-authentication is a safety boundary too: invalidate any previous
-        # active state before contacting the provider so a failed restart can
-        # never leave an earlier live session enabled.
         self._started = False
         self._activated = False
         self._kill_switch = True
@@ -94,6 +99,56 @@ class ControlledBrokerExecution:
         self._kill_switch = True
         self._audit("EXECUTION_READY", "", "authenticated broker session verified; kill switch remains active")
         return authentication
+
+    async def recover(self, client_order_ids: Sequence[str] = ()) -> tuple[BrokerReconciliation, ...]:
+        """Reconnect and reconcile broker state without automatically resuming trading.
+
+        Recovery is deliberately fail-closed: authentication is refreshed first,
+        broker orders/positions are refreshed, and every supplied local order is
+        reconciled. Even a fully healthy recovery leaves the kill switch active;
+        an operator must explicitly call ``activate`` again before new entries.
+        """
+        self._started = False
+        self._activated = False
+        self._kill_switch = True
+        self._audit("RECOVERY_STARTED", "", "broker recovery started; new entries disabled")
+        try:
+            authentication = await self.startup()
+            if not authentication.authenticated:
+                raise ControlledExecutionError("broker session is not authenticated")
+            get_orders = getattr(self._broker, "get_orders", None)
+            get_positions = getattr(self._broker, "get_positions", None)
+            reconcile_order = getattr(self._broker, "reconcile_order", None)
+            if not all(callable(operation) for operation in (get_orders, get_positions, reconcile_order)):
+                self._audit("RECOVERY_REJECTED", "", "broker reconciliation boundary unavailable")
+                raise ControlledExecutionError("broker reconciliation boundary unavailable")
+            await get_positions()
+            await get_orders()
+            reconciliations: list[BrokerReconciliation] = []
+            for client_order_id in client_order_ids:
+                if not client_order_id.strip():
+                    self._audit("RECOVERY_REJECTED", "", "client order id must be non-empty")
+                    raise ControlledExecutionError("client order id must be non-empty")
+                reconciliation = await reconcile_order(client_order_id)
+                reconciliations.append(reconciliation)
+                if not reconciliation.matched:
+                    self._audit("RECONCILIATION_REQUIRED", client_order_id, reconciliation.reason or "broker state mismatch")
+                    self._started = False
+                    self._activated = False
+                    self._kill_switch = True
+                    raise ControlledExecutionError("broker reconciliation mismatch")
+            self._started = True
+            self._activated = False
+            self._kill_switch = True
+            self._audit("RECOVERY_HEALTHY", "", "broker state refreshed and reconciled; explicit activation still required")
+            return tuple(reconciliations)
+        except Exception as exc:
+            self._started = False
+            self._activated = False
+            self._kill_switch = True
+            if not isinstance(exc, ControlledExecutionError):
+                self._audit("RECOVERY_REJECTED", "", f"broker recovery failed: {type(exc).__name__}")
+            raise
 
     def activate(self, confirmation: str) -> None:
         if not self._started:
