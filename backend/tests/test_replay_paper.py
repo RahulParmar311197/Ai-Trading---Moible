@@ -52,7 +52,7 @@ def test_replay_paper_executes_only_through_paper_broker_and_closes_bracket() ->
 
     assert len(session.executions) == 1
     assert paper.orders["replay-00000000"].status is OrderStatus.FILLED
-    assert paper.orders["replay-00000000-exit-00000002"].status is OrderStatus.FILLED
+    assert paper.orders["replay-00000000-exit-00000001"].status is OrderStatus.FILLED
     assert paper.positions == {}
     assert paper.realized_pnl_total == Decimal("10")
 
