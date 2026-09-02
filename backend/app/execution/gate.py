@@ -18,8 +18,8 @@ class RiskLimits:
 
     def __post_init__(self) -> None:
         for name, value in (("max_order_notional", self.max_order_notional), ("max_daily_loss", self.max_daily_loss)):
-            if value is not None and value <= 0:
-                raise ValueError(f"{name} must be positive")
+            if value is not None and (not value.is_finite() or value <= 0):
+                raise ValueError(f"{name} must be finite and positive")
         if self.max_position_quantity is not None and self.max_position_quantity <= 0:
             raise ValueError("max_position_quantity must be positive")
 
@@ -47,17 +47,22 @@ class DeterministicExecutionGate:
     def evaluate(self, order: RiskOrder, market_price: Decimal, snapshot: RiskSnapshot) -> ExecutionDecision:
         if snapshot.halted:
             return ExecutionDecision(False, "risk halt is active")
-        if market_price <= 0:
-            return ExecutionDecision(False, "market price must be positive")
+        if not market_price.is_finite() or market_price <= 0:
+            return ExecutionDecision(False, "market price must be finite and positive")
+        if not snapshot.realized_pnl.is_finite():
+            return ExecutionDecision(False, "realized pnl must be finite")
         if order.quantity <= 0:
             return ExecutionDecision(False, "order quantity must be positive")
+        side = getattr(order.side, "value", order.side)
+        side_name = str(side).upper()
+        if side_name not in {"BUY", "SELL"}:
+            return ExecutionDecision(False, "order side must be BUY or SELL")
         if self.limits.max_daily_loss is not None and snapshot.realized_pnl <= -self.limits.max_daily_loss:
             return ExecutionDecision(False, "maximum daily loss reached")
         if self.limits.max_order_notional is not None and market_price * order.quantity > self.limits.max_order_notional:
             return ExecutionDecision(False, "order exceeds maximum notional")
         if self.limits.max_position_quantity is not None:
-            side = getattr(order.side, "value", order.side)
-            signed = order.quantity if str(side).upper() == "BUY" else -order.quantity
+            signed = order.quantity if side_name == "BUY" else -order.quantity
             if abs(snapshot.position_quantity + signed) > self.limits.max_position_quantity:
                 return ExecutionDecision(False, "order exceeds maximum position quantity")
         return ExecutionDecision(True, "approved")
