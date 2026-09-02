@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Callable, Protocol, Sequence
 
-from app.brokers.base import BrokerAuthentication, BrokerOrder, BrokerOrderStatus, BrokerReconciliation
+from app.brokers.base import BrokerAuthentication, BrokerOrder, BrokerOrderStatus, BrokerPosition, BrokerReconciliation
 from app.brokers.idempotency import BrokerIdempotencyStore, IdempotentBroker
 
 from .gate import DeterministicExecutionGate, RiskSnapshot
@@ -210,6 +210,7 @@ class ControlledBrokerExecution:
             self._reject(order.client_order_id, "live execution is not activated")
         if self._kill_switch:
             self._reject(order.client_order_id, "live execution kill switch is active")
+        await self._validate_fresh_position(order, snapshot)
         decision = self._risk_gate.evaluate(order, market_price, snapshot)
         if not decision.approved:
             self._reject(order.client_order_id, decision.reason)
@@ -239,6 +240,40 @@ class ControlledBrokerExecution:
             raise ControlledExecutionError("broker rejected order")
         self._audit("BROKER_CONFIRMED", order.client_order_id, result.status.value)
         return result
+
+    async def _validate_fresh_position(self, order: BrokerOrder, snapshot: RiskSnapshot) -> None:
+        get_positions = getattr(self._broker, "get_positions", None)
+        if not callable(get_positions):
+            self._reject(order.client_order_id, "broker position boundary unavailable")
+        try:
+            positions = await get_positions()
+        except Exception as exc:
+            self._started = False
+            self._activated = False
+            self._kill_switch = True
+            self._audit(
+                "POSITION_REFRESH_FAILED",
+                order.client_order_id,
+                f"broker position refresh failed: {type(exc).__name__}; execution fail-closed",
+            )
+            raise
+        if not isinstance(positions, (tuple, list)) or any(not isinstance(position, BrokerPosition) for position in positions):
+            self._started = False
+            self._activated = False
+            self._kill_switch = True
+            self._audit("POSITION_REFRESH_INVALID", order.client_order_id, "broker returned invalid position state")
+            raise ControlledExecutionError("broker returned invalid position state")
+        broker_quantity = sum(position.quantity for position in positions if position.symbol == order.symbol)
+        if broker_quantity != snapshot.position_quantity:
+            self._started = False
+            self._activated = False
+            self._kill_switch = True
+            self._audit(
+                "POSITION_STATE_MISMATCH",
+                order.client_order_id,
+                "broker position differs from supplied risk snapshot; execution fail-closed",
+            )
+            raise ControlledExecutionError("broker position differs from supplied risk snapshot")
 
     @staticmethod
     def _validate_confirmation(submitted: BrokerOrder, result: BrokerOrder) -> None:
