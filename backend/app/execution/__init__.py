@@ -3,6 +3,13 @@
 from .audit import DurableExecutionAuditSink, PostgresExecutionAuditRepository
 from .controlled import ControlledBrokerExecution, ControlledExecutionError, ExecutionAuditEvent
 from .gate import DeterministicExecutionGate, ExecutionDecision, RiskLimits, RiskSnapshot
+from .risk_session import (
+    PostgresRiskSessionBaselineStore,
+    RiskSessionBaseline,
+    RiskSessionBaselineConflict,
+    RiskSessionBaselineMissing,
+    RiskSessionBaselineStore,
+)
 from .state_sync import BrokerRiskState, BrokerStateSynchronizer, StateSynchronizationError, risk_snapshot_from_broker_state
 
 __all__ = [
@@ -19,4 +26,9 @@ __all__ = [
     "BrokerStateSynchronizer",
     "StateSynchronizationError",
     "risk_snapshot_from_broker_state",
+    "PostgresRiskSessionBaselineStore",
+    "RiskSessionBaseline",
+    "RiskSessionBaselineConflict",
+    "RiskSessionBaselineMissing",
+    "RiskSessionBaselineStore",
 ]
