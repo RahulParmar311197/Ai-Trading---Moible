@@ -29,7 +29,9 @@ Last updated: 2026-09-02
 - `PostgresRiskSessionBaselineStore` provides durable, idempotent persistence for an explicitly supplied risk-session baseline. Conflicting reinitialization is rejected and missing sessions fail closed; the store intentionally does not invent market/trading-day boundaries.
 - `risk_snapshot_from_persisted_session` binds fresh broker state to the persisted baseline for an explicitly supplied session ID, so callers cannot silently substitute a wall-clock baseline or broker lifetime P&L.
 - Partial/fill confirmations now require an explicit post-fill state-synchronization callback. Missing or failed synchronization forces the controlled executor into a stopped/kill-switch state and emits an audit event; successful synchronization is audited before the lifecycle remains active. This callback does not attempt to undo a broker fill.
-- `PostFillBrokerStateSynchronizer` is now a concrete provider-neutral composition that refreshes broker state, binds it to the persisted session baseline, and requires an explicit risk-state sink. It never invents a session/trading-day boundary or derives P&L from the fill.
+- `PostFillBrokerStateSynchronizer` is now a concrete provider-neutral composition that refreshes broker state, binds derived risk state to the persisted session baseline, and requires an explicit risk-state sink. It never invents a session/trading-day boundary or derives P&L from the fill.
+- Provider-neutral AI HTTP compatibility is covered for generic and OpenAI-style response shapes, malformed responses, sanitized transport failures, and API-key-free operation.
+- Android has an advisory-only AI analysis client and UI; it does not contain broker credentials or order-execution paths.
 
 ## Stage status
 
@@ -54,8 +56,9 @@ Last updated: 2026-09-02
 ### Stage 5 — AI
 
 - [x] Strategy DSL, SMC context adapter, structured contracts, output safety gate, market-context builder, safe AI-to-DSL boundary, provider-neutral service, analyze/strategy/explain APIs
-- [ ] Real external-provider compatibility verification
-- [ ] Android AI integration
+- [x] Provider compatibility contract tests for generic/OpenAI-style responses and failure sanitization
+- [x] Android advisory AI integration and CI build verification
+- [ ] Real external AI-provider runtime verification
 
 ### Stage 6 — Options
 
@@ -109,9 +112,9 @@ Last updated: 2026-09-02
 
 ## Latest CI evidence
 
-- Run `33620032069` for implementation commit `d9f6338f81566c0488352d94a021d5a4b5a1b8cf`: Android `assembleDebug` completed successfully. CI also reported all Gradle wrapper JARs valid in the CI environment, while the repository's required official wrapper artifact remains an unresolved Stage 1 repository requirement.
-- Run `33619901636` for the preceding implementation state: backend completed successfully with **252 non-integration tests passed, 5 deselected, 1 warning** and **5 PostgreSQL integration tests passed, 252 deselected, 1 warning**; Android `assembleDebug` completed successfully.
-- Run `33619555439` and companion `33619555530` for the prior post-fill lifecycle boundary: backend and Android completed successfully; backend recorded **252 non-integration passed** and **5 integration passed**.
+- Run `33622735238` for implementation commit `d53910b663853246c6a0ec8155df9e0d1b33c900`: full CI completed successfully. Backend completed official Upstox protobuf verification plus both non-integration and PostgreSQL integration pytest jobs; Android `assembleDebug` completed successfully.
+- The same run verifies the corrected AI provider compatibility tests after the earlier genuine mocked-response fixture failure. No provider credentials were used.
+- Earlier run `33620032069` also verified Android `assembleDebug` for the preceding execution implementation state.
 
 ## Runtime limitation
 
@@ -127,7 +130,7 @@ No local/Codespace runtime is exposed through the connected tools. No local test
 2. The authoritative upstream trading-session boundary/lifecycle is not implemented. The application must supply session identity rather than silently deriving a market day.
 3. The concrete post-fill synchronizer is implemented and tested, but application/runtime wiring to a concrete durable live-state sink remains unverified.
 4. Production broker runtime and real live activation are unverified because no sandbox/test broker credentials are available through the connected tools.
-5. Stage 5 external AI-provider compatibility and Android AI integration remain unverified.
+5. Stage 5 real external AI-provider runtime verification remains unverified; provider contract compatibility and Android integration are now verified.
 6. Stage 6 live option-chain provider integration remains unverified.
 7. Stage 2 fresh full product-flow verification remains unverified.
 8. Stage 10 autonomous trading remains gated and must not be enabled without all blueprint prerequisites and evidence.
