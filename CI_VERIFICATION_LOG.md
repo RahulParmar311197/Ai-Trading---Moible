@@ -4,9 +4,10 @@ Last updated: 2026-09-02
 
 ## Verified passing runs
 
-- `33625211010` — documentation commit `23b9f479d5f776dd92cc2e73395221d23c0a71e6`: **full CI completed successfully**. GitHub reports `backend-tests` and `android-build` both completed successfully. Backend completed official Upstox protobuf verification, non-integration pytest, and PostgreSQL integration pytest; Android completed `assembleDebug` using pinned Gradle 8.10.2.
+- `33627198878` — documentation/status commit `25234ba5e14817bdee0bd0934b4cfebf4086ff02`: **full CI completed successfully**. GitHub reports `backend-tests` and `android-build` both completed successfully. Backend completed official Upstox protobuf verification, non-integration pytest, and PostgreSQL integration pytest; Android completed `assembleDebug` using pinned Gradle 8.10.2.
+- `33625211010` — status commit `23b9f479d5f776dd92cc2e73395221d23c0a71e6`: **full CI completed successfully**. GitHub reports `backend-tests` and `android-build` both completed successfully. Backend completed official Upstox protobuf verification, non-integration pytest, and PostgreSQL integration pytest; Android completed `assembleDebug` using pinned Gradle 8.10.2.
 - `33624319414` — implementation commit `ba78f6ff248d6f7e08cb47963997e868868be12f`: **full CI completed successfully**. Backend completed official Upstox protobuf verification, non-integration pytest, and PostgreSQL integration pytest; Android `assembleDebug` completed successfully.
-- `33623091606` — documentation commit `f929c6b60bde69dd42d7e5b7a7ce778f01c752fd`: full CI completed successfully. Backend completed official Upstox protobuf verification plus non-integration and PostgreSQL integration pytest jobs; Android `assembleDebug` completed successfully using pinned Gradle 8.10.2.
+- `33623091606` — documentation commit `f929c6b60bde69dd42d7e5b7a7ce778f01c752fd`: full CI completed successfully.
 - `33622735238` — implementation commit `d53910b663853246c6a0ec8155df9e0d1b33c900`: full CI completed successfully. Backend and Android jobs both completed successfully.
 - `33620032069` — implementation commit `d9f6338f81566c0488352d94a021d5a4b5a1b8cf`: Android `assembleDebug` completed successfully.
 - `33619901636` — preceding implementation state: backend completed official Upstox protobuf verification, 252 non-integration tests passed, 5 deselected, 1 warning, and 5 PostgreSQL integration tests passed; Android `assembleDebug` completed successfully.
@@ -15,7 +16,7 @@ Last updated: 2026-09-02
 
 ## Backend evidence
 
-Run `33625211010` is the latest full-CI verification. Its backend job `100231227978` completed successfully for official Upstox protobuf verification, non-integration pytest, and PostgreSQL integration pytest. Its Android job `100231227972` also completed successfully, including `gradle assembleDebug`.
+Run `33627198878` is the latest full-CI verification. Its backend job completed successfully for official Upstox protobuf verification, non-integration pytest, and PostgreSQL integration pytest.
 
 The paper-trading hardening in `ba78f6ff248d6f7e08cb47963997e868868be12f` therefore has full CI verification. The tests specifically cover fail-closed financial-input validation without weakening the underlying validation.
 
@@ -23,11 +24,11 @@ The concrete `PostFillBrokerStateSynchronizer` remains provider-neutral and test
 
 ## Android evidence
 
-Run `33625211010` completed Android `assembleDebug` successfully. The Android AI integration remains advisory-only and does not authorize or execute broker orders.
+Run `33627198878` completed Android `assembleDebug` successfully. The Android AI integration remains advisory-only and does not authorize or execute broker orders.
 
 ## Current verification
 
-The latest full-CI verification is `33625211010` and is green. Documentation records only observed GitHub Actions evidence.
+The latest full-CI verification is `33627198878` and is green. Documentation records only observed GitHub Actions evidence.
 
 ## Historical failed verification
 
@@ -41,4 +42,4 @@ No local/Codespace runtime is exposed through the connected tools. These are Git
 
 ## Safety
 
-CI success does not authorize live or autonomous trading. Production broker runtime verification, real live activation, and Stage 10 autonomous prerequisites remain gated. Durable idempotency has CI coverage for restart persistence, unresolved pending reservations, terminal reconciliation clearing, and concurrent reservation exclusivity. Position state is refreshed before controlled-live submission and mismatches fail closed. Broker-state synchronization requires an explicit daily-P&L baseline, and persisted-session binding resolves that baseline without inventing trading-day semantics. Post-fill confirmations have an explicit fail-closed synchronization boundary and a concrete provider-neutral synchronizer, but application wiring to a durable live-state sink remains unverified. The authoritative upstream trading-session lifecycle remains unimplemented. Recovery/provider failures remain fail-closed and credential-free.
+CI success does not authorize live or autonomous trading. Production broker runtime verification, real live activation, and Stage 10 autonomous prerequisites remain gated. Automated broker tests use deterministic synthetic client IDs; real Upstox/Dhan client IDs are reserved for intentional manual UI configuration and are never required by CI. Durable idempotency has CI coverage for restart persistence, unresolved pending reservations, terminal reconciliation clearing, and concurrent reservation exclusivity. Position state is refreshed before controlled-live submission and mismatches fail closed. Broker-state synchronization requires an explicit daily-P&L baseline, and persisted-session binding resolves that baseline without inventing trading-day semantics. Post-fill confirmations have an explicit fail-closed synchronization boundary and a concrete provider-neutral synchronizer, but application wiring to a durable live-state sink remains unverified. The authoritative upstream trading-session lifecycle remains unimplemented. Recovery/provider failures remain fail-closed and credential-free.
