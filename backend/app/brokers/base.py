@@ -4,7 +4,7 @@ from decimal import Decimal
 from enum import StrEnum
 from typing import Protocol
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class BrokerOrderStatus(StrEnum):
@@ -32,6 +32,12 @@ class Account(BaseModel):
     balance: Decimal
     available_margin: Decimal
 
+    @model_validator(mode="after")
+    def validate_financial_values(self) -> "Account":
+        if not self.balance.is_finite() or not self.available_margin.is_finite():
+            raise ValueError("account financial values must be finite")
+        return self
+
 
 class BrokerOrder(BaseModel):
     order_id: str
@@ -44,6 +50,18 @@ class BrokerOrder(BaseModel):
     average_price: Decimal | None = None
     status: BrokerOrderStatus
 
+    @model_validator(mode="after")
+    def validate_fill_state(self) -> "BrokerOrder":
+        if self.filled_quantity > self.quantity:
+            raise ValueError("filled quantity cannot exceed order quantity")
+        if self.average_price is not None and (not self.average_price.is_finite() or self.average_price <= 0):
+            raise ValueError("average price must be finite and positive")
+        if self.status is BrokerOrderStatus.FILLED and self.filled_quantity != self.quantity:
+            raise ValueError("filled order must have complete fill quantity")
+        if self.status is BrokerOrderStatus.PARTIALLY_FILLED and not 0 < self.filled_quantity < self.quantity:
+            raise ValueError("partially filled order must have a partial fill quantity")
+        return self
+
 
 class BrokerPosition(BaseModel):
     symbol: str = Field(min_length=1)
@@ -51,6 +69,14 @@ class BrokerPosition(BaseModel):
     average_price: Decimal
     realized_pnl: Decimal = Decimal("0")
     unrealized_pnl: Decimal = Decimal("0")
+
+    @model_validator(mode="after")
+    def validate_financial_values(self) -> "BrokerPosition":
+        if not self.average_price.is_finite() or self.average_price < 0:
+            raise ValueError("position average price must be finite and non-negative")
+        if not self.realized_pnl.is_finite() or not self.unrealized_pnl.is_finite():
+            raise ValueError("position pnl values must be finite")
+        return self
 
 
 class BrokerAuthentication(BaseModel):
