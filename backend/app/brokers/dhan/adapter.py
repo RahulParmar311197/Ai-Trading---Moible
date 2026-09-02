@@ -169,7 +169,11 @@ class DhanBroker:
             "EXPIRED": BrokerOrderStatus.CANCELLED,
             "REJECTED": BrokerOrderStatus.REJECTED,
         }
-        return status_map.get(raw_status.upper(), BrokerOrderStatus.NEW)
+        normalized = raw_status.upper()
+        try:
+            return status_map[normalized]
+        except KeyError as exc:
+            raise ValueError(f"unsupported Dhan order status: {raw_status}") from exc
 
     @classmethod
     def _map_order(cls, row: dict[str, Any]) -> BrokerOrder:
