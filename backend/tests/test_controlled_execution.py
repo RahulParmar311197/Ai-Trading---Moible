@@ -19,6 +19,15 @@ class FakeBroker:
         return order.model_copy(update={"order_id": f"broker-{self.calls}", "status": BrokerOrderStatus.OPEN})
 
 
+class FailingBroker(FakeBroker):
+    async def authenticate(self) -> BrokerAuthentication:
+        raise ConnectionError("broker unavailable")
+
+    async def place_order(self, order: BrokerOrder) -> BrokerOrder:
+        self.calls += 1
+        raise TimeoutError("broker timed out")
+
+
 def make_order(quantity: int = 5) -> BrokerOrder:
     return BrokerOrder(
         order_id="local-1",
@@ -142,3 +151,11 @@ async def test_shutdown_fails_closed_and_blocks_future_submission() -> None:
     with pytest.raises(ControlledExecutionError, match="startup"):
         await guarded.submit(make_order(), market_price=Decimal("100"), snapshot=snapshot())
     assert broker.calls == 0
+
+
+@pytest.mark.asyncio
+async def test_broker_submission_failure_is_audited_without_leaking_exception_details() -> None:
+    events = []
+    broker = FailingBroker()
+    guarded = execution(broker, audit_sink=events.append)
+    await guarded.startup if False else pytest.fail("unreachable")
