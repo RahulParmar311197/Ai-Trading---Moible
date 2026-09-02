@@ -2,13 +2,16 @@ from __future__ import annotations
 
 import hashlib
 import json
-from typing import Awaitable, Callable
 
 from .base import BrokerOrder
 
 
 class IdempotencyConflict(ValueError):
     """Raised when a client reuses an idempotency key for a different order."""
+
+
+class IdempotencyPending(RuntimeError):
+    """Raised when a prior submission is unresolved and must be reconciled first."""
 
 
 class BrokerIdempotencyStore:
@@ -44,8 +47,15 @@ class BrokerIdempotencyStore:
             raise IdempotencyConflict(
                 f"client_order_id already used for a different order: {key}"
             )
+        if previous is not None:
+            cached = self._results.get(key)
+            if cached is not None:
+                return cached
+            raise IdempotencyPending(
+                f"client_order_id has an unresolved broker submission: {key}"
+            )
         self._requests[key] = fingerprint
-        return self._results.get(key)
+        return None
 
     def complete(self, order: BrokerOrder, result: BrokerOrder) -> BrokerOrder:
         key = order.client_order_id
@@ -57,7 +67,7 @@ class BrokerIdempotencyStore:
         """Forget a key only after the caller has externally resolved its state.
 
         A broker submission exception can be ambiguous: the broker may have
-        accepted an order even when the client observed a timeout or transport
+        accepted the order even when the client observed a timeout or transport
         error. Therefore the idempotent decorator intentionally does not clear
         failed submissions automatically. Callers should reconcile the broker
         state before explicitly clearing a key for a fresh submission.
