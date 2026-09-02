@@ -23,6 +23,7 @@ Last updated: 2026-09-02
 - Durable PostgreSQL idempotency uses an atomic `INSERT ... ON CONFLICT DO NOTHING RETURNING` reservation and a transactional returning executor, so concurrent callers cannot both claim a new client-order key.
 - Durable idempotency completion persists and verifies broker results; terminal reconciled `REJECTED`/`CANCELLED` reservations are explicitly cleared, while live/pending states remain reserved.
 - Recovery refreshes broker positions/orders, reconciles requested IDs, and rejects unexpected live broker orders outside the explicit expected local order set. It never auto-activates trading.
+- Before every controlled live submission, the execution boundary now refreshes broker positions and requires the submitted `RiskSnapshot.position_quantity` to match the current broker position for the order symbol. Refresh failures, malformed position responses, or mismatches fail closed before broker mutation.
 
 ## Stage status
 
@@ -69,6 +70,7 @@ Last updated: 2026-09-02
 
 - [x] Explicit activation boundary
 - [x] Deterministic risk gate and position limits before broker mutation
+- [x] Fresh broker position refresh and snapshot consistency check before broker mutation
 - [x] Broker order-id confirmation
 - [x] Kill switch and fail-closed startup/shutdown
 - [x] Audit-event boundary and durable audit repository
@@ -79,7 +81,8 @@ Last updated: 2026-09-02
 - [x] Explicit idempotency-store requirement
 - [x] Atomic durable reservation and concurrency regression coverage
 - [x] Terminal `REJECTED`/`CANCELLED` reservation clearing after reconciliation
-- [x] CI verification of the above safety regressions
+- [x] Regression test for stale/mismatched position snapshot
+- [ ] CI verification of the latest position-state hardening commit
 - [ ] Production broker runtime verification
 - [ ] Real live activation
 
@@ -92,10 +95,9 @@ Last updated: 2026-09-02
 
 ## Latest CI evidence
 
-- Commit `1ef8f592fab8ea58dcc151d85d1f814aebe03541` / run `33602457519`: **211 non-integration passed, 3 integration passed; Android `assembleDebug` passed**.
-- Commit `b3d90cec9a460a31ba6e055c909be559720e7b0b` / run `33611174894`: **211 non-integration passed, 4 integration passed**. The added fourth integration test verifies that concurrent durable reservation attempts produce exactly one reservation and one pending result.
-- Separate Android workflow run `33611174841` for `b3d90cec9a460a31ba6e055c909be559720e7b0b` was still running when this status was updated; no completed Android result is claimed for that commit.
-- Documentation commits `326e21774774a94ae81b87cbf8f317250fbbbcb7` and `31a2784e9f72929ae370806c0c6f98c2a848b3ff` triggered new CI runs; the final documentation commit's CI must be verified before this status can be considered fully current.
+- Run `33614031579` for commit `f7c9d3b2f6d0158bab4ed0b7555952a25b0d73c7`: **234 non-integration passed, 4 integration passed; Android `assembleDebug` passed**.
+- Run `33614542133` for commit `ea304cebf903679dd2ab9cb17779f58d121e16ae`: **failed as expected during verification of the new position-refresh contract**; backend reported 222 passed and 13 fixture failures because older confirmation-test brokers lacked the newly required position boundary. Android was not yet complete when the backend failed.
+- Commit `dcfbb2f04c23d2f12e908dae37298aadccace544` updates those confirmation fixtures with a provider-neutral zero position response. Its dedicated Android workflow `33614684143` was still in progress when this status was written. The main CI rerun for this commit is expected from the push and is not yet claimed as passing.
 
 ## Runtime limitation
 
@@ -103,7 +105,7 @@ No local/Codespace runtime is exposed through the connected tools. No local test
 
 ## Safety status
 
-**LIVE/AUTONOMOUS TRADING REMAINS GATED.** Controlled execution requires successful authenticated startup plus exact explicit activation; recovery/startup keep the kill switch active; shutdown and ambiguous broker failures fail closed. Dhan/Upstox live mutation remains disabled by default. AI remains subordinate to deterministic validation, strategy, risk and execution controls. Production broker runtime verification and real live activation have not been performed.
+**LIVE/AUTONOMOUS TRADING REMAINS GATED.** Controlled execution requires successful authenticated startup plus exact explicit activation; broker position state is refreshed before every submission and must agree with the supplied risk snapshot; recovery/startup keep the kill switch active; shutdown and ambiguous broker failures fail closed. Dhan/Upstox live mutation remains disabled by default. AI remains subordinate to deterministic validation, strategy, risk and execution controls. Production broker runtime verification and real live activation have not been performed.
 
 ## Remaining blockers / unverified items
 
@@ -112,4 +114,5 @@ No local/Codespace runtime is exposed through the connected tools. No local test
 3. Stage 5 external AI-provider compatibility and Android AI integration remain unverified.
 4. Stage 6 live option-chain provider integration remains unverified.
 5. Stage 2 fresh full product-flow verification remains unverified.
-6. Stage 10 autonomous trading remains gated and must not be enabled without all blueprint prerequisites and evidence.
+6. Latest position-state hardening CI is pending after fixture correction.
+7. Stage 10 autonomous trading remains gated and must not be enabled without all blueprint prerequisites and evidence.
