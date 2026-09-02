@@ -54,21 +54,26 @@ async def test_conflicting_reuse_is_rejected() -> None:
 
 
 @pytest.mark.asyncio
-async def test_failed_submission_can_be_retried() -> None:
+async def test_failed_submission_remains_reserved_until_reconciliation() -> None:
     class FailingOnceBroker(FakeBroker):
         async def place_order(self, order: BrokerOrder) -> BrokerOrder:
             self.calls += 1
             if self.calls == 1:
-                raise RuntimeError("provider unavailable")
+                raise TimeoutError("provider unavailable")
             return order.model_copy(update={"status": BrokerOrderStatus.OPEN, "order_id": "broker-2"})
 
     broker = FailingOnceBroker()
     guarded = IdempotentBroker(broker)
     order = make_order()
 
-    with pytest.raises(RuntimeError):
+    with pytest.raises(TimeoutError):
         await guarded.place_order(order)
 
+    with pytest.raises(IdempotencyConflict):
+        await guarded.place_order(make_order(11))
+    assert broker.calls == 1
+
+    guarded.idempotency.clear(order.client_order_id)
     result = await guarded.place_order(order)
     assert result.order_id == "broker-2"
     assert broker.calls == 2
