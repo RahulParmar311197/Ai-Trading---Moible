@@ -31,13 +31,14 @@ Last updated: 2026-09-02
 - Broker idempotency now treats submission exceptions as potentially ambiguous: a failed provider call keeps the client-order key reserved and blocks both identical retries and conflicting reuse until the state is externally reconciled and explicitly cleared.
 - Added a PostgreSQL-backed broker idempotency repository and migration so reserved client-order keys survive process restart; CI integration testing verifies a second repository instance can recover a completed result and still rejects conflicting reuse.
 - Controlled live execution now requires an explicitly supplied idempotency store at construction, preventing a live executor from silently falling back to process-local idempotency state that disappears after restart. Test-only executors explicitly inject the in-memory store.
+- Durable idempotency completion now uses a committing database operation and verifies the persisted result, preventing a successful completion call from returning before the reservation is durably recorded.
 - Controlled execution remains an integration boundary only; no production/live activation has been enabled or configured.
 
 ## CI evidence
 
-GitHub Actions run `33599202340` for commit `8b241e958ddc98a821c80e82f34b2e4f281eb286` completed successfully. The backend job completed dependency installation, official Upstox protobuf verification, 192 non-integration tests, and 3 PostgreSQL integration tests. The Android job completed `gradle assembleDebug` using the pinned Gradle 8.10.2 CI setup. This run verifies the unexpected-live-order recovery hardening and its regression coverage.
+GitHub Actions run `33599917698` for commit `ce63a7a2eed00f171d1800fb2fab318ebc392a27` completed successfully. The backend job completed dependency installation, official Upstox protobuf verification, 192 non-integration tests, and 3 PostgreSQL integration tests. The Android job completed `gradle assembleDebug` using the pinned Gradle 8.10.2 CI setup. This run verifies durable idempotency completion persistence and its reservation-guard regression coverage.
 
-The prior successful run `33598262758` verified the explicit controlled idempotency-store requirement. Earlier durable-idempotency verification was covered by successful run `33597951805`; earlier controlled-execution recovery/audit implementation was covered by successful run `33595826727`. Earlier idempotency-safety commits were verified by successful runs `33597117321`, `33597128224`, `33597128231`, `33597156260`, and `33597156289`.
+The prior successful run `33599202340` verified unexpected-live-order recovery hardening. Run `33598262758` verified the explicit controlled idempotency-store requirement. Earlier durable-idempotency verification was covered by successful run `33597951805`; earlier controlled-execution recovery/audit implementation was covered by successful run `33595826727`. Earlier idempotency-safety commits were verified by successful runs `33597117321`, `33597128224`, `33597128231`, `33597156260`, and `33597156289`.
 
 No local/Codespace test execution is claimed.
 
@@ -192,6 +193,7 @@ No local/Codespace test execution is claimed.
 - [x] Ambiguous broker submission is fail-closed at the idempotency boundary
 - [x] Controlled execution requires an explicit idempotency store; no silent process-local fallback in the controlled-live constructor
 - [x] Regression test for unexpected broker live-order recovery executed successfully in CI run `33599202340`
+- [x] Durable completion persistence fix and reservation-guard regression executed successfully in CI run `33599917698`
 - [ ] Production broker runtime verification
 - [ ] Real live activation
 
@@ -214,6 +216,8 @@ No Codespace/runtime session is exposed through the connected tools, so no local
 
 ## Recent commits on main
 
+- `ce63a7a` — fix: persist durable idempotency completion
+- `4218757` — docs: record durable completion CI verification
 - `8b241e9` — test: cover unexpected broker live-order recovery
 - `0021aea` — fix: fail closed on unexpected broker live orders
 - `ed5d538` — docs: record latest controlled execution CI verification
@@ -224,12 +228,10 @@ No Codespace/runtime session is exposed through the connected tools, so no local
 - `d781243` — test: verify durable broker idempotency
 - `467c4bb` — feat: add broker idempotency persistence migration
 - `f7401cc` — feat: add durable broker idempotency repository
-- `73158d3` — docs: record verified idempotency CI evidence
-- `85d9892` — update controlled execution verification status
 
 ## Next execution
 
 1. Continue Stage 9 reconciliation/failure-semantic review for deterministic safety gaps that can be covered without live credentials.
-2. Review durable idempotency completion semantics and broker-disconnect/reconciliation behavior before any controlled-live activation.
+2. Review broker-disconnect/reconciliation behavior and provider adapter status mapping before any controlled-live activation.
 3. Keep Stage 1 official Gradle wrapper artifact and Stage 5/6/8 external-provider/runtime gaps explicitly unverified.
 4. Keep real live activation and autonomous trading disabled until all required evidence exists.
