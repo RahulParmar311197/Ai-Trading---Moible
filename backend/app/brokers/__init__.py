@@ -1,5 +1,6 @@
 """Provider-neutral broker contracts and explicitly gated adapters."""
 
+from .auth import BrokerAuthError, BrokerToken, DhanOAuth, UpstoxOAuth
 from .base import Account, Broker, BrokerOrder, BrokerOrderStatus, BrokerPosition
 from .catalogue import InstrumentCatalogueError, dhan_catalogue, resolver_from_catalogue, upstox_catalogue
 from .dhan import DhanBroker
@@ -20,6 +21,10 @@ __all__ = [
     "IdempotentBroker",
     "BrokerHTTPError",
     "LiveBrokerDisabled",
+    "BrokerAuthError",
+    "BrokerToken",
+    "UpstoxOAuth",
+    "DhanOAuth",
     "DhanBroker",
     "UpstoxBroker",
     "BrokerInstrument",
