@@ -69,47 +69,44 @@ def _finite_extreme(
 
 
 def _breakevens(legs: tuple[OptionLeg, ...] | list[OptionLeg]) -> tuple[Decimal, ...]:
-    strikes = sorted(set(leg.contract.strike for leg in legs))
-    if not strikes:
+    """Find all non-negative expiry P/L roots, including unbounded tails."""
+    boundaries = sorted(set(leg.contract.strike for leg in legs if leg.contract.strike >= 0))
+    if not boundaries:
         return ()
-    points = [Decimal("0"), *strikes]
+
     roots: set[Decimal] = set()
 
-    # Every expiry payoff segment is linear. Include the finite segments plus
-    # the origin; roots outside the strike envelope are handled by the tails.
-    boundaries = sorted(set(points))
-    probes: list[Decimal] = []
-    for index, boundary in enumerate(boundaries):
-        probes.append(boundary)
-        if index + 1 < len(boundaries):
-            probes.append((boundary + boundaries[index + 1]) / Decimal("2"))
-    right_probe = boundaries[-1] + max(Decimal("1"), boundaries[-1] * Decimal("0.01"))
-    probes.append(right_probe)
-
-    for index, probe in enumerate(probes):
-        value = payoff_at(legs, probe)
+    # Finite linear regions [0, first], [strike_i, strike_i+1].
+    intervals = [(Decimal("0"), boundaries[0])]
+    intervals.extend(zip(boundaries, boundaries[1:]))
+    for low, high in intervals:
+        if high < low:
+            continue
+        if low == high:
+            if payoff_at(legs, low) == 0:
+                roots.add(low)
+            continue
+        probe = (low + high) / Decimal("2")
+        slope = _slope(legs, probe)
+        value = payoff_at(legs, low)
         if value == 0:
-            roots.add(probe)
-            continue
-        if index + 1 >= len(probes):
-            continue
-        next_probe = probes[index + 1]
-        next_value = payoff_at(legs, next_probe)
-        if value * next_value < 0:
-            slope = _slope(legs, (probe + next_probe) / Decimal("2"))
-            if slope != 0:
-                root = probe - value / slope
-                if root >= 0:
-                    roots.add(root)
-
-    # Check each open interval directly using its linear slope.
-    for low, high in zip(boundaries, boundaries[1:]):
-        slope = _slope(legs, (low + high) / Decimal("2"))
-        low_value = payoff_at(legs, low)
+            roots.add(low)
         if slope != 0:
-            root = low - low_value / slope
+            root = low - value / slope
             if low <= root <= high:
                 roots.add(root)
+
+    # Right tail [last strike, +infinity). This is required for long calls,
+    # for example, whose breakeven lies above the highest strike.
+    last = boundaries[-1]
+    value = payoff_at(legs, last)
+    slope = _slope(legs, last + max(Decimal("1"), last * Decimal("0.01")))
+    if value == 0:
+        roots.add(last)
+    if slope != 0:
+        root = last - value / slope
+        if root >= last:
+            roots.add(root)
 
     return tuple(sorted(roots))
 
