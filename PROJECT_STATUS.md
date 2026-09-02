@@ -27,13 +27,16 @@ Last updated: 2026-09-02
 - Added `ControlledBrokerExecution`: construction is inert, startup verifies the broker authentication boundary without enabling mutation, activation requires an exact explicit confirmation phrase, a kill switch defaults active, risk approval is mandatory before broker mutation, broker confirmation is required, idempotency wraps the mutation boundary, audit events are emitted through an optional sink, and shutdown fails closed.
 - Controlled execution now has a provider-neutral durable audit repository/sink plus a dedicated PostgreSQL migration. Audit persistence stores only execution event type, client order id, reason, timestamp and a safe JSON payload; credential values are excluded.
 - Controlled execution recovery now fails closed: recovery disables new entries, re-authenticates, refreshes positions/orders, reconciles requested client orders, and requires explicit reactivation after a healthy recovery. Reconciliation mismatch or unavailable recovery boundaries keep execution stopped.
+- Broker idempotency now treats submission exceptions as potentially ambiguous: a failed provider call keeps the client-order key reserved and blocks both identical retries and conflicting reuse until the state is externally reconciled and explicitly cleared. This closes a duplicate-order risk where a broker could accept an order even though the client observed a timeout/transport error.
 - Controlled execution remains an integration boundary only; no production/live activation has been enabled or configured.
 
 ## CI evidence
 
-GitHub Actions run `33595826727` for the current controlled-execution recovery/audit implementation completed successfully. Backend dependency installation, official Upstox protobuf verification, non-integration tests, and integration tests all passed; the Android job completed `gradle assembleDebug` successfully.
+GitHub Actions run `33596259443` for commit `20c226d9b103aa3616342f81550ba0c18a5b3fcc` completed successfully. Its Android build completed `gradle assembleDebug` successfully.
 
-The preceding controlled-execution audit implementation was also covered by successful GitHub Actions runs `33595372401` and `33595372421`.
+The earlier controlled-execution recovery/audit implementation was covered by successful GitHub Actions run `33595826727`: backend dependency installation, official Upstox protobuf verification, non-integration tests, integration tests, and the Android `gradle assembleDebug` job all passed.
+
+The current idempotency-safety commits `a460713aa17c5e721a278b472bd16ac5c7da466f` and `b354ebc4ad538d3a98817c72f4496b08c06cb8a8` were committed directly to `main`; CI for those commits is expected from the push workflow and must be verified before their tests are recorded as passed.
 
 No local/Codespace test execution is claimed.
 
@@ -149,6 +152,7 @@ No local/Codespace test execution is claimed.
 - [x] Non-secret authentication context boundary
 - [x] Deterministic order reconciliation result boundary
 - [x] Provider-neutral idempotency enforcement decorator/store
+- [x] Ambiguous submission protection: failed broker calls remain reserved until reconciliation
 - [x] Upstox adapter structure and read-side account/position/order mapping
 - [x] Dhan adapter structure and read-side account/position/order mapping
 - [x] Live mutation gating by default
@@ -162,6 +166,7 @@ No local/Codespace test execution is claimed.
 - [x] Dhan supported token renewal boundary
 - [x] Token-to-session hydration boundary
 - [x] CI verification of authentication implementation at `33592488680`
+- [ ] CI verification of latest idempotency-safety commits
 - [ ] Live broker runtime verification
 
 ### Stage 9 — Controlled Live Trading
@@ -179,6 +184,7 @@ No local/Codespace test execution is claimed.
 - [x] Recovery boundary: reconnect/authenticate, refresh broker state, reconcile requested orders, and remain gated until explicit reactivation
 - [x] Durable audit sink/repository boundary and PostgreSQL migration
 - [x] Durable audit PostgreSQL integration test executed successfully in CI run `33595826727`
+- [x] Ambiguous broker submission is fail-closed at the idempotency boundary
 - [ ] Production broker runtime verification
 - [ ] Real live activation
 
@@ -193,7 +199,7 @@ No local/Codespace test execution is claimed.
 
 ## Safety status
 
-**LIVE/AUTONOMOUS TRADING REMAINS GATED.** The controlled executor is inert until startup succeeds and explicit activation is supplied; recovery and startup leave the kill switch active; shutdown fails closed. Dhan and Upstox adapters remain mutation-disabled by default. AI remains subordinate to deterministic strategy, validation, risk and execution controls.
+**LIVE/AUTONOMOUS TRADING REMAINS GATED.** The controlled executor is inert until startup succeeds and explicit activation is supplied; recovery and startup leave the kill switch active; shutdown fails closed. Dhan and Upstox adapters remain mutation-disabled by default. AI remains subordinate to deterministic strategy, validation, risk and execution controls. Ambiguous broker submission errors cannot be retried through the same idempotency key until broker state is explicitly resolved.
 
 ## Runtime limitation
 
@@ -201,6 +207,9 @@ No Codespace/runtime session is exposed through the connected tools, so no local
 
 ## Recent commits on main
 
+- `b354ebc` — test ambiguous submission idempotency safety
+- `a460713` — block retries while broker submission is unresolved
+- `20c226d9` — update controlled execution verification status
 - `1ced23f` — type-safe controlled execution recovery boundary
 - `8384d40` — test controlled execution recovery paths
 - `b49177d` — add fail-closed controlled execution recovery
@@ -208,13 +217,10 @@ No Codespace/runtime session is exposed through the connected tools, so no local
 - `b15e723` — export durable execution audit boundary
 - `469b165` — add controlled execution audit migration
 - `ca92a69` — add durable controlled execution audit repository
-- `cd4dbdc` — update controlled execution verification status
-- `805c1f2` — test fail-closed controlled execution lifecycle
-- `c5b158b` — add fail-closed controlled execution lifecycle
 
 ## Next execution
 
-1. Keep Stage 9 live broker runtime verification explicitly dependent on a real sandbox/test account and credentials; do not fabricate it.
-2. Review remaining Stage 9 reconciliation/failure semantics for any additional deterministic safety gaps that can be covered without live credentials.
+1. Verify GitHub Actions for the latest idempotency-safety commits and record only completed passing jobs.
+2. Continue Stage 9 reconciliation/failure-semantic review for deterministic safety gaps that can be covered without live credentials.
 3. Keep Stage 1 official Gradle wrapper artifact and Stage 5/6/8 external-provider/runtime gaps explicitly unverified.
 4. Keep real live activation and autonomous trading disabled until all required evidence exists.
