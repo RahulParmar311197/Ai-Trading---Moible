@@ -5,6 +5,8 @@ from typing import Any
 
 import httpx
 
+from .session import BrokerSession
+
 
 class BrokerHTTPError(RuntimeError):
     """Provider HTTP/API failure with a safe, non-secret message."""
@@ -17,26 +19,45 @@ class LiveBrokerDisabled(RuntimeError):
 class HTTPBrokerClient:
     """Small provider-neutral HTTP transport for broker adapters."""
 
-    def __init__(self, base_url: str, access_token: str, *, timeout: float = 10.0) -> None:
+    def __init__(
+        self,
+        base_url: str,
+        access_token: str = "",
+        *,
+        session: BrokerSession | None = None,
+        timeout: float = 10.0,
+    ) -> None:
+        if session is not None and access_token:
+            raise ValueError("provide either access_token or session, not both")
         self.base_url = base_url.rstrip("/")
         self._access_token = access_token
+        self._session = session
         self.timeout = timeout
 
     @property
     def authenticated(self) -> bool:
+        if self._session is not None:
+            return self._session.authentication().authenticated
         return bool(self._access_token.strip())
 
-    async def request(self, method: str, path: str, **kwargs: Any) -> dict[str, Any] | list[Any]:
-        if not self.authenticated:
+    def _token(self) -> str:
+        if self._session is not None:
+            return self._session.access_token()
+        if not self._access_token.strip():
             raise BrokerHTTPError("broker credentials are not configured")
+        return self._access_token
+
+    async def request(self, method: str, path: str, **kwargs: Any) -> dict[str, Any] | list[Any]:
         headers = dict(kwargs.pop("headers", {}))
         headers.setdefault("Accept", "application/json")
-        headers["Authorization"] = f"Bearer {self._access_token}"
         try:
+            headers["Authorization"] = f"Bearer {self._token()}"
             async with httpx.AsyncClient(base_url=self.base_url, timeout=self.timeout) as client:
                 response = await client.request(method, path, headers=headers, **kwargs)
         except httpx.HTTPError as exc:
             raise BrokerHTTPError(f"broker transport failure: {type(exc).__name__}") from exc
+        except RuntimeError as exc:
+            raise BrokerHTTPError(str(exc)) from exc
         if response.is_error:
             raise BrokerHTTPError(f"broker API returned HTTP {response.status_code}")
         try:
