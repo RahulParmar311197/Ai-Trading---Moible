@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import Any
 
 from .models import Fill, Order, OrderSide, OrderStatus, OrderType, Position
+from .repository import PaperRepository
 
 
 class PaperBroker:
     """In-memory paper broker with deterministic fills and no live-broker access."""
 
-    def __init__(self, starting_balance: Decimal = Decimal("100000"), fee_rate: Decimal = Decimal("0"), slippage: Decimal = Decimal("0"), max_order_notional: Decimal | None = None, max_position_quantity: int | None = None, max_daily_loss: Decimal | None = None) -> None:
+    def __init__(self, starting_balance: Decimal = Decimal("100000"), fee_rate: Decimal = Decimal("0"), slippage: Decimal = Decimal("0"), max_order_notional: Decimal | None = None, max_position_quantity: int | None = None, max_daily_loss: Decimal | None = None, repository: PaperRepository | None = None) -> None:
         if starting_balance < 0 or fee_rate < 0 or slippage < 0:
             raise ValueError("balance, fee rate and slippage must be non-negative")
         for name, value in (("max_order_notional", max_order_notional), ("max_daily_loss", max_daily_loss)):
@@ -22,6 +24,7 @@ class PaperBroker:
         self.max_order_notional = max_order_notional
         self.max_position_quantity = max_position_quantity
         self.max_daily_loss = max_daily_loss
+        self.repository = repository
         self.realized_pnl_total = Decimal("0")
         self.halted = False
         self.orders: dict[str, Order] = {}
@@ -44,20 +47,36 @@ class PaperBroker:
             if order.limit_price is None:
                 raise ValueError("limit order requires limit_price")
             if order.side is OrderSide.BUY and market_price > order.limit_price:
-                self.orders[order.order_id] = order.model_copy(update={"status": OrderStatus.NEW})
+                stored = order.model_copy(update={"status": OrderStatus.NEW})
+                self.orders[order.order_id] = stored
+                self._persist_order(stored)
+                self._audit("ORDER_ACCEPTED", order.order_id, {"status": stored.status.value})
                 return None
             if order.side is OrderSide.SELL and market_price < order.limit_price:
-                self.orders[order.order_id] = order.model_copy(update={"status": OrderStatus.NEW})
+                stored = order.model_copy(update={"status": OrderStatus.NEW})
+                self.orders[order.order_id] = stored
+                self._persist_order(stored)
+                self._audit("ORDER_ACCEPTED", order.order_id, {"status": stored.status.value})
                 return None
 
         execution_price = market_price * (Decimal("1") + self.slippage if order.side is OrderSide.BUY else Decimal("1") - self.slippage)
         fee = execution_price * order.quantity * self.fee_rate
         fill = Fill(order_id=order.order_id, quantity=order.quantity, price=execution_price, fee=fee)
-        self.orders[order.order_id] = order.model_copy(update={"status": OrderStatus.FILLED, "filled_quantity": order.quantity, "average_fill_price": execution_price})
+        stored = order.model_copy(update={"status": OrderStatus.FILLED, "filled_quantity": order.quantity, "average_fill_price": execution_price})
+        self.orders[order.order_id] = stored
         self.fills.append(fill)
         self._apply_fill(order, fill)
+        self._persist_order(stored)
+        self._persist_fill(fill)
+        position = self.positions.get(order.symbol)
+        if position is None:
+            self._delete_position(order.symbol)
+        else:
+            self._persist_position(position)
+        self._audit("ORDER_FILLED", order.order_id, {"quantity": fill.quantity, "price": str(fill.price), "fee": str(fill.fee)})
         if self.max_daily_loss is not None and self.realized_pnl_total <= -self.max_daily_loss:
             self.halted = True
+            self._audit("KILL_SWITCH_ACTIVATED", order.order_id, {"reason": "max_daily_loss"})
         return fill
 
     def cancel_order(self, order_id: str) -> Order:
@@ -68,19 +87,27 @@ class PaperBroker:
             raise ValueError("only open orders can be cancelled")
         cancelled = order.model_copy(update={"status": OrderStatus.CANCELLED})
         self.orders[order_id] = cancelled
+        self._persist_order(cancelled)
+        self._audit("ORDER_CANCELLED", order_id, {})
         return cancelled
 
     def kill_switch(self) -> None:
         self.halted = True
+        self._audit("KILL_SWITCH_ACTIVATED", None, {"reason": "manual"})
 
     def clear_kill_switch(self) -> None:
         self.halted = False
+        self._audit("KILL_SWITCH_CLEARED", None, {})
 
     def mark_to_market(self, symbol: str, price: Decimal) -> Position | None:
         if price <= 0:
             raise ValueError("mark price must be positive")
         position = self.positions.get(symbol)
-        return None if position is None else position.mark(price)
+        if position is None:
+            return None
+        marked = position.mark(price)
+        self._persist_position(marked)
+        return marked
 
     def equity(self, marks: dict[str, Decimal] | None = None) -> Decimal:
         total = self.balance
@@ -121,3 +148,23 @@ class PaperBroker:
         self.balance -= fill.price * signed + fill.fee
         if current.quantity == 0:
             self.positions.pop(order.symbol, None)
+
+    def _persist_order(self, order: Order) -> None:
+        if self.repository is not None:
+            self.repository.save_order(order)
+
+    def _persist_fill(self, fill: Fill) -> None:
+        if self.repository is not None:
+            self.repository.save_fill(fill)
+
+    def _persist_position(self, position: Position) -> None:
+        if self.repository is not None:
+            self.repository.save_position(position)
+
+    def _delete_position(self, symbol: str) -> None:
+        if self.repository is not None:
+            self.repository.delete_position(symbol)
+
+    def _audit(self, event_type: str, entity_id: str | None, payload: dict[str, Any]) -> None:
+        if self.repository is not None:
+            self.repository.append_audit(event_type, entity_id, payload)
