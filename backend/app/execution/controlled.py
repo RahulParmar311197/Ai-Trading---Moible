@@ -3,9 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Callable, Protocol
+from typing import Awaitable, Callable, Protocol
 
-from app.brokers.base import BrokerOrder, BrokerOrderStatus
+from app.brokers.base import BrokerAuthentication, BrokerOrder, BrokerOrderStatus
 from app.brokers.idempotency import BrokerIdempotencyStore, IdempotentBroker
 
 from .gate import DeterministicExecutionGate, RiskSnapshot
@@ -13,6 +13,10 @@ from .gate import DeterministicExecutionGate, RiskSnapshot
 
 class ExecutionBroker(Protocol):
     async def place_order(self, order: BrokerOrder) -> BrokerOrder: ...
+
+
+class ExecutionLifecycleBroker(ExecutionBroker, Protocol):
+    async def authenticate(self) -> BrokerAuthentication: ...
 
 
 @dataclass(frozen=True)
@@ -30,9 +34,9 @@ class ControlledExecutionError(RuntimeError):
 class ControlledBrokerExecution:
     """Explicitly activated broker execution with deterministic safety gates.
 
-    Construction is inert. Live submission requires an explicit activation
-    phrase and remains blocked by a kill switch until deliberately cleared.
-    Every broker mutation passes risk evaluation and the idempotency boundary.
+    Construction and startup are inert. Live submission requires an explicit
+    activation phrase, a successful authenticated broker session, and a clear
+    kill switch. Every mutation passes risk evaluation and idempotency.
     """
 
     def __init__(
@@ -52,16 +56,39 @@ class ControlledBrokerExecution:
         self._audit_sink = audit_sink
         self._activated = False
         self._kill_switch = True
+        self._started = False
 
     @property
     def active(self) -> bool:
-        return self._activated and not self._kill_switch
+        return self._started and self._activated and not self._kill_switch
+
+    @property
+    def started(self) -> bool:
+        return self._started
 
     @property
     def kill_switch_active(self) -> bool:
         return self._kill_switch
 
+    async def startup(self) -> BrokerAuthentication:
+        """Verify broker authentication without enabling order mutation."""
+        authenticate = getattr(self._broker, "authenticate", None)
+        if not callable(authenticate):
+            self._audit("STARTUP_REJECTED", "", "broker authentication boundary unavailable")
+            raise ControlledExecutionError("broker authentication boundary unavailable")
+        authentication = await authenticate()
+        if not authentication.authenticated:
+            self._audit("STARTUP_REJECTED", "", "broker session is not authenticated")
+            raise ControlledExecutionError("broker session is not authenticated")
+        self._started = True
+        self._kill_switch = True
+        self._audit("EXECUTION_READY", "", "authenticated broker session verified; kill switch remains active")
+        return authentication
+
     def activate(self, confirmation: str) -> None:
+        if not self._started:
+            self._audit("ACTIVATION_REJECTED", "", "execution startup has not completed")
+            raise ControlledExecutionError("execution startup has not completed")
         if confirmation != self._confirmation_phrase:
             self._audit("ACTIVATION_REJECTED", "", "explicit confirmation did not match")
             raise ControlledExecutionError("explicit live-execution confirmation required")
@@ -82,6 +109,15 @@ class ControlledBrokerExecution:
         self._kill_switch = True
         self._audit("EXECUTION_DEACTIVATED", "", reason)
 
+    async def shutdown(self, reason: str = "shutdown") -> None:
+        """Fail closed before returning control to the application."""
+        if not reason.strip():
+            raise ValueError("shutdown reason must be non-empty")
+        self._activated = False
+        self._kill_switch = True
+        self._started = False
+        self._audit("EXECUTION_SHUTDOWN", "", reason)
+
     async def submit(
         self,
         order: BrokerOrder,
@@ -89,6 +125,8 @@ class ControlledBrokerExecution:
         market_price: Decimal,
         snapshot: RiskSnapshot,
     ) -> BrokerOrder:
+        if not self._started:
+            self._reject(order.client_order_id, "execution startup has not completed")
         if not self._activated:
             self._reject(order.client_order_id, "live execution is not activated")
         if self._kill_switch:
