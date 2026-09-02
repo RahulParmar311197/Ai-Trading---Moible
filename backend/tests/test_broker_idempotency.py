@@ -3,7 +3,7 @@ from decimal import Decimal
 import pytest
 
 from app.brokers.base import BrokerOrder, BrokerOrderStatus, BrokerOrderType, BrokerSide
-from app.brokers.idempotency import BrokerIdempotencyStore, IdempotencyConflict, IdempotentBroker
+from app.brokers.idempotency import BrokerIdempotencyStore, IdempotencyConflict, IdempotencyPending, IdempotentBroker
 
 
 class FakeBroker:
@@ -68,6 +68,10 @@ async def test_failed_submission_remains_reserved_until_reconciliation() -> None
 
     with pytest.raises(TimeoutError):
         await guarded.place_order(order)
+
+    with pytest.raises(IdempotencyPending):
+        await guarded.place_order(order)
+    assert broker.calls == 1
 
     with pytest.raises(IdempotencyConflict):
         await guarded.place_order(make_order(11))
