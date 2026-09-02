@@ -106,9 +106,11 @@ class ControlledBrokerExecution:
         """Reconnect and reconcile broker state without automatically resuming trading.
 
         Recovery is deliberately fail-closed: authentication is refreshed first,
-        broker orders/positions are refreshed, and every supplied local order is
-        reconciled. Even a fully healthy recovery leaves the kill switch active;
-        an operator must explicitly call ``activate`` again before new entries.
+        broker orders/positions are refreshed, every supplied local order is
+        reconciled, and every broker-reported live order must belong to that
+        expected local set. An unexpected broker order is treated as an
+        unresolved external/manual order and blocks activation rather than being
+        silently adopted by the trading system.
         """
         self._started = False
         self._activated = False
@@ -125,7 +127,28 @@ class ControlledBrokerExecution:
                 self._audit("RECOVERY_REJECTED", "", "broker reconciliation boundary unavailable")
                 raise ControlledExecutionError("broker reconciliation boundary unavailable")
             await get_positions()
-            await get_orders()
+            broker_orders = await get_orders()
+            expected_ids = {client_order_id for client_order_id in client_order_ids if client_order_id.strip()}
+            live_statuses = {
+                BrokerOrderStatus.NEW,
+                BrokerOrderStatus.OPEN,
+                BrokerOrderStatus.PARTIALLY_FILLED,
+            }
+            unexpected_live_orders = tuple(
+                order for order in broker_orders
+                if order.status in live_statuses and order.client_order_id not in expected_ids
+            )
+            if unexpected_live_orders:
+                client_order_id = unexpected_live_orders[0].client_order_id
+                self._audit(
+                    "RECONCILIATION_REQUIRED",
+                    client_order_id,
+                    "broker reported live order outside expected local order set",
+                )
+                self._started = False
+                self._activated = False
+                self._kill_switch = True
+                raise ControlledExecutionError("unexpected broker live order requires reconciliation")
             reconciliations: list[BrokerReconciliation] = []
             for client_order_id in client_order_ids:
                 if not client_order_id.strip():
