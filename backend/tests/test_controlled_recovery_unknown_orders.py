@@ -44,6 +44,7 @@ class TerminalOrderBroker(UnexpectedLiveOrderBroker):
                 side=BrokerSide.BUY,
                 order_type=BrokerOrderType.MARKET,
                 quantity=1,
+                filled_quantity=1,
                 status=BrokerOrderStatus.FILLED,
             ),
         )
