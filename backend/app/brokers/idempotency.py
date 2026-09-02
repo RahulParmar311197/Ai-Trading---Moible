@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from typing import Protocol
 
 from .base import BrokerOrder
 
@@ -14,13 +15,22 @@ class IdempotencyPending(RuntimeError):
     """Raised when a prior submission is unresolved and must be reconciled first."""
 
 
+class IdempotencyStore(Protocol):
+    """Provider-neutral persistence boundary for broker idempotency state."""
+
+    def begin(self, order: BrokerOrder) -> BrokerOrder | None: ...
+
+    def complete(self, order: BrokerOrder, result: BrokerOrder) -> BrokerOrder: ...
+
+    def clear(self, client_order_id: str) -> None: ...
+
+
 class BrokerIdempotencyStore:
     """In-memory idempotency registry for a single broker process.
 
     The registry never creates or authorizes orders. It prevents the same
     client_order_id from being submitted twice and rejects conflicting reuse.
-    A durable implementation can replace this store without changing the
-    provider-neutral broker contract.
+    Production controlled-live execution should use a durable implementation.
     """
 
     def __init__(self) -> None:
@@ -79,12 +89,12 @@ class BrokerIdempotencyStore:
 class IdempotentBroker:
     """Provider-neutral broker decorator enforcing client-order idempotency."""
 
-    def __init__(self, broker: object, store: BrokerIdempotencyStore | None = None) -> None:
+    def __init__(self, broker: object, store: IdempotencyStore) -> None:
         self._broker = broker
-        self._idempotency = store or BrokerIdempotencyStore()
+        self._idempotency = store
 
     @property
-    def idempotency(self) -> BrokerIdempotencyStore:
+    def idempotency(self) -> IdempotencyStore:
         return self._idempotency
 
     async def place_order(self, order: BrokerOrder) -> BrokerOrder:
