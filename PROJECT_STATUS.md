@@ -24,14 +24,16 @@ Last updated: 2026-09-02
 - Provider-specific authentication boundaries now cover Upstox authorization-code exchange and daily token-expiry calculation, plus Dhan consent generation, consent consumption, and supported token renewal. Credential values remain transport-only.
 - Successful broker tokens can be converted directly into the existing secret-safe `StaticTokenBrokerSession` boundary without changing broker domain models.
 - Stage 8 has provider-neutral account/order/position/broker protocols, non-secret authentication context, deterministic reconciliation, idempotency enforcement, Upstox/Dhan adapters, instrument resolution/catalogue ingestion, and mutation disabled by default.
-- Added `ControlledBrokerExecution`: construction is inert, activation requires an exact explicit confirmation phrase, a kill switch defaults active, risk approval is mandatory before broker mutation, broker confirmation is required, idempotency wraps the mutation boundary, and audit events are emitted through an optional sink.
+- Added `ControlledBrokerExecution`: construction is inert, startup verifies the broker authentication boundary without enabling mutation, activation requires an exact explicit confirmation phrase, a kill switch defaults active, risk approval is mandatory before broker mutation, broker confirmation is required, idempotency wraps the mutation boundary, audit events are emitted through an optional sink, and shutdown fails closed.
 - Controlled execution remains an integration boundary only; no production/live activation has been enabled or configured.
 
 ## CI evidence
 
-GitHub Actions run `33592488680` for commit `1c31b7de847f62f0b578db64c74879563d3aa322` completed successfully. The backend job passed both non-integration and integration suites, and the Android job completed `gradle assembleDebug` successfully. This verifies the broker authentication implementation and preceding paper/replay/risk milestones.
+GitHub Actions run `33592488680` for commit `1c31b7de847f62f0b578db64c74879563d3aa322` completed successfully. The backend job passed both non-integration and integration suites, and the Android job completed `gradle assembleDebug` successfully.
 
-The controlled-execution commits after that run have not yet received a completed CI result, so no CI pass is claimed for them.
+GitHub Actions run `33593414507` for commit `8175ae6d512d2391a9296a8a4442807af99631b2` completed successfully with the Android build job. This verified the controlled-execution status update commit.
+
+A newer backend-triggering run for commit `805c1f2ed9cf3c4d0bc363e79343cbd8cdca7df4` is currently in progress; no backend pass is claimed for the latest lifecycle test changes until that run completes.
 
 No local/Codespace test execution is claimed.
 
@@ -171,9 +173,11 @@ No local/Codespace test execution is claimed.
 - [x] Kill switch defaults active and can trip execution
 - [x] Audit-event boundary for activation/rejection/broker confirmation
 - [x] Idempotency boundary around broker mutation
-- [ ] CI verification of controlled execution implementation
+- [x] Fail-closed startup authentication check
+- [x] Fail-closed shutdown boundary
+- [ ] CI verification of latest controlled execution lifecycle tests
 - [ ] Production broker runtime verification
-- [ ] Safe startup/shutdown integration
+- [ ] Durable audit sink integration
 - [ ] Real live activation
 
 ### Stage 10 — Autonomous Trading
@@ -187,7 +191,7 @@ No local/Codespace test execution is claimed.
 
 ## Safety status
 
-**LIVE/AUTONOMOUS TRADING REMAINS GATED.** The controlled executor is inert until explicitly activated and starts with its kill switch active. Dhan and Upstox adapters remain mutation-disabled by default. AI remains subordinate to deterministic strategy, validation, risk and execution controls.
+**LIVE/AUTONOMOUS TRADING REMAINS GATED.** The controlled executor is inert until startup succeeds and explicit activation is supplied; it starts with its kill switch active and shutdown fails closed. Dhan and Upstox adapters remain mutation-disabled by default. AI remains subordinate to deterministic strategy, validation, risk and execution controls.
 
 ## Runtime limitation
 
@@ -195,6 +199,9 @@ No Codespace/runtime session is exposed through the connected tools, so no local
 
 ## Recent commits on main
 
+- `805c1f2` — test fail-closed controlled execution lifecycle
+- `c5b158b` — add fail-closed controlled execution lifecycle
+- `8175ae6` — update controlled execution stage status
 - `4b22efb` — export controlled execution boundary
 - `386d115` — test controlled broker execution safety boundary
 - `b6bf158` — add controlled broker execution safety boundary
@@ -202,14 +209,10 @@ No Codespace/runtime session is exposed through the connected tools, so no local
 - `1c31b7d` — connect broker tokens to secret-safe sessions
 - `ef810a7` — test broker OAuth exchange and token renewal
 - `57c3a0c` — export broker OAuth authentication boundaries
-- `f33f2f7` — add real broker OAuth and token renewal boundary
-- `2937b4b` — test paper broker risk gate integration
-- `3ee462a` — wire deterministic risk gate into paper execution
-- `5e41faf` — fix replay paper target-hit test index
 
 ## Next execution
 
-1. Verify the controlled-execution implementation in GitHub Actions and fix only observed failures.
-2. Add safe startup/shutdown integration and durable audit handling without enabling live trading.
+1. Verify the latest controlled-execution lifecycle tests in GitHub Actions and fix only observed failures.
+2. Add durable audit handling without enabling live trading.
 3. Perform provider sandbox/runtime verification where credentials and broker test environments are explicitly available.
 4. Keep real live activation and autonomous trading disabled until all required evidence exists.
