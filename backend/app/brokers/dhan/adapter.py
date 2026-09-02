@@ -87,8 +87,12 @@ class DhanBroker:
         body = self._order_payload(order, instrument)
         payload = await self._client.request("POST", "/orders", json=body)
         data = payload if isinstance(payload, dict) else {}
-        order_id = str(data.get("orderId", data.get("order_id", order.order_id)))
-        return order.model_copy(update={"order_id": order_id, "status": BrokerOrderStatus.NEW})
+        order_id = str(data.get("orderId", data.get("order_id", "")))
+        raw_status = str(data.get("orderStatus", data.get("status", "PENDING"))).upper()
+        status = self._map_status(raw_status)
+        if not order_id:
+            raise RuntimeError("Dhan order response did not contain an order id")
+        return order.model_copy(update={"order_id": order_id, "status": status})
 
     def _order_payload(self, order: BrokerOrder, instrument: BrokerInstrument) -> dict[str, Any]:
         product = {ProductType.INTRADAY: "INTRADAY", ProductType.DELIVERY: "CNC", ProductType.MARGIN: "MARGIN"}[instrument.product_type]
@@ -142,16 +146,21 @@ class DhanBroker:
             matched=True,
         )
 
-    @staticmethod
-    def _map_order(row: dict[str, Any]) -> BrokerOrder:
+    @classmethod
+    def _map_status(cls, raw_status: str) -> BrokerOrderStatus:
         status_map = {
             "TRADED": BrokerOrderStatus.FILLED,
             "PART_TRADED": BrokerOrderStatus.PARTIALLY_FILLED,
-            "PENDING": BrokerOrderStatus.OPEN,
+            "PENDING": BrokerOrderStatus.NEW,
             "TRANSIT": BrokerOrderStatus.OPEN,
             "CANCELLED": BrokerOrderStatus.CANCELLED,
+            "EXPIRED": BrokerOrderStatus.CANCELLED,
             "REJECTED": BrokerOrderStatus.REJECTED,
         }
+        return status_map.get(raw_status.upper(), BrokerOrderStatus.NEW)
+
+    @classmethod
+    def _map_order(cls, row: dict[str, Any]) -> BrokerOrder:
         raw_status = str(row.get("orderStatus", row.get("status", "PENDING"))).upper()
         return BrokerOrder(
             order_id=str(row.get("orderId", row.get("order_id", ""))),
@@ -160,7 +169,7 @@ class DhanBroker:
             side=str(row.get("transactionType", "BUY")),
             order_type=str(row.get("orderType", "MARKET")),
             quantity=int(row.get("quantity", 1) or 1),
-            filled_quantity=int(row.get("tradedQty", row.get("filledQuantity", 0)) or 0),
+            filled_quantity=int(row.get("tradedQty", row.get("filledQuantity", row.get("filledQty", 0))) or 0),
             average_price=decimal_value(row.get("averageTradedPrice", row.get("averagePrice", 0))) or None,
-            status=status_map.get(raw_status, BrokerOrderStatus.NEW),
+            status=cls._map_status(raw_status),
         )
