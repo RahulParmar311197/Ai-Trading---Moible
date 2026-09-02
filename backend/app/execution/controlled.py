@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Awaitable, Callable, Protocol
+from typing import Callable, Protocol
 
 from app.brokers.base import BrokerAuthentication, BrokerOrder, BrokerOrderStatus
 from app.brokers.idempotency import BrokerIdempotencyStore, IdempotentBroker
@@ -76,7 +76,11 @@ class ControlledBrokerExecution:
         if not callable(authenticate):
             self._audit("STARTUP_REJECTED", "", "broker authentication boundary unavailable")
             raise ControlledExecutionError("broker authentication boundary unavailable")
-        authentication = await authenticate()
+        try:
+            authentication = await authenticate()
+        except Exception as exc:
+            self._audit("STARTUP_REJECTED", "", f"broker authentication failed: {type(exc).__name__}")
+            raise
         if not authentication.authenticated:
             self._audit("STARTUP_REJECTED", "", "broker session is not authenticated")
             raise ControlledExecutionError("broker session is not authenticated")
@@ -134,7 +138,16 @@ class ControlledBrokerExecution:
         decision = self._risk_gate.evaluate(order, market_price, snapshot)
         if not decision.approved:
             self._reject(order.client_order_id, decision.reason)
-        result = await self._broker.place_order(order)
+        self._audit("BROKER_SUBMISSION_ATTEMPTED", order.client_order_id, "risk checks approved")
+        try:
+            result = await self._broker.place_order(order)
+        except Exception as exc:
+            self._audit(
+                "BROKER_SUBMISSION_FAILED",
+                order.client_order_id,
+                f"broker submission failed: {type(exc).__name__}",
+            )
+            raise
         if result.status is BrokerOrderStatus.REJECTED:
             self._audit("BROKER_REJECTED", order.client_order_id, "broker rejected order")
             raise ControlledExecutionError("broker rejected order")
