@@ -228,10 +228,13 @@ class ControlledBrokerExecution:
         try:
             result = await self._broker.place_order(order)
         except Exception as exc:
+            self._started = False
+            self._activated = False
+            self._kill_switch = True
             self._audit(
                 "BROKER_SUBMISSION_FAILED",
                 order.client_order_id,
-                f"broker submission failed: {type(exc).__name__}",
+                f"broker submission failed: {type(exc).__name__}; execution fail-closed pending reconciliation",
             )
             raise
         if result.status is BrokerOrderStatus.REJECTED:
