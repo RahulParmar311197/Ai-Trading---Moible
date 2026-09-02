@@ -9,10 +9,10 @@ from app.brokers.order_config import BrokerInstrument, ExchangeSegment, Instrume
 from app.brokers.upstox import UpstoxBroker
 
 
-def order(symbol: str = "NIFTY") -> BrokerOrder:
+def order(symbol: str = "NIFTY", client_order_id: str = "client-1") -> BrokerOrder:
     return BrokerOrder(
         order_id="local-1",
-        client_order_id="client-1",
+        client_order_id=client_order_id,
         symbol=symbol,
         side=BrokerSide.BUY,
         order_type=BrokerOrderType.LIMIT,
@@ -98,10 +98,20 @@ def test_dhan_payload_uses_resolved_provider_configuration() -> None:
     broker = DhanBroker("client-42", "token", instrument_resolver=resolver())
     payload = broker._order_payload(order(), resolver().resolve("NIFTY"))
     assert payload["dhanClientId"] == "client-42"
+    assert payload["correlationId"] == "client-1"
     assert payload["securityId"] == "NSE_FO|NIFTY_TEST"
     assert payload["exchangeSegment"] == "NSE_FNO"
     assert payload["productType"] == "CNC"
     assert payload["validity"] == "IOC"
+
+
+def test_dhan_rejects_invalid_correlation_id_before_network_call() -> None:
+    broker = DhanBroker("client-42", "token", instrument_resolver=resolver())
+    long_id = "x" * 31
+    with pytest.raises(ValueError, match="at most 30"):
+        broker._order_payload(order(client_order_id=long_id), resolver().resolve("NIFTY"))
+    with pytest.raises(ValueError, match="unsupported characters"):
+        broker._order_payload(order(client_order_id="client/1"), resolver().resolve("NIFTY"))
 
 
 def test_enabled_broker_rejects_unknown_instrument_before_network_call() -> None:
