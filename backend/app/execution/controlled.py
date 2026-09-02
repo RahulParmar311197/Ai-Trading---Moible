@@ -226,14 +226,40 @@ class ControlledBrokerExecution:
                 f"broker submission failed: {type(exc).__name__}; execution fail-closed pending reconciliation",
             )
             raise
+        try:
+            self._validate_confirmation(order, result)
+        except ControlledExecutionError as exc:
+            self._started = False
+            self._activated = False
+            self._kill_switch = True
+            self._audit("BROKER_CONFIRMATION_INVALID", order.client_order_id, str(exc))
+            raise
         if result.status is BrokerOrderStatus.REJECTED:
             self._audit("BROKER_REJECTED", order.client_order_id, "broker rejected order")
             raise ControlledExecutionError("broker rejected order")
-        if not result.order_id.strip():
-            self._audit("BROKER_CONFIRMATION_INVALID", order.client_order_id, "broker returned no order id")
-            raise ControlledExecutionError("broker did not confirm an order id")
         self._audit("BROKER_CONFIRMED", order.client_order_id, result.status.value)
         return result
+
+    @staticmethod
+    def _validate_confirmation(submitted: BrokerOrder, result: BrokerOrder) -> None:
+        if result.client_order_id != submitted.client_order_id:
+            raise ControlledExecutionError("broker confirmation client order id mismatch")
+        if result.symbol != submitted.symbol:
+            raise ControlledExecutionError("broker confirmation symbol mismatch")
+        if result.side is not submitted.side:
+            raise ControlledExecutionError("broker confirmation side mismatch")
+        if result.order_type is not submitted.order_type:
+            raise ControlledExecutionError("broker confirmation order type mismatch")
+        if result.quantity != submitted.quantity:
+            raise ControlledExecutionError("broker confirmation quantity mismatch")
+        if result.filled_quantity > result.quantity:
+            raise ControlledExecutionError("broker confirmation filled quantity exceeds order quantity")
+        if result.status is BrokerOrderStatus.FILLED and result.filled_quantity != result.quantity:
+            raise ControlledExecutionError("filled broker confirmation has incomplete fill quantity")
+        if result.status is BrokerOrderStatus.PARTIALLY_FILLED and not 0 < result.filled_quantity < result.quantity:
+            raise ControlledExecutionError("partial broker confirmation has invalid fill quantity")
+        if result.average_price is not None and (not result.average_price.is_finite() or result.average_price <= 0):
+            raise ControlledExecutionError("broker confirmation average price must be finite and positive")
 
     def _reject(self, client_order_id: str, reason: str) -> None:
         self._audit("EXECUTION_REJECTED", client_order_id, reason)
