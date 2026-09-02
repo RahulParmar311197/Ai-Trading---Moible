@@ -7,6 +7,7 @@ from app.brokers.base import (
     BrokerOrder,
     BrokerOrderStatus,
     BrokerOrderType,
+    BrokerPosition,
     BrokerReconciliation,
     BrokerSide,
 )
@@ -18,9 +19,13 @@ class FakeBroker:
     def __init__(self, authenticated: bool = True) -> None:
         self.calls = 0
         self.authenticated = authenticated
+        self.positions: tuple[BrokerPosition, ...] = ()
 
     async def authenticate(self) -> BrokerAuthentication:
         return BrokerAuthentication(provider="fake", account_id="account-1", authenticated=self.authenticated)
+
+    async def get_positions(self) -> tuple[BrokerPosition, ...]:
+        return self.positions
 
     async def place_order(self, order: BrokerOrder) -> BrokerOrder:
         self.calls += 1
@@ -165,6 +170,25 @@ async def test_risk_rejection_happens_before_broker_call() -> None:
     with pytest.raises(ControlledExecutionError, match="maximum notional"):
         await guarded.submit(make_order(11), market_price=Decimal("100"), snapshot=snapshot())
     assert broker.calls == 0
+
+
+@pytest.mark.asyncio
+async def test_position_state_must_match_risk_snapshot_before_submission() -> None:
+    broker = FakeBroker()
+    broker.positions = (BrokerPosition(symbol="NIFTY", quantity=5, average_price=Decimal("100")),)
+    events = []
+    guarded = execution(broker, audit_sink=events.append)
+    await guarded.startup()
+    guarded.activate("CONFIRM-LIVE")
+
+    with pytest.raises(ControlledExecutionError, match="position differs"):
+        await guarded.submit(make_order(), market_price=Decimal("100"), snapshot=snapshot(position_quantity=0))
+
+    assert broker.calls == 0
+    assert not guarded.started
+    assert not guarded.active
+    assert guarded.kill_switch_active
+    assert events[-1].event_type == "POSITION_STATE_MISMATCH"
 
 
 @pytest.mark.asyncio
