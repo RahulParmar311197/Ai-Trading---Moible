@@ -4,7 +4,9 @@ Last updated: 2026-09-02
 
 ## Verified passing runs
 
-- `33614791892` — commit `45b0000f10f5afee87157df370afc5d8d5623a7d`: backend completed successfully with **235 non-integration tests passed, 4 deselected, 1 warning**, and **4 PostgreSQL integration tests passed, 235 deselected, 1 warning**; Android completed `assembleDebug` successfully. This verifies the latest controlled-live position-state hardening and corrected fixtures.
+- `33617134105` — commit `919253298d47ff2708bfb0c540292bff7c80c0cb`: backend completed successfully with **242 non-integration tests passed, 4 deselected, 1 warning**, and **4 PostgreSQL integration tests passed, 242 deselected, 1 warning**; Android completed `assembleDebug` successfully. This verifies the corrected non-finite P&L regression plus the accumulated controlled-live hardening.
+- `33617134090` — commit `919253298d47ff2708bfb0c540292bff7c80c0cb`: Android-only workflow completed `assembleDebug` successfully.
+- `33614791892` — commit `45b0000f10f5afee87157df370afc5d8d5623a7d`: backend completed successfully with **235 non-integration tests passed, 4 deselected, 1 warning**, and **4 PostgreSQL integration tests passed, 235 deselected, 1 warning**; Android completed `assembleDebug` successfully.
 - `33614031579` — commit `f7c9d3b2f6d0158bab4ed0b7555952a25b0d73c7`: backend completed successfully with **234 non-integration tests passed and 4 integration tests passed**; Android completed `assembleDebug` successfully.
 - `33613147236` — confirmation-hardening commit: backend completed successfully with **229 non-integration tests passed and 4 integration tests passed**; Android completed `assembleDebug` successfully.
 - `33612460702` — execution-gate hardening: backend completed successfully with **216 non-integration tests passed and 4 integration tests passed**; Android completed `assembleDebug` successfully.
@@ -20,15 +22,15 @@ Last updated: 2026-09-02
 
 ## Backend evidence
 
-Run `33614791892` checked out commit `45b0000f10f5afee87157df370afc5d8d5623a7d` on GitHub Actions with Python 3.12.14 and PostgreSQL 16. The official Upstox protobuf import succeeded. The non-integration suite reported **235 passed, 4 deselected, 1 warning in 1.64s**. The integration suite reported **4 passed, 235 deselected, 1 warning in 0.92s**. No provider credentials were used.
+Run `33617134105` checked out commit `919253298d47ff2708bfb0c540292bff7c80c0cb` on GitHub Actions with Python 3.12.14 and PostgreSQL 16. The official Upstox protobuf import succeeded. The non-integration suite reported **242 passed, 4 deselected, 1 warning in 1.15s**. The integration suite reported **4 passed, 242 deselected, 1 warning in 1.16s**. No provider credentials were used.
 
 ## Android evidence
 
-Run `33614791892` completed the Android `assembleDebug` job successfully using the CI-installed pinned Gradle 8.10.2. The separate Android workflow run `33614791848` for the same position-state documentation commit also completed its debug build successfully.
+Run `33617134105` completed the Android `assembleDebug` job successfully using the CI-installed pinned Gradle 8.10.2. The separate Android-only workflow run `33617134090` for the same commit also completed successfully.
 
 ## Current verification
 
-The latest implementation/status commit on `main` is `45b0000f10f5afee87157df370afc5d8d5623a7d`; its dedicated CI run `33614791892` is fully green. The subsequent documentation-only commits updating this log and project status are not treated as implementation-test evidence until their own CI runs complete.
+The latest implementation commit on `main` is `919253298d47ff2708bfb0c540292bff7c80c0cb`; its CI run `33617134105` and Android-only run `33617134090` are fully green. The predecessor implementation verification run `33617011571` failed because the newly hardened `RiskSnapshot` rejected non-finite P&L before the old test could exercise the gate; that test was corrected and the corrected commit is now green.
 
 ## Historical failed verification
 
@@ -40,4 +42,4 @@ No local/Codespace runtime is exposed through the connected tools. These are Git
 
 ## Safety
 
-CI success does not authorize live or autonomous trading. Production broker runtime verification, real live activation, and Stage 10 autonomous prerequisites remain gated. Durable idempotency has CI coverage for restart persistence, unresolved pending reservations, terminal reconciliation clearing, and concurrent reservation exclusivity. Position state is refreshed before controlled-live submission and mismatches fail closed. Recovery-provider failures remain fail-closed and credential-free.
+CI success does not authorize live or autonomous trading. Production broker runtime verification, real live activation, and Stage 10 autonomous prerequisites remain gated. Durable idempotency has CI coverage for restart persistence, unresolved pending reservations, terminal reconciliation clearing, and concurrent reservation exclusivity. Position state is refreshed before controlled-live submission and mismatches fail closed. Broker-state synchronization now has dedicated tests and requires an explicit daily-P&L baseline; authoritative baseline persistence/lifecycle and post-fill propagation into controlled execution remain unimplemented rather than inferred. Recovery-provider failures remain fail-closed and credential-free.

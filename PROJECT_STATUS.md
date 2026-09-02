@@ -24,6 +24,8 @@ Last updated: 2026-09-02
 - Durable idempotency completion persists and verifies broker results; terminal reconciled `REJECTED`/`CANCELLED` reservations are explicitly cleared, while live/pending states remain reserved.
 - Recovery refreshes broker positions/orders, reconciles requested IDs, and rejects unexpected live broker orders outside the explicit expected local order set. It never auto-activates trading.
 - Before every controlled live submission, the execution boundary refreshes broker positions and requires the submitted `RiskSnapshot.position_quantity` to match the current broker position for the order symbol. Refresh failures, malformed position responses, or mismatches fail closed before broker mutation.
+- `RiskSnapshot` now rejects non-finite balance/P&L and invalid position quantities at construction time, keeping malformed risk state fail-closed before evaluation.
+- `BrokerStateSynchronizer` provides a broker-refresh primitive that aggregates provider position P&L and requires an explicit daily realized-P&L baseline when deriving the next risk snapshot; no lifetime broker P&L is silently treated as today's P&L.
 
 ## Stage status
 
@@ -82,7 +84,11 @@ Last updated: 2026-09-02
 - [x] Atomic durable reservation and concurrency regression coverage
 - [x] Terminal `REJECTED`/`CANCELLED` reservation clearing after reconciliation
 - [x] Regression test for stale/mismatched position snapshot
-- [x] CI verification of the latest position-state hardening commit
+- [x] Broker-state synchronization primitive with explicit daily-P&L baseline
+- [x] Fail-closed validation for non-finite risk snapshot inputs
+- [x] CI verification of the latest risk-snapshot validation/test hardening
+- [ ] Authoritative daily-P&L baseline persistence/lifecycle
+- [ ] Post-fill broker-state propagation into the live execution lifecycle
 - [ ] Production broker runtime verification
 - [ ] Real live activation
 
@@ -95,9 +101,9 @@ Last updated: 2026-09-02
 
 ## Latest CI evidence
 
-- Run `33614791892` for commit `45b0000f10f5afee87157df370afc5d8d5623a7d`: **235 non-integration passed, 4 integration passed, 1 warning; Android `assembleDebug` passed**. This verifies the latest position-state hardening plus corrected test fixtures and status documentation.
-- Earlier run `33614031579` for commit `f7c9d3b2f6d0158bab4ed0b7555952a25b0d73c7`: **234 non-integration passed, 4 integration passed; Android `assembleDebug` passed**.
-- The earlier intentionally failing verification run for the initial position-refresh contract is retained as historical evidence and is not treated as a green result.
+- Run `33617134105` for commit `919253298d47ff2708bfb0c540292bff7c80c0cb`: **242 non-integration passed, 4 deselected, 1 warning; 4 PostgreSQL integration tests passed, 242 deselected, 1 warning; Android `assembleDebug` passed**. This verifies the corrected non-finite P&L regression together with the accumulated Stage 9 hardening.
+- Android-only run `33617134090` for the same commit completed successfully with `assembleDebug`.
+- Run `33617011571` for predecessor commit `c49a16791817542b5f2ea4c19e8090c558616b1a` is retained as a genuine failed verification: the newly hardened `RiskSnapshot` rejected a non-finite P&L before the old test could exercise the gate. The test was corrected rather than weakening validation.
 
 ## Runtime limitation
 
@@ -110,8 +116,10 @@ No local/Codespace runtime is exposed through the connected tools. No local test
 ## Remaining blockers / unverified items
 
 1. Official Gradle wrapper artifact (`gradle-wrapper.jar`) is still absent; CI installs Gradle 8.10.2 directly, so final Stage 1 wrapper verification remains blocked.
-2. Production broker runtime and real live activation are unverified because no sandbox/test broker credentials are available through the connected tools.
-3. Stage 5 external AI-provider compatibility and Android AI integration remain unverified.
-4. Stage 6 live option-chain provider integration remains unverified.
-5. Stage 2 fresh full product-flow verification remains unverified.
-6. Stage 10 autonomous trading remains gated and must not be enabled without all blueprint prerequisites and evidence.
+2. Authoritative daily-P&L baseline persistence/lifecycle is not yet defined by the current runtime architecture; the synchronization helper therefore requires an explicit baseline and does not invent a trading-day boundary.
+3. Post-fill broker-state propagation is not yet wired into `ControlledBrokerExecution`; the existing synchronizer is deliberately a standalone fail-closed primitive until the lifecycle contract is authoritative.
+4. Production broker runtime and real live activation are unverified because no sandbox/test broker credentials are available through the connected tools.
+5. Stage 5 external AI-provider compatibility and Android AI integration remain unverified.
+6. Stage 6 live option-chain provider integration remains unverified.
+7. Stage 2 fresh full product-flow verification remains unverified.
+8. Stage 10 autonomous trading remains gated and must not be enabled without all blueprint prerequisites and evidence.
