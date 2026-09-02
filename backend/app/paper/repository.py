@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping
 from typing import Any, Protocol
 
@@ -17,11 +18,21 @@ class PaperRepository(Protocol):
 
     def delete_position(self, symbol: str) -> None: ...
 
+    def save_state(self, balance: Any, realized_pnl_total: Any, halted: bool) -> None: ...
+
+    def load_orders(self) -> list[Order]: ...
+
+    def load_fills(self) -> list[Fill]: ...
+
+    def load_positions(self) -> list[Position]: ...
+
+    def load_state(self) -> Mapping[str, Any] | None: ...
+
     def append_audit(self, event_type: str, entity_id: str | None, payload: Mapping[str, Any]) -> None: ...
 
 
 class PostgresPaperRepository:
-    """PostgreSQL implementation using the existing provider-neutral SQL boundary."""
+    """PostgreSQL implementation using the existing provider-neutral SQL executor boundary."""
 
     def __init__(self, db: Any) -> None:
         self.db = db
@@ -73,6 +84,57 @@ class PostgresPaperRepository:
     def delete_position(self, symbol: str) -> None:
         self.db.execute("DELETE FROM paper_positions WHERE symbol = :symbol", {"symbol": symbol})
 
+    def save_state(self, balance: Any, realized_pnl_total: Any, halted: bool) -> None:
+        self.db.execute(
+            """
+            INSERT INTO paper_account_state (state_id, balance, realized_pnl_total, halted)
+            VALUES (1, :balance, :realized_pnl_total, :halted)
+            ON CONFLICT (state_id) DO UPDATE SET
+              balance = EXCLUDED.balance,
+              realized_pnl_total = EXCLUDED.realized_pnl_total,
+              halted = EXCLUDED.halted,
+              updated_at = NOW()
+            """,
+            {"balance": balance, "realized_pnl_total": realized_pnl_total, "halted": halted},
+        )
+
+    def load_orders(self) -> list[Order]:
+        rows = self.db.fetch_all(
+            """
+            SELECT order_id, symbol, side, order_type, quantity, limit_price,
+                   created_at, status, filled_quantity, average_fill_price
+            FROM paper_orders ORDER BY created_at ASC, order_id ASC
+            """,
+            {},
+        )
+        return [Order.model_validate(row) for row in rows]
+
+    def load_fills(self) -> list[Fill]:
+        rows = self.db.fetch_all(
+            """
+            SELECT order_id, quantity, price, fee, timestamp
+            FROM paper_fills ORDER BY timestamp ASC, id ASC
+            """,
+            {},
+        )
+        return [Fill.model_validate(row) for row in rows]
+
+    def load_positions(self) -> list[Position]:
+        rows = self.db.fetch_all(
+            """
+            SELECT symbol, quantity, average_price, realized_pnl, unrealized_pnl
+            FROM paper_positions ORDER BY symbol ASC
+            """,
+            {},
+        )
+        return [Position.model_validate(row) for row in rows]
+
+    def load_state(self) -> Mapping[str, Any] | None:
+        return self.db.fetch_one(
+            "SELECT balance, realized_pnl_total, halted FROM paper_account_state WHERE state_id = 1",
+            {},
+        )
+
     def append_audit(self, event_type: str, entity_id: str | None, payload: Mapping[str, Any]) -> None:
         self.db.execute(
             """
@@ -82,6 +144,6 @@ class PostgresPaperRepository:
             {
                 "event_type": event_type,
                 "entity_id": entity_id,
-                "payload": __import__("json").dumps(dict(payload), sort_keys=True, separators=(",", ":")),
+                "payload": json.dumps(dict(payload), sort_keys=True, separators=(",", ":")),
             },
         )
