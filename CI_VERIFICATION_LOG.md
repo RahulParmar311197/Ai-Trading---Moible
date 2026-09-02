@@ -4,6 +4,7 @@ Last updated: 2026-09-02
 
 ## Verified passing runs
 
+- `33623091606` — documentation commit `f929c6b60bde69dd42d7e5b7a7ce778f01c752fd`: full CI completed successfully. Backend completed official Upstox protobuf verification plus non-integration and PostgreSQL integration pytest jobs; Android `assembleDebug` completed successfully using the pinned Gradle 8.10.2 setup.
 - `33622735238` — implementation commit `d53910b663853246c6a0ec8155df9e0d1b33c900`: full CI completed successfully. Backend completed official Upstox protobuf verification plus non-integration and PostgreSQL integration pytest jobs; Android `assembleDebug` completed successfully.
 - `33620032069` — implementation commit `d9f6338f81566c0488352d94a021d5a4b5a1b8cf`: Android `assembleDebug` completed successfully. Gradle Actions also reported all Gradle Wrapper jars valid in the CI environment.
 - `33619901636` — preceding implementation state: backend completed official Upstox protobuf verification, **252 non-integration tests passed, 5 deselected, 1 warning**, and **5 PostgreSQL integration tests passed, 252 deselected, 1 warning**; Android `assembleDebug` completed successfully using the pinned Gradle 8.10.2 setup.
@@ -16,19 +17,21 @@ Last updated: 2026-09-02
 
 ## Backend evidence
 
-Run `33622735238` is the current full-CI verification for `d53910b663853246c6a0ec8155df9e0d1b33c900`. The backend job completed successfully, including official Upstox protobuf verification, the non-integration pytest suite, and the PostgreSQL integration suite. The corrected AI provider tests are therefore covered by the verified CI run.
+Run `33623091606` is the latest full-CI verification and completed successfully. The backend job completed official Upstox protobuf verification, the non-integration pytest suite, and the PostgreSQL integration suite. The Android job also completed `assembleDebug` successfully.
 
 The concrete `PostFillBrokerStateSynchronizer` is present in the execution package. It refreshes broker account/positions, binds derived risk state to the explicitly persisted session baseline, and requires an explicit risk-state sink. Unit/regression coverage verifies successful propagation and fail-closed behavior for refresh, baseline, and sink failures.
 
+Run `33622735238` independently verifies the corrected AI provider compatibility tests after the earlier genuine mocked-response fixture failure. No provider credentials were used.
+
 ## Android evidence
 
-Run `33622735238` also completed the Android `assembleDebug` job successfully using the CI workflow's pinned Gradle 8.10.2 setup. The Android AI integration remains advisory-only and does not authorize or execute broker orders.
+Run `33623091606` completed the Android `assembleDebug` job successfully using the CI workflow's pinned Gradle 8.10.2 setup. The Android AI integration remains advisory-only and does not authorize or execute broker orders.
 
 Run `33620032069` independently verified `assembleDebug` for the preceding execution implementation state. The workflow's wrapper validation reported all wrapper JARs valid in the CI environment; this does not prove the repository contains the required official wrapper artifact.
 
 ## Current verification
 
-The latest implementation commit before documentation updates is `d53910b663853246c6a0ec8155df9e0d1b33c900`, and its full CI run `33622735238` is green. Documentation commits record this evidence without changing runtime behavior.
+The latest documentation commit before this log update is `f929c6b60bde69dd42d7e5b7a7ce778f01c752fd`, and its full CI run `33623091606` is green. Documentation commits record this evidence without changing runtime behavior.
 
 ## Historical failed verification
 
