@@ -3,6 +3,8 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any
 
+from app.execution.gate import DeterministicExecutionGate, RiskSnapshot
+
 from .models import Fill, Order, OrderSide, OrderStatus, OrderType, Position
 from .repository import PaperRepository
 
@@ -10,7 +12,7 @@ from .repository import PaperRepository
 class PaperBroker:
     """In-memory paper broker with deterministic fills and no live-broker access."""
 
-    def __init__(self, starting_balance: Decimal = Decimal("100000"), fee_rate: Decimal = Decimal("0"), slippage: Decimal = Decimal("0"), max_order_notional: Decimal | None = None, max_position_quantity: int | None = None, max_daily_loss: Decimal | None = None, repository: PaperRepository | None = None) -> None:
+    def __init__(self, starting_balance: Decimal = Decimal("100000"), fee_rate: Decimal = Decimal("0"), slippage: Decimal = Decimal("0"), max_order_notional: Decimal | None = None, max_position_quantity: int | None = None, max_daily_loss: Decimal | None = None, repository: PaperRepository | None = None, risk_gate: DeterministicExecutionGate | None = None) -> None:
         if starting_balance < 0 or fee_rate < 0 or slippage < 0:
             raise ValueError("balance, fee rate and slippage must be non-negative")
         for name, value in (("max_order_notional", max_order_notional), ("max_daily_loss", max_daily_loss)):
@@ -25,6 +27,7 @@ class PaperBroker:
         self.max_position_quantity = max_position_quantity
         self.max_daily_loss = max_daily_loss
         self.repository = repository
+        self.risk_gate = risk_gate
         self.realized_pnl_total = Decimal("0")
         self.halted = False
         self.orders: dict[str, Order] = {}
@@ -55,6 +58,19 @@ class PaperBroker:
             raise ValueError("market price must be positive")
         if order.order_type is OrderType.LIMIT and order.limit_price is None:
             raise ValueError("limit order requires limit_price")
+        if self.risk_gate is not None:
+            decision = self.risk_gate.evaluate(
+                order,
+                market_price,
+                RiskSnapshot(
+                    balance=self.balance,
+                    realized_pnl=self.realized_pnl_total,
+                    halted=self.halted,
+                    position_quantity=self.positions.get(order.symbol).quantity if order.symbol in self.positions else 0,
+                ),
+            )
+            if not decision.approved:
+                raise ValueError(decision.reason)
         projected_quantity = self._projected_position_quantity(order)
         if self.max_position_quantity is not None and abs(projected_quantity) > self.max_position_quantity:
             raise ValueError("order exceeds paper position limit")
