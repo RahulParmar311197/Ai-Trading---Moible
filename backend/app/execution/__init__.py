@@ -10,7 +10,13 @@ from .risk_session import (
     RiskSessionBaselineMissing,
     RiskSessionBaselineStore,
 )
-from .state_sync import BrokerRiskState, BrokerStateSynchronizer, StateSynchronizationError, risk_snapshot_from_broker_state
+from .state_sync import (
+    BrokerRiskState,
+    BrokerStateSynchronizer,
+    StateSynchronizationError,
+    risk_snapshot_from_broker_state,
+    risk_snapshot_from_persisted_session,
+)
 
 __all__ = [
     "ControlledBrokerExecution",
@@ -26,6 +32,7 @@ __all__ = [
     "BrokerStateSynchronizer",
     "StateSynchronizationError",
     "risk_snapshot_from_broker_state",
+    "risk_snapshot_from_persisted_session",
     "PostgresRiskSessionBaselineStore",
     "RiskSessionBaseline",
     "RiskSessionBaselineConflict",
