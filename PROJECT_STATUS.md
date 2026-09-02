@@ -26,17 +26,14 @@ Last updated: 2026-09-02
 - Stage 8 has provider-neutral account/order/position/broker protocols, non-secret authentication context, deterministic reconciliation, idempotency enforcement, Upstox/Dhan adapters, instrument resolution/catalogue ingestion, and mutation disabled by default.
 - Added `ControlledBrokerExecution`: construction is inert, startup verifies the broker authentication boundary without enabling mutation, activation requires an exact explicit confirmation phrase, a kill switch defaults active, risk approval is mandatory before broker mutation, broker confirmation is required, idempotency wraps the mutation boundary, audit events are emitted through an optional sink, and shutdown fails closed.
 - Controlled execution now has a provider-neutral durable audit repository/sink plus a dedicated PostgreSQL migration. Audit persistence stores only execution event type, client order id, reason, timestamp and a safe JSON payload; credential values are excluded.
+- Controlled execution recovery now fails closed: recovery disables new entries, re-authenticates, refreshes positions/orders, reconciles requested client orders, and requires explicit reactivation after a healthy recovery. Reconciliation mismatch or unavailable recovery boundaries keep execution stopped.
 - Controlled execution remains an integration boundary only; no production/live activation has been enabled or configured.
 
 ## CI evidence
 
-GitHub Actions run `33592488680` for commit `1c31b7de847f62f0b578db64c74879563d3aa322` completed successfully. The backend job passed both non-integration and integration suites, and the Android job completed `gradle assembleDebug` successfully.
+GitHub Actions run `33595826727` for the current controlled-execution recovery/audit implementation completed successfully. Backend dependency installation, official Upstox protobuf verification, non-integration tests, and integration tests all passed; the Android job completed `gradle assembleDebug` successfully.
 
-GitHub Actions run `33594099456` for commit `805c1f2ed9cf3c4d0bc363e79343cbd8cdca7df4` completed successfully. The backend CI passed the controlled-execution lifecycle test changes, and the corresponding Android run `33594099416` completed `gradle assembleDebug` successfully.
-
-GitHub Actions run `33594128342` for commit `cd4dbdc6a4b511893b6196dfdcdd83394bc41b05` completed successfully, including the backend CI job. The corresponding Android run `33594128311` also completed successfully.
-
-The durable-audit implementation commits are newer than the latest recorded CI evidence and require a fresh backend CI run before their tests are marked verified.
+The preceding controlled-execution audit implementation was also covered by successful GitHub Actions runs `33595372401` and `33595372421`.
 
 No local/Codespace test execution is claimed.
 
@@ -179,9 +176,10 @@ No local/Codespace test execution is claimed.
 - [x] Fail-closed startup authentication check
 - [x] Fail-closed shutdown boundary
 - [x] CI verification of controlled execution lifecycle tests at `33594099456`
-- [ ] Production broker runtime verification
+- [x] Recovery boundary: reconnect/authenticate, refresh broker state, reconcile requested orders, and remain gated until explicit reactivation
 - [x] Durable audit sink/repository boundary and PostgreSQL migration
-- [ ] Durable audit runtime verification against PostgreSQL
+- [x] Durable audit PostgreSQL integration test executed successfully in CI run `33595826727`
+- [ ] Production broker runtime verification
 - [ ] Real live activation
 
 ### Stage 10 — Autonomous Trading
@@ -195,7 +193,7 @@ No local/Codespace test execution is claimed.
 
 ## Safety status
 
-**LIVE/AUTONOMOUS TRADING REMAINS GATED.** The controlled executor is inert until startup succeeds and explicit activation is supplied; it starts with its kill switch active and shutdown fails closed. Dhan and Upstox adapters remain mutation-disabled by default. AI remains subordinate to deterministic strategy, validation, risk and execution controls.
+**LIVE/AUTONOMOUS TRADING REMAINS GATED.** The controlled executor is inert until startup succeeds and explicit activation is supplied; recovery and startup leave the kill switch active; shutdown fails closed. Dhan and Upstox adapters remain mutation-disabled by default. AI remains subordinate to deterministic strategy, validation, risk and execution controls.
 
 ## Runtime limitation
 
@@ -203,6 +201,9 @@ No Codespace/runtime session is exposed through the connected tools, so no local
 
 ## Recent commits on main
 
+- `1ced23f` — type-safe controlled execution recovery boundary
+- `8384d40` — test controlled execution recovery paths
+- `b49177d` — add fail-closed controlled execution recovery
 - `3f5c32b` — test durable controlled execution audit sink
 - `b15e723` — export durable execution audit boundary
 - `469b165` — add controlled execution audit migration
@@ -210,13 +211,10 @@ No Codespace/runtime session is exposed through the connected tools, so no local
 - `cd4dbdc` — update controlled execution verification status
 - `805c1f2` — test fail-closed controlled execution lifecycle
 - `c5b158b` — add fail-closed controlled execution lifecycle
-- `8175ae6` — update controlled execution stage status
-- `4b22efb` — export controlled execution boundary
-- `386d115` — test controlled broker execution safety boundary
 
 ## Next execution
 
-1. Run and verify fresh CI for the durable controlled-execution audit implementation; fix only observed failures.
-2. Add/verify PostgreSQL runtime coverage for the new audit table and persistence boundary where the available CI environment supports it.
-3. Perform provider sandbox/runtime verification where credentials and broker test environments are explicitly available.
+1. Keep Stage 9 live broker runtime verification explicitly dependent on a real sandbox/test account and credentials; do not fabricate it.
+2. Review remaining Stage 9 reconciliation/failure semantics for any additional deterministic safety gaps that can be covered without live credentials.
+3. Keep Stage 1 official Gradle wrapper artifact and Stage 5/6/8 external-provider/runtime gaps explicitly unverified.
 4. Keep real live activation and autonomous trading disabled until all required evidence exists.
