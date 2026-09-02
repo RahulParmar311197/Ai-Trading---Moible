@@ -4,6 +4,7 @@ Last updated: 2026-09-02
 
 ## Verified passing runs
 
+- `33625211010` — documentation commit `23b9f479d5f776dd92cc2e73395221d23c0a71e6`: **full CI completed successfully**. GitHub reports `backend-tests` and `android-build` both completed successfully. Backend completed official Upstox protobuf verification, non-integration pytest, and PostgreSQL integration pytest; Android completed `assembleDebug` using pinned Gradle 8.10.2.
 - `33624319414` — implementation commit `ba78f6ff248d6f7e08cb47963997e868868be12f`: **full CI completed successfully**. Backend completed official Upstox protobuf verification, non-integration pytest, and PostgreSQL integration pytest; Android `assembleDebug` completed successfully.
 - `33623091606` — documentation commit `f929c6b60bde69dd42d7e5b7a7ce778f01c752fd`: full CI completed successfully. Backend completed official Upstox protobuf verification plus non-integration and PostgreSQL integration pytest jobs; Android `assembleDebug` completed successfully using pinned Gradle 8.10.2.
 - `33622735238` — implementation commit `d53910b663853246c6a0ec8155df9e0d1b33c900`: full CI completed successfully. Backend and Android jobs both completed successfully.
@@ -14,7 +15,7 @@ Last updated: 2026-09-02
 
 ## Backend evidence
 
-Run `33624319414` is the latest full-CI verification. Its backend job `100228382834` completed successfully for official Upstox protobuf verification, non-integration pytest, and PostgreSQL integration pytest. Its Android job `100228382542` also completed successfully, including `gradle assembleDebug`.
+Run `33625211010` is the latest full-CI verification. Its backend job `100231227978` completed successfully for official Upstox protobuf verification, non-integration pytest, and PostgreSQL integration pytest. Its Android job `100231227972` also completed successfully, including `gradle assembleDebug`.
 
 The paper-trading hardening in `ba78f6ff248d6f7e08cb47963997e868868be12f` therefore has full CI verification. The tests specifically cover fail-closed financial-input validation without weakening the underlying validation.
 
@@ -22,11 +23,11 @@ The concrete `PostFillBrokerStateSynchronizer` remains provider-neutral and test
 
 ## Android evidence
 
-Run `33624319414` completed Android `assembleDebug` successfully. The Android AI integration remains advisory-only and does not authorize or execute broker orders.
+Run `33625211010` completed Android `assembleDebug` successfully. The Android AI integration remains advisory-only and does not authorize or execute broker orders.
 
 ## Current verification
 
-The latest implementation CI is `33624319414` and is green. Documentation updates record only observed GitHub Actions evidence.
+The latest full-CI verification is `33625211010` and is green. Documentation records only observed GitHub Actions evidence.
 
 ## Historical failed verification
 
