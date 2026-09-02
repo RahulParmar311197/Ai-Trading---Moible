@@ -110,3 +110,28 @@ def test_position_mark_rejects_non_finite_or_non_positive_price() -> None:
         position.mark(Decimal("NaN"))
     with pytest.raises(ValueError, match="finite and positive"):
         position.mark(Decimal("0"))
+
+
+def test_paper_broker_rejects_non_finite_configuration() -> None:
+    with pytest.raises(ValueError, match="starting balance"):
+        PaperBroker(starting_balance=Decimal("NaN"))
+    with pytest.raises(ValueError, match="fee rate"):
+        PaperBroker(fee_rate=Decimal("Infinity"))
+    with pytest.raises(ValueError, match="slippage"):
+        PaperBroker(slippage=Decimal("NaN"))
+    with pytest.raises(ValueError, match="slippage"):
+        PaperBroker(slippage=Decimal("1"))
+    with pytest.raises(ValueError, match="max_order_notional"):
+        PaperBroker(max_order_notional=Decimal("NaN"))
+    with pytest.raises(ValueError, match="max_daily_loss"):
+        PaperBroker(max_daily_loss=Decimal("Infinity"))
+
+
+def test_paper_market_inputs_reject_non_finite_values() -> None:
+    broker = PaperBroker()
+    with pytest.raises(ValueError, match="finite and positive"):
+        broker.place_order(order("1", OrderSide.BUY), Decimal("NaN"))
+    with pytest.raises(ValueError, match="finite and positive"):
+        broker.process_market("NIFTY", Decimal("Infinity"))
+    with pytest.raises(ValueError, match="finite and positive"):
+        broker.fill_order("missing", 1, Decimal("NaN"))
