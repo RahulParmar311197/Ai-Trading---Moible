@@ -8,7 +8,7 @@ Last updated: 2026-09-02
 
 ## Current stage
 
-**Stage 8 — Broker Integration Foundation**
+**Stage 9 — Controlled Live Trading Foundation**
 
 ## Latest implementation state
 
@@ -17,24 +17,21 @@ Last updated: 2026-09-02
 - AI has a provider-neutral HTTP/service boundary and `/api/v1/ai/analyze`, `/api/v1/ai/strategy`, `/api/v1/ai/explain-trade` endpoints. AI remains advisory and cannot authorize execution.
 - Options have provider-neutral contracts, deterministic Black-Scholes Greeks, liquidity/spread filtering, deterministic delta-based strike selection, multi-leg expiry payoff, risk metrics, deterministic strategy selection, a provider-neutral option-chain boundary, and options analytics APIs.
 - Paper trading has deterministic in-memory order/fill/position execution, configurable fees/slippage, limit-order behavior, duplicate-order protection, P&L accounting, configurable order-notional and position limits, a kill switch, and a paper-only API.
-- Paper trading now has durable order/fill/position/audit persistence, deterministic partial-fill simulation, and a restart-hydration boundary backed by the existing SQLAlchemy executor's `fetch_one`/`fetch_all` read methods. Account balance, cumulative realized P&L, and halt state are persisted separately so restoration does not replay orders or contact live brokers.
+- Paper trading now has durable order/fill/position/audit persistence, deterministic partial-fill simulation, and restart hydration. Account balance, cumulative realized P&L, and halt state are persisted separately so restoration does not replay orders or contact live brokers.
 - Replay-to-paper execution is implemented through a paper-only adapter. Replay-visible candles drive deterministic strategy evaluation; signals are translated into paper market orders, and optional stop/target brackets are evaluated on later replay candles. The adapter cannot route replay orders to live brokers.
-- Added a pure `DeterministicExecutionGate` with explicit order-notional, position-quantity, daily-loss, and halt checks. It returns an approval decision and never submits an order itself, preserving the deterministic DATA → VALIDATION → STRATEGY → RISK → EXECUTION GATE → BROKER separation.
-- The deterministic execution gate is now an optional pre-trade gate on `PaperBroker.place_order`. When configured, rejected orders are stopped before paper order persistence; existing paper risk limits remain available for backward-compatible callers.
-- Added provider-specific authentication boundaries for real broker token acquisition: Upstox authorization-code exchange and documented daily token-expiry calculation, plus Dhan consent generation, consent consumption, and supported token renewal. Credential values remain transport-only and are never placed in broker domain models or error messages.
-- Stage 8 has a provider-neutral account/order/position/broker protocol with non-secret authentication context and deterministic order reconciliation.
-- Provider-neutral idempotency enforcement is implemented as an opt-in decorator/store: repeated successful submissions with the same client order ID return the original result, conflicting reuse is rejected, and failed submissions release the reservation for safe retry.
-- Official Upstox and Dhan API contracts were reviewed before adding adapters. The adapters map provider account/position/order responses into the common broker models and keep live mutation disabled by default.
-- Added a provider-neutral `BrokerInstrument`/`InstrumentResolver` boundary with explicit exchange segment, product type, validity enum, and lot-size metadata. Unknown canonical symbols are rejected rather than guessed.
-- Wired the resolver into the explicit Upstox/Dhan live-order construction path. When live mutation is explicitly enabled, provider security IDs plus exchange/product/validity configuration now come from the resolver rather than hard-coded defaults. Unknown instruments fail before the network request. Live mutation remains disabled by default.
-- Added deterministic provider catalogue ingestion for Upstox BOD JSON records and Dhan scrip-master rows. Catalogues map stable provider identifiers, exchange/segment, trading symbol, lot size, product policy and validity into the existing resolver boundary; unsupported Dhan exchange/segment combinations are rejected rather than guessed.
-- Added a provider-neutral, secret-safe broker session lifecycle boundary with explicit unauthenticated/authenticated/expired/invalidated states. Upstox and Dhan adapters now own a session object and route HTTP authorization through it; the non-secret `BrokerAuthentication` projection never contains access tokens. External OAuth/token refresh can replace a session token without changing domain models.
+- `DeterministicExecutionGate` is provider-neutral and performs pure pre-trade order-notional, position-quantity, daily-loss, halt, price and quantity checks. It never submits an order itself.
+- The deterministic execution gate is an optional pre-trade gate on `PaperBroker.place_order`; rejected orders stop before paper persistence.
+- Provider-specific authentication boundaries now cover Upstox authorization-code exchange and daily token-expiry calculation, plus Dhan consent generation, consent consumption, and supported token renewal. Credential values remain transport-only.
+- Successful broker tokens can be converted directly into the existing secret-safe `StaticTokenBrokerSession` boundary without changing broker domain models.
+- Stage 8 has provider-neutral account/order/position/broker protocols, non-secret authentication context, deterministic reconciliation, idempotency enforcement, Upstox/Dhan adapters, instrument resolution/catalogue ingestion, and mutation disabled by default.
+- Added `ControlledBrokerExecution`: construction is inert, activation requires an exact explicit confirmation phrase, a kill switch defaults active, risk approval is mandatory before broker mutation, broker confirmation is required, idempotency wraps the mutation boundary, and audit events are emitted through an optional sink.
+- Controlled execution remains an integration boundary only; no production/live activation has been enabled or configured.
 
 ## CI evidence
 
-GitHub Actions run `33592091750` for commit `f59110dc77b8dc24c5af8e1b44e9dc21afa50c76` completed successfully. The backend job passed both non-integration and integration suites, and the Android job completed `gradle assembleDebug` successfully. This verifies the replay-paper correction and optional paper risk-gate integration at that commit.
+GitHub Actions run `33592488680` for commit `1c31b7de847f62f0b578db64c74879563d3aa322` completed successfully. The backend job passed both non-integration and integration suites, and the Android job completed `gradle assembleDebug` successfully. This verifies the broker authentication implementation and preceding paper/replay/risk milestones.
 
-The follow-up broker-authentication commits `f33f2f7` and `ef810a7` were added after that successful run; no CI pass is claimed for those new authentication changes until their own completed run is observed.
+The controlled-execution commits after that run have not yet received a completed CI result, so no CI pass is claimed for them.
 
 No local/Codespace test execution is claimed.
 
@@ -76,7 +73,7 @@ No local/Codespace test execution is claimed.
 - [x] SMC replay
 - [x] Reusable strategy evaluation boundary
 - [x] Replay-to-paper execution
-- [x] Fresh backend CI verification at `33592091750`
+- [x] Fresh backend CI verification at `33592488680`
 
 ### Stage 4 — Backtesting
 
@@ -91,7 +88,7 @@ No local/Codespace test execution is claimed.
 - [x] Out-of-sample split
 - [x] Persisted reports/repository/API
 - [x] Strategy DSL execution adapter
-- [x] Fresh backend CI verification at `33592091750`
+- [x] Fresh backend CI verification at `33592488680`
 - [x] Deterministic risk-gate foundation
 
 ### Stage 5 — AI
@@ -142,7 +139,7 @@ No local/Codespace test execution is claimed.
 - [x] Deterministic risk-gate foundation
 - [x] Optional risk-gate enforcement before paper order persistence
 - [x] Replay-to-paper execution
-- [x] Full paper/replay/risk-gate backend verification at `33592091750`
+- [x] Backend CI verification at `33592488680`
 
 ### Stage 8 — Brokers
 
@@ -161,19 +158,23 @@ No local/Codespace test execution is claimed.
 - [x] Upstox authorization-code token exchange boundary
 - [x] Dhan consent/consume-token boundary
 - [x] Dhan supported token renewal boundary
-- [ ] CI verification of latest authentication implementation
+- [x] Token-to-session hydration boundary
+- [x] CI verification of authentication implementation at `33592488680`
 - [ ] Live broker runtime verification
-- [ ] Controlled execution/risk integration
 
 ### Stage 9 — Controlled Live Trading
 
-- [ ] Explicit activation
-- [ ] Deterministic risk engine
-- [ ] Position limits
-- [ ] Broker confirmation
-- [ ] Kill switches
-- [ ] Audit logging
-- [ ] Safe startup/shutdown
+- [x] Explicit activation boundary requiring exact confirmation
+- [x] Deterministic risk gate before broker mutation
+- [x] Position-limit enforcement through deterministic risk gate
+- [x] Broker response/order-id confirmation boundary
+- [x] Kill switch defaults active and can trip execution
+- [x] Audit-event boundary for activation/rejection/broker confirmation
+- [x] Idempotency boundary around broker mutation
+- [ ] CI verification of controlled execution implementation
+- [ ] Production broker runtime verification
+- [ ] Safe startup/shutdown integration
+- [ ] Real live activation
 
 ### Stage 10 — Autonomous Trading
 
@@ -186,7 +187,7 @@ No local/Codespace test execution is claimed.
 
 ## Safety status
 
-**LIVE/AUTONOMOUS TRADING REMAINS GATED.** Paper trading is isolated from real broker execution. The Dhan and Upstox adapters default to mutation-disabled mode. AI remains subordinate to deterministic strategy, validation, risk and execution controls.
+**LIVE/AUTONOMOUS TRADING REMAINS GATED.** The controlled executor is inert until explicitly activated and starts with its kill switch active. Dhan and Upstox adapters remain mutation-disabled by default. AI remains subordinate to deterministic strategy, validation, risk and execution controls.
 
 ## Runtime limitation
 
@@ -194,28 +195,21 @@ No Codespace/runtime session is exposed through the connected tools, so no local
 
 ## Recent commits on main
 
+- `4b22efb` — export controlled execution boundary
+- `386d115` — test controlled broker execution safety boundary
+- `b6bf158` — add controlled broker execution safety boundary
+- `53eb81d` — make execution risk gate provider-neutral
+- `1c31b7d` — connect broker tokens to secret-safe sessions
 - `ef810a7` — test broker OAuth exchange and token renewal
 - `57c3a0c` — export broker OAuth authentication boundaries
 - `f33f2f7` — add real broker OAuth and token renewal boundary
 - `2937b4b` — test paper broker risk gate integration
 - `3ee462a` — wire deterministic risk gate into paper execution
 - `5e41faf` — fix replay paper target-hit test index
-- `815d450` — test deterministic execution risk gate
-- `620c700` — export execution risk gate
-- `dd8bf31` — add deterministic execution risk gate
-- `b5efd27` — test deterministic replay-to-paper execution
-- `53633d0` — export replay-to-paper execution boundary
-- `a2fd377` — add deterministic replay-to-paper execution boundary
-- `784a8d1` — allow persisted paper balance to reflect existing risk semantics
-- `c2181f5` — test paper broker restart hydration
-- `b854751` — add deterministic paper broker restart hydration
-- `a3d6cba` — persist paper account state for restart recovery
-- `58f946c` — add durable paper state hydration boundary
-- `32260bc` — fix paper market processing for partial orders
 
 ## Next execution
 
-1. Verify the new Upstox/Dhan authentication implementation in GitHub Actions and fix only observed failures.
-2. Connect successful token acquisition/renewal results to the existing secret-safe broker session boundary.
-3. Integrate controlled broker execution only behind deterministic risk, confirmation, idempotency and kill-switch gates.
-4. Re-run CI verification after each stable milestone.
+1. Verify the controlled-execution implementation in GitHub Actions and fix only observed failures.
+2. Add safe startup/shutdown integration and durable audit handling without enabling live trading.
+3. Perform provider sandbox/runtime verification where credentials and broker test environments are explicitly available.
+4. Keep real live activation and autonomous trading disabled until all required evidence exists.
