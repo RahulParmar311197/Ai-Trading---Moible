@@ -31,13 +31,22 @@ class PaperBroker:
         self.fills: list[Fill] = []
         self.positions: dict[str, Position] = {}
 
-    def place_order(self, order: Order, market_price: Decimal, fill_quantity: int | None = None) -> Fill | None:
-        """Accept an order and optionally execute a deterministic first fill.
+    @classmethod
+    def from_repository(cls, repository: PaperRepository, **kwargs: Any) -> "PaperBroker":
+        """Restore paper state without replaying orders or touching a live broker."""
+        broker = cls(repository=repository, **kwargs)
+        state = repository.load_state()
+        if state is not None:
+            broker.balance = Decimal(str(state["balance"]))
+            broker.realized_pnl_total = Decimal(str(state["realized_pnl_total"]))
+            broker.halted = bool(state["halted"])
+        broker.orders = {order.order_id: order for order in repository.load_orders()}
+        broker.fills = repository.load_fills()
+        broker.positions = {position.symbol: position for position in repository.load_positions()}
+        return broker
 
-        ``fill_quantity`` is paper-only simulation control. Omitting it preserves the
-        existing behavior for marketable orders by filling the entire remaining quantity.
-        Resting limit orders remain NEW until ``process_market`` is called.
-        """
+    def place_order(self, order: Order, market_price: Decimal, fill_quantity: int | None = None) -> Fill | None:
+        """Accept an order and optionally execute a deterministic first fill."""
         if self.halted:
             raise ValueError("paper trading is halted by kill switch")
         if order.order_id in self.orders:
@@ -126,10 +135,11 @@ class PaperBroker:
             self._delete_position(order.symbol)
         else:
             self._persist_position(position)
-        self._audit("ORDER_FILLED", order.order_id, {"quantity": fill.quantity, "price": str(fill.price), "fee": str(fill.fee), "filled_quantity": stored.filled_quantity, "remaining_quantity": order.quantity - stored.filled_quantity, "status": stored.status.value})
         if self.max_daily_loss is not None and self.realized_pnl_total <= -self.max_daily_loss:
             self.halted = True
             self._audit("KILL_SWITCH_ACTIVATED", order.order_id, {"reason": "max_daily_loss"})
+        self._persist_state()
+        self._audit("ORDER_FILLED", order.order_id, {"quantity": fill.quantity, "price": str(fill.price), "fee": str(fill.fee), "filled_quantity": stored.filled_quantity, "remaining_quantity": order.quantity - stored.filled_quantity, "status": stored.status.value})
         return fill
 
     def cancel_order(self, order_id: str) -> Order:
@@ -141,15 +151,18 @@ class PaperBroker:
         cancelled = order.model_copy(update={"status": OrderStatus.CANCELLED})
         self.orders[order_id] = cancelled
         self._persist_order(cancelled)
+        self._persist_state()
         self._audit("ORDER_CANCELLED", order_id, {"filled_quantity": cancelled.filled_quantity, "remaining_quantity": cancelled.quantity - cancelled.filled_quantity})
         return cancelled
 
     def kill_switch(self) -> None:
         self.halted = True
+        self._persist_state()
         self._audit("KILL_SWITCH_ACTIVATED", None, {"reason": "manual"})
 
     def clear_kill_switch(self) -> None:
         self.halted = False
+        self._persist_state()
         self._audit("KILL_SWITCH_CLEARED", None, {})
 
     def mark_to_market(self, symbol: str, price: Decimal) -> Position | None:
@@ -217,6 +230,10 @@ class PaperBroker:
     def _delete_position(self, symbol: str) -> None:
         if self.repository is not None:
             self.repository.delete_position(symbol)
+
+    def _persist_state(self) -> None:
+        if self.repository is not None:
+            self.repository.save_state(self.balance, self.realized_pnl_total, self.halted)
 
     def _audit(self, event_type: str, entity_id: str | None, payload: dict[str, Any]) -> None:
         if self.repository is not None:
