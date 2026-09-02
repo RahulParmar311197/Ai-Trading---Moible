@@ -2,8 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal
+from typing import Protocol
 
-from app.paper.models import Order, OrderSide
+
+class RiskOrder(Protocol):
+    quantity: int
+    side: object
 
 
 @dataclass(frozen=True)
@@ -40,17 +44,20 @@ class DeterministicExecutionGate:
     def __init__(self, limits: RiskLimits) -> None:
         self.limits = limits
 
-    def evaluate(self, order: Order, market_price: Decimal, snapshot: RiskSnapshot) -> ExecutionDecision:
+    def evaluate(self, order: RiskOrder, market_price: Decimal, snapshot: RiskSnapshot) -> ExecutionDecision:
         if snapshot.halted:
             return ExecutionDecision(False, "risk halt is active")
         if market_price <= 0:
             return ExecutionDecision(False, "market price must be positive")
+        if order.quantity <= 0:
+            return ExecutionDecision(False, "order quantity must be positive")
         if self.limits.max_daily_loss is not None and snapshot.realized_pnl <= -self.limits.max_daily_loss:
             return ExecutionDecision(False, "maximum daily loss reached")
         if self.limits.max_order_notional is not None and market_price * order.quantity > self.limits.max_order_notional:
             return ExecutionDecision(False, "order exceeds maximum notional")
         if self.limits.max_position_quantity is not None:
-            signed = order.quantity if order.side is OrderSide.BUY else -order.quantity
+            side = getattr(order.side, "value", order.side)
+            signed = order.quantity if str(side).upper() == "BUY" else -order.quantity
             if abs(snapshot.position_quantity + signed) > self.limits.max_position_quantity:
                 return ExecutionDecision(False, "order exceeds maximum position quantity")
         return ExecutionDecision(True, "approved")
