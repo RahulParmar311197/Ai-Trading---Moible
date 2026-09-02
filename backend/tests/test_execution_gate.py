@@ -46,7 +46,8 @@ def test_gate_rejects_non_finite_market_price_and_pnl() -> None:
     gate = DeterministicExecutionGate(RiskLimits(max_order_notional=Decimal("1000"), max_daily_loss=Decimal("500")))
     assert gate.evaluate(order(1), Decimal("NaN"), snapshot()).reason == "market price must be finite and positive"
     assert gate.evaluate(order(1), Decimal("Infinity"), snapshot()).reason == "market price must be finite and positive"
-    assert gate.evaluate(order(1), Decimal("100"), snapshot(realized_pnl=Decimal("NaN"))).reason == "realized pnl must be finite"
+    with pytest.raises(ValueError, match="realized pnl must be finite"):
+        snapshot(realized_pnl=Decimal("NaN"))
 
 
 def test_risk_snapshot_rejects_non_finite_balance() -> None:
