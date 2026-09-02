@@ -1,6 +1,6 @@
 # AI Trading Platform — Project Status
 
-Last updated: 2026-09-01
+Last updated: 2026-09-02
 
 ## Current branch
 
@@ -23,17 +23,18 @@ Last updated: 2026-09-01
 - Added a provider-neutral `BrokerInstrument`/`InstrumentResolver` boundary with explicit exchange segment, product type, validity enum, and lot-size metadata. Unknown canonical symbols are rejected rather than guessed.
 - Wired the resolver into the explicit Upstox/Dhan live-order construction path. When live mutation is explicitly enabled, provider security IDs plus exchange/product/validity configuration now come from the resolver rather than hard-coded defaults. Unknown instruments fail before the network request. Live mutation remains disabled by default.
 - Added deterministic provider catalogue ingestion for Upstox BOD JSON records and Dhan scrip-master rows. Catalogues map stable provider identifiers, exchange/segment, trading symbol, lot size, product policy and validity into the existing resolver boundary; unsupported Dhan exchange/segment combinations are rejected rather than guessed.
+- Added a provider-neutral, secret-safe broker session lifecycle boundary with explicit unauthenticated/authenticated/expired/invalidated states. Upstox and Dhan adapters now own a session object and route HTTP authorization through it; the non-secret `BrokerAuthentication` projection never contains access tokens. External OAuth/token refresh can replace a session token without changing domain models.
 
 ## CI evidence
 
 For commit `5b6818d`, GitHub Actions completed with:
 
 - Android build: **SUCCESS**; `gradle assembleDebug` completed successfully.
-- Backend tests: **FAILURE** at `pytest -q -m 'not integration'`; the job stopped before integration tests. The failure output is not exposed by the connected GitHub log endpoint, so the exact failing assertion is **UNVERIFIED** from the available tool surface.
+- Backend tests: **FAILURE** at `pytest -q -m 'not integration'`; the job stopped before integration tests. The failure output was not exposed by the connected GitHub log endpoint, so the exact failing assertion remains **UNVERIFIED** from that historical run.
 
 For status commit `aad451d`, the separate Android CI workflow completed **SUCCESS**.
 
-For broker test commit `ee6816f`, GitHub Actions run `33505513022` (Android CI) was observed **IN PROGRESS**; no completion result is claimed. Subsequent catalogue commits triggered newer workflow runs, whose final results are not yet verified here.
+For the current broker-session milestone commit `b684c0a`, GitHub Actions run `33588339917` was observed **IN PROGRESS** when last checked. Android was executing `gradle assembleDebug`; backend was still in checkout/setup. No completion result is claimed yet.
 
 No local/Codespace test execution is claimed.
 
@@ -154,7 +155,8 @@ No local/Codespace test execution is claimed.
 - [x] Explicit exchange/product/validity order configuration boundary
 - [x] Resolver wired into Upstox/Dhan live-order payload construction
 - [x] Upstox BOD/Dhan scrip-master catalogue ingestion boundary
-- [ ] Auth/session lifecycle integration
+- [x] Secret-safe broker session lifecycle boundary
+- [ ] Auth/session lifecycle integration with real OAuth/refresh endpoints
 - [ ] Live broker runtime verification
 - [ ] Controlled execution/risk integration
 
@@ -187,18 +189,22 @@ No Codespace/runtime session is exposed through the connected tools, so no local
 
 ## Recent commits on main
 
+- `b684c0a` — export broker session lifecycle contract
+- `40d5bf0` — integrate Dhan session lifecycle
+- `9a62d07` — integrate Upstox session lifecycle
+- `d61dd3f` — route HTTP transport through sessions
+- `7dd7b53` — cover broker session lifecycle and secret boundary
+- `01b2159` — add secret-safe session lifecycle boundary
 - `532a326` — export instrument catalogue boundary
 - `469ab2c` — cover provider catalogue ingestion
 - `9052438` — add provider instrument catalogue ingestion
 - `ee6816f` — verify provider order payload resolution
-- `4412867` — preserve Dhan client identity in resolved order payload
-- `946e70e` — add instrument validity configuration
-- `eb2e69f` — wire Upstox resolver into live order construction
-- `0b5f849` — record previous broker instrument milestone
 
 ## Next execution
 
-1. Integrate broker authentication/session lifecycle through existing application configuration, keeping credentials out of domain models/logs.
-2. Return to paper persistence, audit, partial fills, and replay-to-paper integration.
-3. Add controlled risk/execution boundary only after deterministic risk integration is verified.
-4. Re-run CI verification after the next stable milestone.
+1. Complete verification of the broker-session milestone through GitHub Actions.
+2. Add durable paper order/fill/position/audit persistence using the existing repository/SQL boundaries.
+3. Add deterministic partial-fill simulation without weakening paper/live separation.
+4. Integrate replay-to-paper only after persistence and partial-fill semantics are covered.
+5. Add controlled risk/execution boundary only after deterministic risk integration is verified.
+6. Re-run CI verification after each stable milestone.
