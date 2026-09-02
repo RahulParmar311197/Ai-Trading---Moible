@@ -2,7 +2,7 @@ from decimal import Decimal
 
 import pytest
 
-from app.brokers.base import BrokerAuthentication, BrokerOrder, BrokerOrderStatus, BrokerOrderType, BrokerSide
+from app.brokers.base import BrokerAuthentication, BrokerOrder, BrokerOrderStatus, BrokerOrderType, BrokerPosition, BrokerSide
 from app.brokers.idempotency import BrokerIdempotencyStore
 from app.execution import ControlledBrokerExecution, ControlledExecutionError, DeterministicExecutionGate, RiskLimits, RiskSnapshot
 
@@ -14,6 +14,9 @@ class ConfirmationBroker:
 
     async def authenticate(self):
         return BrokerAuthentication(provider="fake", account_id="account-1", authenticated=True)
+
+    async def get_positions(self):
+        return (BrokerPosition(symbol="NIFTY", quantity=0, average_price=Decimal("100")),)
 
     async def place_order(self, order):
         self.calls += 1
