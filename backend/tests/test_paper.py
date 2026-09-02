@@ -1,8 +1,9 @@
 from decimal import Decimal
 
 import pytest
+from pydantic import ValidationError
 
-from app.paper import Order, OrderSide, OrderStatus, OrderType, PaperBroker
+from app.paper import Fill, Order, OrderSide, OrderStatus, OrderType, PaperBroker, Position
 
 
 def order(order_id: str, side: OrderSide, quantity: int = 10, order_type: OrderType = OrderType.MARKET, limit_price: Decimal | None = None) -> Order:
@@ -83,3 +84,29 @@ def test_kill_switch_rejects_new_orders_until_cleared() -> None:
         broker.place_order(order("1", OrderSide.BUY), Decimal("100"))
     broker.clear_kill_switch()
     assert broker.place_order(order("2", OrderSide.BUY), Decimal("100")) is not None
+
+
+def test_order_rejects_inconsistent_fill_state() -> None:
+    with pytest.raises(ValidationError, match="filled quantity"):
+        Order(order_id="1", symbol="NIFTY", side=OrderSide.BUY, order_type=OrderType.MARKET, quantity=10, filled_quantity=11)
+    with pytest.raises(ValidationError, match="complete fill"):
+        Order(order_id="2", symbol="NIFTY", side=OrderSide.BUY, order_type=OrderType.MARKET, quantity=10, status=OrderStatus.FILLED)
+    with pytest.raises(ValidationError, match="partial fill"):
+        Order(order_id="3", symbol="NIFTY", side=OrderSide.BUY, order_type=OrderType.MARKET, quantity=10, status=OrderStatus.PARTIALLY_FILLED, filled_quantity=10)
+
+
+def test_paper_financial_models_reject_non_finite_values() -> None:
+    with pytest.raises(ValidationError):
+        Fill(order_id="1", quantity=1, price=Decimal("NaN"))
+    with pytest.raises(ValidationError):
+        Position(symbol="NIFTY", quantity=1, average_price=Decimal("100"), realized_pnl=Decimal("NaN"))
+    with pytest.raises(ValidationError):
+        Order(order_id="1", symbol="NIFTY", side=OrderSide.BUY, order_type=OrderType.MARKET, quantity=1, average_fill_price=Decimal("NaN"))
+
+
+def test_position_mark_rejects_non_finite_or_non_positive_price() -> None:
+    position = Position(symbol="NIFTY", quantity=1, average_price=Decimal("100"))
+    with pytest.raises(ValueError, match="finite and positive"):
+        position.mark(Decimal("NaN"))
+    with pytest.raises(ValueError, match="finite and positive"):
+        position.mark(Decimal("0"))
