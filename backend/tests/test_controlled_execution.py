@@ -61,7 +61,7 @@ class RecoveryBroker(FakeBroker):
     async def authenticate(self) -> BrokerAuthentication:
         return BrokerAuthentication(provider="fake", account_id="account-1", authenticated=self.recovery_auth)
 
-    async def get_positions(self) -> tuple[()]:
+    async def get_positions(self) -> tuple[object, ...]:
         self.positions_calls += 1
         return ()
 
