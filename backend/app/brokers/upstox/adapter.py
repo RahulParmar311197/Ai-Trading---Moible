@@ -142,6 +142,10 @@ class UpstoxBroker:
             "rejected": BrokerOrderStatus.REJECTED,
         }
         raw_status = str(row.get("status", "pending")).lower()
+        try:
+            status = status_map[raw_status]
+        except KeyError as exc:
+            raise ValueError(f"unsupported Upstox order status: {raw_status}") from exc
         return BrokerOrder(
             order_id=str(row.get("order_id", "")),
             client_order_id=str(row.get("tag", row.get("order_ref_id", row.get("order_id", "")))),
@@ -151,5 +155,5 @@ class UpstoxBroker:
             quantity=int(row.get("quantity", 1) or 1),
             filled_quantity=int(row.get("filled_quantity", 0) or 0),
             average_price=decimal_value(row.get("average_price"), "0") or None,
-            status=status_map.get(raw_status, BrokerOrderStatus.NEW),
+            status=status,
         )
