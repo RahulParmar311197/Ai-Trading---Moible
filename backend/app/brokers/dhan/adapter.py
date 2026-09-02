@@ -26,6 +26,7 @@ class DhanBroker:
     """
 
     provider = "dhan"
+    _MAX_CORRELATION_ID_LENGTH = 30
 
     def __init__(
         self,
@@ -94,11 +95,21 @@ class DhanBroker:
             raise RuntimeError("Dhan order response did not contain an order id")
         return order.model_copy(update={"order_id": order_id, "status": status})
 
+    @classmethod
+    def _validate_correlation_id(cls, client_order_id: str) -> str:
+        if not client_order_id:
+            raise ValueError("Dhan correlation id must be non-empty")
+        if len(client_order_id) > cls._MAX_CORRELATION_ID_LENGTH:
+            raise ValueError("Dhan correlation id must be at most 30 characters")
+        if any(character not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 _-" for character in client_order_id):
+            raise ValueError("Dhan correlation id contains unsupported characters")
+        return client_order_id
+
     def _order_payload(self, order: BrokerOrder, instrument: BrokerInstrument) -> dict[str, Any]:
         product = {ProductType.INTRADAY: "INTRADAY", ProductType.DELIVERY: "CNC", ProductType.MARGIN: "MARGIN"}[instrument.product_type]
         return {
             "dhanClientId": self.client_id,
-            "correlationId": order.client_order_id,
+            "correlationId": self._validate_correlation_id(order.client_order_id),
             "transactionType": order.side.value,
             "exchangeSegment": instrument.exchange_segment.value,
             "productType": product,
@@ -131,7 +142,8 @@ class DhanBroker:
         )
 
     async def reconcile_order(self, client_order_id: str) -> BrokerReconciliation:
-        payload = await self._client.request("GET", f"/orders/external/{client_order_id}")
+        correlation_id = self._validate_correlation_id(client_order_id)
+        payload = await self._client.request("GET", f"/orders/external/{correlation_id}")
         data = payload.get("data", payload) if isinstance(payload, dict) else {}
         if not isinstance(data, dict) or not data:
             return BrokerReconciliation(
