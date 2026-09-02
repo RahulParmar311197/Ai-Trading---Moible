@@ -17,10 +17,10 @@ Last updated: 2026-09-02
 - Paper trading has deterministic order/fill/position/P&L/risk/kill-switch behavior, durable persistence, restart hydration, and replay-to-paper execution.
 - Provider-neutral broker contracts, authentication boundaries, reconciliation, idempotency, Upstox/Dhan adapters, instrument resolution/catalogue ingestion, and secret-safe session handling are implemented.
 - Upstox and Dhan live mutation remains disabled by default.
-- `ControlledBrokerExecution` is inert until authenticated startup and exact explicit activation. The kill switch defaults active, deterministic risk approval is mandatory before mutation, broker order-id confirmation is required, audit events are emitted, and shutdown/recovery fail closed. fileciteturn583file0L2-L2
+- `ControlledBrokerExecution` is inert until authenticated startup and exact explicit activation. The kill switch defaults active, deterministic risk approval is mandatory before mutation, broker order-id confirmation is required, audit events are emitted, and shutdown/recovery fail closed.
 - Controlled live construction requires an explicitly supplied idempotency store; there is no silent process-local fallback.
-- Ambiguous broker submission exceptions preserve the idempotency reservation and force fail-closed reconciliation before reuse. fileciteturn588file0L2-L2
-- Durable PostgreSQL idempotency uses an atomic `INSERT ... ON CONFLICT DO NOTHING RETURNING` reservation and a transactional returning executor, so concurrent callers cannot both claim a new client-order key. fileciteturn585file0L2-L2 fileciteturn586file0L2-L2
+- Ambiguous broker submission exceptions preserve the idempotency reservation and force fail-closed reconciliation before reuse.
+- Durable PostgreSQL idempotency uses an atomic `INSERT ... ON CONFLICT DO NOTHING RETURNING` reservation and a transactional returning executor, so concurrent callers cannot both claim a new client-order key.
 - Durable idempotency completion persists and verifies broker results; terminal reconciled `REJECTED`/`CANCELLED` reservations are explicitly cleared, while live/pending states remain reserved.
 - Recovery refreshes broker positions/orders, reconciles requested IDs, and rejects unexpected live broker orders outside the explicit expected local order set. It never auto-activates trading.
 
@@ -95,7 +95,7 @@ Last updated: 2026-09-02
 - Commit `1ef8f592fab8ea58dcc151d85d1f814aebe03541` / run `33602457519`: **211 non-integration passed, 3 integration passed; Android `assembleDebug` passed**.
 - Commit `b3d90cec9a460a31ba6e055c909be559720e7b0b` / run `33611174894`: **211 non-integration passed, 4 integration passed**. The added fourth integration test verifies that concurrent durable reservation attempts produce exactly one reservation and one pending result.
 - Separate Android workflow run `33611174841` for `b3d90cec9a460a31ba6e055c909be559720e7b0b` was still running when this status was updated; no completed Android result is claimed for that commit.
-- Documentation commit `326e21774774a94ae81b87cbf8f317250fbbbcb7` triggered a new CI run; that run must be verified before this status can be considered fully current.
+- Documentation commits `326e21774774a94ae81b87cbf8f317250fbbbcb7` and `31a2784e9f72929ae370806c0c6f98c2a848b3ff` triggered new CI runs; the final documentation commit's CI must be verified before this status can be considered fully current.
 
 ## Runtime limitation
 
