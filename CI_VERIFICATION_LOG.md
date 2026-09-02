@@ -4,7 +4,10 @@ Last updated: 2026-09-02
 
 ## Verified passing runs
 
-- `33601890367` — commit `4bc648593e1fd26059507529bbf190e66e6cd4af`: backend job completed successfully with **208 non-integration tests passed** and **3 PostgreSQL integration tests passed**. The companion Android workflow run `33601890458` for the same commit completed `gradle assembleDebug` successfully. The CI workflow's Android job was still in progress when this entry was recorded; the separate Android workflow provides completed Android build evidence for the same commit.
+- `33611174894` — commit `b3d90cec9a460a31ba6e055c909be559720e7b0b`: backend completed successfully with **211 non-integration tests passed** and **4 PostgreSQL integration tests passed**. The Android job was still running when this entry was prepared; it is not claimed as complete until the job finishes.
+- `33602457519` — commit `1ef8f592fab8ea58dcc151d85d1f814aebe03541`: backend completed successfully with **211 non-integration tests passed** and **3 PostgreSQL integration tests passed**; Android completed `gradle assembleDebug` successfully. This verifies terminal broker idempotency reservation clearing after reconciled `REJECTED`/`CANCELLED` states.
+- `33602366045` — commit `14763dcf40657483a622708d244bec7f3c8f9f71`: Android debug build completed successfully. Backend integration coverage for durable pending reservations was verified in the companion CI run for the commit.
+- `33601890367` — commit `4bc648593e1fd26059507529bbf190e66e6cd4af`: backend job completed successfully with **208 non-integration tests passed** and **3 PostgreSQL integration tests passed**. The companion Android workflow run `33601890458` for the same commit completed `gradle assembleDebug` successfully.
 - `33601730753` — commit `1647774ef955ab7369b3c9932d20e608e6f9f4b6`: backend completed successfully with **204 non-integration tests passed** and **3 PostgreSQL integration tests passed**; Android `gradle assembleDebug` completed successfully. This verifies fail-closed broker submission failure handling and its regression test.
 - `33601518005` — commit `a18d1daf06984cdb596906e86b35dc07fca6929e`: backend and Android jobs both completed successfully. This verifies the explicit idempotency-store requirement.
 - `33600603414` — commit `753a823d3e3200213d460c0e6f97c497860d8e40`: Android debug build completed successfully.
@@ -17,17 +20,17 @@ Last updated: 2026-09-02
 
 ## Backend evidence
 
-Run `33601890367` completed dependency installation on Python 3.12.14, official Upstox protobuf verification, non-integration pytest, and integration pytest against a PostgreSQL 16 service successfully. The non-integration suite reported **208 passed, 3 deselected**; the integration suite reported **3 passed, 208 deselected**. The backend checked out commit `4bc648593e1fd26059507529bbf190e66e6cd4af`.
+Run `33611174894` completed dependency installation on Python 3.12.14, official Upstox protobuf verification, non-integration pytest, and integration pytest against a PostgreSQL 16 service successfully. The non-integration suite reported **211 passed, 4 deselected**; the integration suite reported **4 passed, 211 deselected**. The new fourth integration test verifies that concurrent durable reservations yield exactly one successful reservation and one pending result.
 
-Run `33601730753` verified **204 non-integration tests passed** and **3 integration tests passed** for commit `1647774ef955ab7369b3c9932d20e608e6f9f4b6`. Earlier successful runs verify durable completion persistence, unexpected-live-order recovery, explicit idempotency-store enforcement, Dhan order semantics, and broker-session error sanitization.
+Run `33602457519` completed successfully for commit `1ef8f592fab8ea58dcc151d85d1f814aebe03541`, with **211 non-integration tests passed** and **3 integration tests passed**.
 
 ## Android evidence
 
-For commit `4bc648593e1fd26059507529bbf190e66e6cd4af`, Android workflow run `33601890458` completed `gradle assembleDebug` successfully. For commit `1647774ef955ab7369b3c9932d20e608e6f9f4b6`, run `33601730753` also completed its Android `gradle assembleDebug` successfully. The CI workflow's Android job for run `33601890367` remained in progress at the time of this update, so it is not represented as a fully completed two-job CI run.
+For commit `1ef8f592fab8ea58dcc151d85d1f814aebe03541`, run `33602457519` completed `gradle assembleDebug` successfully using Gradle 8.10.2 installed by CI. For commit `b3d90cec9a460a31ba6e055c909be559720e7b0b`, run `33611174841` is the separate Android workflow and was still in progress at the time of this update; no completed Android result is claimed for that commit yet.
 
 ## Current verification
 
-The latest implementation commit on `main` is `4bc648593e1fd26059507529bbf190e66e6cd4af`. Backend CI and the separate Android workflow both pass for that commit. No claim is made that the still-running Android job in CI run `33601890367` has completed.
+The latest implementation commit on `main` is `b3d90cec9a460a31ba6e055c909be559720e7b0b`. Backend CI is **verified passing** with 211 non-integration and 4 integration tests. The companion Android build for the same commit remains **in progress** at the time of this entry, so the commit is not yet recorded as a fully green two-job CI run.
 
 ## Runtime limitation
 
@@ -35,4 +38,4 @@ No local/Codespace runtime is exposed through the connected tools. These are Git
 
 ## Safety
 
-CI success does not authorize live or autonomous trading. Production broker runtime verification, real live activation, and Stage 10 autonomous prerequisites remain gated. Recovery-provider failures now have regression coverage proving fail-closed state and sanitized audit reasons without requiring live credentials.
+CI success does not authorize live or autonomous trading. Production broker runtime verification, real live activation, and Stage 10 autonomous prerequisites remain gated. Durable idempotency now has CI coverage for restart persistence, unresolved pending reservations, terminal reconciliation clearing, and concurrent reservation exclusivity. Recovery-provider failures remain fail-closed and credential-free.
