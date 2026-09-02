@@ -9,6 +9,7 @@ from sqlalchemy import text
 
 from app.brokers import BrokerOrder, BrokerOrderStatus, BrokerOrderType, BrokerSide
 from app.brokers.durable_idempotency import DurableBrokerIdempotencyStore
+from app.brokers.idempotency import IdempotencyPending
 from app.database.session import SQLAlchemyExecutor, create_database_engine
 
 
@@ -36,9 +37,12 @@ def test_durable_idempotency_survives_repository_recreation() -> None:
 
     first_store = DurableBrokerIdempotencyStore(SQLAlchemyExecutor(engine))
     assert first_store.begin(order) is None
-    first_store.complete(order, result)
 
     second_store = DurableBrokerIdempotencyStore(SQLAlchemyExecutor(engine))
+    with pytest.raises(IdempotencyPending, match="unresolved broker submission"):
+        second_store.begin(order)
+
+    first_store.complete(order, result)
     cached = second_store.begin(order)
     assert cached is not None
     assert cached.order_id == result.order_id
