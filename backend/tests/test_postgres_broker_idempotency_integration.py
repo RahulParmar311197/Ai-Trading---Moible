@@ -49,6 +49,9 @@ def test_durable_idempotency_survives_repository_recreation() -> None:
     with pytest.raises(ValueError, match="already used"):
         second_store.begin(conflicting)
 
+    with pytest.raises(RuntimeError, match="reservation missing"):
+        second_store.complete(conflicting, result)
+
     with engine.begin() as connection:
         connection.execute(text("DELETE FROM broker_idempotency_keys WHERE client_order_id = :id"), {"id": order.client_order_id})
     engine.dispose()
