@@ -29,15 +29,16 @@ Last updated: 2026-09-02
 - Controlled execution recovery now fails closed: recovery disables new entries, re-authenticates, refreshes positions/orders, reconciles requested client orders, and requires explicit reactivation after a healthy recovery. Reconciliation mismatch or unavailable recovery boundaries keep execution stopped.
 - Broker idempotency now treats submission exceptions as potentially ambiguous: a failed provider call keeps the client-order key reserved and blocks both identical retries and conflicting reuse until the state is externally reconciled and explicitly cleared.
 - Added a PostgreSQL-backed broker idempotency repository and migration so reserved client-order keys survive process restart; CI integration testing verifies a second repository instance can recover a completed result and still rejects conflicting reuse.
+- Controlled live execution now requires an explicitly supplied idempotency store at construction, preventing a live executor from silently falling back to process-local idempotency state that disappears after restart. Test-only executors explicitly inject the in-memory store.
 - Controlled execution remains an integration boundary only; no production/live activation has been enabled or configured.
 
 ## CI evidence
 
-GitHub Actions run `33597951805` for commit `1c906d6a40a2519b423cbd44a8bb73634bba7f2f` completed successfully. The backend job completed dependency installation, official Upstox protobuf verification, non-integration pytest, and PostgreSQL integration pytest. The Android job completed `gradle assembleDebug` using the pinned Gradle 8.10.2 CI setup.
+GitHub Actions run `33598262758` for commit `82a01ee059ad765bafdd7a454eea0a3229b42e3e` completed successfully. The backend job completed dependency installation, official Upstox protobuf verification, 190 non-integration tests, and 3 PostgreSQL integration tests. The Android job completed `gradle assembleDebug` using the pinned Gradle 8.10.2 CI setup.
 
-The prior run `33597725639` exposed a broker contract export error during test collection; that was fixed on main before the successful run above. Do not count the failed run as verification evidence.
+The prior run `33598239655` exposed a test-fixture mismatch after the explicit idempotency-store requirement was introduced; the repository test helper was corrected before the successful `33598262758` verification. Do not count the failed run as verification evidence.
 
-Earlier controlled-execution recovery/audit implementation was covered by successful GitHub Actions run `33595826727`. Earlier idempotency-safety commits were verified by successful runs `33597117321`, `33597128224`, `33597128231`, `33597156260`, and `33597156289`.
+Earlier durable-idempotency verification was covered by successful GitHub Actions run `33597951805`. Earlier controlled-execution recovery/audit implementation was covered by successful GitHub Actions run `33595826727`. Earlier idempotency-safety commits were verified by successful runs `33597117321`, `33597128224`, `33597128231`, `33597156260`, and `33597156289`.
 
 No local/Codespace test execution is claimed.
 
@@ -169,6 +170,7 @@ No local/Codespace test execution is claimed.
 - [x] Token-to-session hydration boundary
 - [x] CI verification of authentication implementation at `33592488680`
 - [x] CI verification of latest idempotency-safety and durable-idempotency changes
+- [x] CI verification of explicit controlled-execution idempotency-store requirement at `33598262758`
 - [ ] Live broker runtime verification
 
 ### Stage 9 — Controlled Live Trading
@@ -188,6 +190,7 @@ No local/Codespace test execution is claimed.
 - [x] Durable audit PostgreSQL integration test executed successfully in CI run `33595826727`
 - [x] Durable broker idempotency repository and restart-persistence integration test executed successfully in CI run `33597951805`
 - [x] Ambiguous broker submission is fail-closed at the idempotency boundary
+- [x] Controlled execution requires an explicit idempotency store; no silent process-local fallback in the controlled-live constructor
 - [ ] Production broker runtime verification
 - [ ] Real live activation
 
@@ -202,7 +205,7 @@ No local/Codespace test execution is claimed.
 
 ## Safety status
 
-**LIVE/AUTONOMOUS TRADING REMAINS GATED.** The controlled executor is inert until startup succeeds and explicit activation is supplied; recovery and startup leave the kill switch active; shutdown fails closed. Dhan and Upstox adapters remain mutation-disabled by default. AI remains subordinate to deterministic strategy, validation, risk and execution controls. Ambiguous broker submission errors cannot be retried through the same idempotency key until broker state is explicitly resolved.
+**LIVE/AUTONOMOUS TRADING REMAINS GATED.** The controlled executor is inert until startup succeeds and explicit activation is supplied; recovery and startup leave the kill switch active; shutdown fails closed. Dhan and Upstox adapters remain mutation-disabled by default. AI remains subordinate to deterministic strategy, validation, risk and execution controls. Ambiguous broker submission errors cannot be retried through the same idempotency key until broker state is explicitly resolved. Controlled live construction also requires an explicit idempotency store so restart-safe persistence cannot be accidentally omitted.
 
 ## Runtime limitation
 
@@ -210,6 +213,8 @@ No Codespace/runtime session is exposed through the connected tools, so no local
 
 ## Recent commits on main
 
+- `ed5d538` — docs: record latest controlled execution CI verification
+- `82a01ee` — test: require explicit controlled idempotency store
 - `aa3bfd9` — docs: record durable idempotency CI verification
 - `1c906d6` — fix: export broker side contract
 - `47f3b29` — fix: expose durable broker idempotency store
@@ -223,6 +228,6 @@ No Codespace/runtime session is exposed through the connected tools, so no local
 ## Next execution
 
 1. Continue Stage 9 reconciliation/failure-semantic review for deterministic safety gaps that can be covered without live credentials.
-2. Review production wiring so controlled live execution cannot accidentally fall back to process-local idempotency state; require an explicit durable store in any production/live path.
+2. Review whether broker-reported unknown/manual orders need an explicit fail-closed reconciliation policy before controlled live activation.
 3. Keep Stage 1 official Gradle wrapper artifact and Stage 5/6/8 external-provider/runtime gaps explicitly unverified.
 4. Keep real live activation and autonomous trading disabled until all required evidence exists.
