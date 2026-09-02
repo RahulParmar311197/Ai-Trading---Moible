@@ -29,6 +29,7 @@ Last updated: 2026-09-02
 - `PostgresRiskSessionBaselineStore` provides durable, idempotent persistence for an explicitly supplied risk-session baseline. Conflicting reinitialization is rejected and missing sessions fail closed; the store intentionally does not invent market/trading-day boundaries.
 - `risk_snapshot_from_persisted_session` binds fresh broker state to the persisted baseline for an explicitly supplied session ID, so callers cannot silently substitute a wall-clock baseline or broker lifetime P&L.
 - Partial/fill confirmations now require an explicit post-fill state-synchronization callback. Missing or failed synchronization forces the controlled executor into a stopped/kill-switch state and emits an audit event; successful synchronization is audited before the lifecycle remains active. This callback does not attempt to undo a broker fill.
+- `PostFillBrokerStateSynchronizer` is now a concrete provider-neutral composition that refreshes broker state, binds it to the persisted session baseline, and requires an explicit risk-state sink. It never invents a session/trading-day boundary or derives P&L from the fill.
 
 ## Stage status
 
@@ -93,8 +94,9 @@ Last updated: 2026-09-02
 - [x] Persisted-session risk snapshot binding
 - [x] CI verification of the risk-session baseline and persisted-session risk snapshot implementation
 - [x] Fail-closed post-fill synchronization boundary for partial/filled confirmations
+- [x] Concrete provider-neutral post-fill synchronizer requiring broker refresh, persisted session baseline, and explicit risk-state sink
 - [ ] Authoritative trading-session boundary/lifecycle integration
-- [ ] Concrete post-fill broker-state propagation using the synchronizer, persisted session baseline, and durable live-state sink
+- [ ] Application/runtime wiring to a concrete durable live-state sink
 - [ ] Production broker runtime verification
 - [ ] Real live activation
 
@@ -107,12 +109,9 @@ Last updated: 2026-09-02
 
 ## Latest CI evidence
 
-- Run `33619555439` for implementation commit `9b8611102a49b7f580e5111ae0ba1a29219e84e6`: backend and Android jobs both completed successfully. Backend recorded **252 non-integration tests passed, 5 deselected, 1 warning** and **5 PostgreSQL integration tests passed, 252 deselected, 1 warning**. Android `assembleDebug` completed successfully with the pinned Gradle 8.10.2 workflow setup.
-- Run `33619555530` is the Android-only workflow for commit `9b8611102a49b7f580e5111ae0ba1a29219e84e6`; `assembleDebug` completed successfully.
-- Run `33619172631` for commit `021b82532e3e6efa276268425af7080f94f9bb2a`: backend completed successfully with **249 non-integration tests passed, 5 deselected, 1 warning** and **5 PostgreSQL integration tests passed, 249 deselected, 1 warning**.
-- Run `33618698177` for commit `ef60eb80518ec8b858fa1b94a756930458bd8043`: backend and Android jobs both completed successfully; backend recorded **247 non-integration passed** and **4 PostgreSQL integration tests passed**.
-- Run `33617134105` for commit `919253298d47ff2708bfb0c540292bff7c80c0cb`: **242 non-integration passed, 4 deselected, 1 warning; 4 PostgreSQL integration tests passed, 242 deselected, 1 warning; Android `assembleDebug` passed**.
-- Run `33617011571` for predecessor commit `c49a16791817542b5f2ea4c19e8090c558616b1a` remains a genuine failed verification and is retained in the CI log.
+- Run `33620032069` for implementation commit `d9f6338f81566c0488352d94a021d5a4b5a1b8cf`: Android `assembleDebug` completed successfully. CI also reported all Gradle wrapper JARs valid in the CI environment, while the repository's required official wrapper artifact remains an unresolved Stage 1 repository requirement.
+- Run `33619901636` for the preceding implementation state: backend completed successfully with **252 non-integration tests passed, 5 deselected, 1 warning** and **5 PostgreSQL integration tests passed, 252 deselected, 1 warning**; Android `assembleDebug` completed successfully.
+- Run `33619555439` and companion `33619555530` for the prior post-fill lifecycle boundary: backend and Android completed successfully; backend recorded **252 non-integration passed** and **5 integration passed**.
 
 ## Runtime limitation
 
@@ -124,9 +123,9 @@ No local/Codespace runtime is exposed through the connected tools. No local test
 
 ## Remaining blockers / unverified items
 
-1. Official Gradle wrapper artifact (`gradle-wrapper.jar`) is still absent; CI installs Gradle 8.10.2 directly, so final Stage 1 wrapper verification remains blocked.
-2. The durable risk-session baseline primitive and persisted-session risk-snapshot binding are implemented and CI-verified, but the runtime architecture still lacks an authoritative upstream trading-session boundary/lifecycle. The application must supply the session identity rather than silently deriving a market day.
-3. Post-fill synchronization is now an explicit fail-closed lifecycle boundary, but it is not yet wired to a concrete `BrokerStateSynchronizer`, persisted risk-session baseline, and durable live-state sink that can be verified end-to-end.
+1. Official Gradle wrapper artifact (`gradle-wrapper.jar`) is still absent from the repository; CI installs Gradle 8.10.2 directly, so final Stage 1 wrapper verification remains blocked.
+2. The authoritative upstream trading-session boundary/lifecycle is not implemented. The application must supply session identity rather than silently deriving a market day.
+3. The concrete post-fill synchronizer is implemented and tested, but application/runtime wiring to a concrete durable live-state sink remains unverified.
 4. Production broker runtime and real live activation are unverified because no sandbox/test broker credentials are available through the connected tools.
 5. Stage 5 external AI-provider compatibility and Android AI integration remain unverified.
 6. Stage 6 live option-chain provider integration remains unverified.
