@@ -36,8 +36,13 @@ def _lot_size(row: Mapping[str, Any], *names: str) -> int:
 
 
 def _segment(value: str) -> ExchangeSegment:
+    normalized = value.strip().upper()
+    aliases = {
+        "NSE_FO": ExchangeSegment.NSE_FNO,
+        "BSE_FO": ExchangeSegment.BSE_FNO,
+    }
     try:
-        return ExchangeSegment(value.strip().upper())
+        return aliases.get(normalized, ExchangeSegment(normalized))
     except ValueError as exc:
         raise InstrumentCatalogueError(f"unsupported exchange segment: {value}") from exc
 
@@ -48,12 +53,7 @@ def upstox_catalogue(
     product_type: ProductType = ProductType.INTRADAY,
     validity: OrderValidity = OrderValidity.DAY,
 ) -> tuple[BrokerInstrument, ...]:
-    """Convert Upstox BOD JSON records into canonical broker instruments.
-
-    Upstox documents ``instrument_key`` as the stable identifier and exposes
-    ``segment``, ``trading_symbol`` and ``lot_size`` in the instrument files.
-    Product/validity are application policy and therefore supplied explicitly.
-    """
+    """Convert Upstox BOD JSON records into canonical broker instruments."""
     result: list[BrokerInstrument] = []
     for row in rows:
         provider_symbol = _required(row, "instrument_key")
@@ -77,13 +77,7 @@ def dhan_catalogue(
     product_type: ProductType = ProductType.INTRADAY,
     validity: OrderValidity = OrderValidity.DAY,
 ) -> tuple[BrokerInstrument, ...]:
-    """Convert Dhan scrip-master rows into canonical broker instruments.
-
-    Dhan's documented compact/detailed master uses exchange/segment, trading
-    symbol and lot-size columns. Security-ID aliases are accepted so the loader
-    can consume compact or normalized application rows without guessing IDs.
-    Unsupported exchange segments are rejected rather than silently mapped.
-    """
+    """Convert Dhan scrip-master rows into canonical broker instruments."""
     result: list[BrokerInstrument] = []
     segment_map = {
         ("NSE", "E"): ExchangeSegment.NSE_EQ,
