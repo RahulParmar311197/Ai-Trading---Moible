@@ -4,11 +4,12 @@ Last updated: 2026-09-02
 
 ## Verified passing runs
 
+- `33619172631` — implementation commit `021b82532e3e6efa276268425af7080f94f9bb2a`: backend completed successfully with **249 non-integration tests passed, 5 deselected, 1 warning**, and **5 PostgreSQL integration tests passed, 249 deselected, 1 warning**. Android was still running `assembleDebug` when this log entry was written and is not claimed as passed here.
 - `33618698177` — commit `ef60eb80518ec8b858fa1b94a756930458bd8043`: backend and Android jobs both completed successfully. Backend completed official Upstox protobuf verification, **247 non-integration tests passed, 4 deselected, 1 warning**, and **4 PostgreSQL integration tests passed, 247 deselected, 1 warning**; Android completed `assembleDebug` successfully using the pinned Gradle 8.10.2. This verifies the durable risk-session baseline persistence primitive and its regression coverage.
-- `33617703355` — status commit `8b92233209548d5121f80b4d1851a27de300a100`: backend and Android jobs both completed successfully. Backend completed dependency installation, official Upstox protobuf verification, the non-integration suite and 4 PostgreSQL integration tests; Android completed `assembleDebug` successfully using the pinned Gradle 8.10.2.
+- `33617703355` — status commit `8b92233209548d5121f80b4d1851a27de300a100`: backend and Android jobs both completed successfully.
 - `33617703352` — Android-only workflow for status commit `8b92233209548d5121f80b4d1851a27de300a100`: `assembleDebug` completed successfully.
 - `33617134105` — commit `919253298d47ff2708bfb0c540292bff7c80c0cb`: backend completed successfully with **242 non-integration tests passed, 4 deselected, 1 warning**, and **4 PostgreSQL integration tests passed, 242 deselected, 1 warning**; Android completed `assembleDebug` successfully.
-- `33617134090` — commit `919253298d47ff2708bfb0c540292bff7c80c0cb`: Android-only workflow completed `assembleDebug` successfully.
+- `33617134090` — Android-only workflow for commit `919253298d47ff2708bfb0c540292bff7c80c0cb`: `assembleDebug` completed successfully.
 - `33614791892` — commit `45b0000f10f5afee87157df370afc5d8d5623a7d`: backend completed successfully with **235 non-integration tests passed, 4 deselected, 1 warning**, and **4 PostgreSQL integration tests passed, 235 deselected, 1 warning**; Android completed `assembleDebug` successfully.
 - `33614031579` — commit `f7c9d3b2f6d0158bab4ed0b7555952a25b0d73c7`: backend completed successfully with **234 non-integration tests passed and 4 integration tests passed**; Android completed `assembleDebug` successfully.
 - `33613147236` — confirmation-hardening commit: backend completed successfully with **229 non-integration tests passed and 4 integration tests passed**; Android completed `assembleDebug` successfully.
@@ -17,7 +18,7 @@ Last updated: 2026-09-02
 - `33602457519` — commit `1ef8f592fab8ea58dcc151d85d1f814aebe03541`: backend completed successfully with **211 non-integration tests passed** and **3 PostgreSQL integration tests passed**; Android completed `gradle assembleDebug` successfully.
 - `33601890367` — commit `4bc648593e1fd26059507529bbf190e66e6cd4af`: backend completed successfully with **208 non-integration tests passed** and **3 PostgreSQL integration tests passed**; companion Android workflow run `33601890458` completed `gradle assembleDebug` successfully.
 - `33601730753` — commit `1647774ef955ab7369b3c9932d20e608e6f9f4b6`: backend completed successfully with **204 non-integration tests passed** and **3 PostgreSQL integration tests passed**; Android `gradle assembleDebug` completed successfully.
-- `33601518005` — commit `a18d1daf06984cdb596906e86b35dc07fca6929e`: backend and Android jobs both completed successfully. This verifies the explicit idempotency-store requirement.
+- `33601518005` — commit `a18d1daf06984cdb596906e86b35dc07fca6929e`: backend and Android jobs both completed successfully.
 - `33600557479` — commit `533f537a15489ec12d4bf1eb6611684845d874c0`: backend and Android debug build both completed successfully.
 - `33600307751` — commit `4ec1cd983375f2cba91cf34a72514f37dcc78f05`: backend and Android debug build both completed successfully; backend completed **193 non-integration tests** and **3 PostgreSQL integration tests**.
 - `33599917698` — commit `ce63a7a2eed00f171d1800fb2fab318ebc392a27`: backend and Android debug build both completed successfully; backend completed 192 non-integration tests and 3 PostgreSQL integration tests.
@@ -25,17 +26,19 @@ Last updated: 2026-09-02
 
 ## Backend evidence
 
-Run `33618698177` checked out commit `ef60eb80518ec8b858fa1b94a756930458bd8043` on GitHub Actions with Python 3.12.14 and PostgreSQL 16. The official Upstox protobuf import succeeded. The non-integration suite reported **247 passed, 4 deselected, 1 warning in 1.73s**. The integration suite reported **4 passed, 247 deselected, 1 warning in 0.99s**. No provider credentials were used.
+Run `33619172631` checked out implementation commit `021b82532e3e6efa276268425af7080f94f9bb2a` on GitHub Actions with Python 3.12.14 and PostgreSQL 16. The official Upstox protobuf import succeeded. The non-integration suite reported **249 passed, 5 deselected, 1 warning in 1.81s**. The integration suite reported **5 passed, 249 deselected, 1 warning in 1.05s**. No provider credentials were used.
 
-The risk-session implementation persists a baseline only under an explicitly supplied session identifier; it does not define or infer trading-day boundaries.
+This implementation binds risk-snapshot construction to a persisted, explicitly identified risk-session baseline. Missing session state is translated into a fail-closed synchronization error; no wall-clock or lifetime-P&L fallback is introduced.
 
 ## Android evidence
 
-Run `33618698177` completed the Android `assembleDebug` job successfully using the CI-installed pinned Gradle 8.10.2.
+Run `33619172569` is the Android-only workflow for implementation commit `021b82532e3e6efa276268425af7080f94f9bb2a`; `assembleDebug` was still in progress when this log was updated. It is not claimed as passed.
 
 ## Current verification
 
-The latest implementation commit verified by CI is `ef60eb80518ec8b858fa1b94a756930458bd8043`, run `33618698177`, with backend and Android both green. The latest documentation commit is `fe4256de364e5fc8c9bd9795588532f18fd45e3f`; its own CI verification is still pending and must not be claimed until observed.
+The latest implementation commit is `021b82532e3e6efa276268425af7080f94f9bb2a`. Its backend verification is green in run `33619172631`; Android verification remains pending in run `33619172569`.
+
+The latest documentation commit is `e95df50f600f3f719ea3fc87c6a38bd699d35957`; its own CI verification is pending and must not be claimed until observed.
 
 ## Historical failed verification
 
@@ -49,4 +52,4 @@ No local/Codespace runtime is exposed through the connected tools. These are Git
 
 ## Safety
 
-CI success does not authorize live or autonomous trading. Production broker runtime verification, real live activation, and Stage 10 autonomous prerequisites remain gated. Durable idempotency has CI coverage for restart persistence, unresolved pending reservations, terminal reconciliation clearing, and concurrent reservation exclusivity. Position state is refreshed before controlled-live submission and mismatches fail closed. Broker-state synchronization has dedicated tests and requires an explicit daily-P&L baseline. The baseline persistence primitive is now CI-verified, but the authoritative upstream trading-session lifecycle and post-fill propagation into controlled execution remain unimplemented rather than inferred. Recovery-provider failures remain fail-closed and credential-free.
+CI success does not authorize live or autonomous trading. Production broker runtime verification, real live activation, and Stage 10 autonomous prerequisites remain gated. Durable idempotency has CI coverage for restart persistence, unresolved pending reservations, terminal reconciliation clearing, and concurrent reservation exclusivity. Position state is refreshed before controlled-live submission and mismatches fail closed. Broker-state synchronization requires an explicit daily-P&L baseline, and persisted-session binding now resolves that baseline without inventing trading-day semantics. Authoritative upstream trading-session lifecycle and post-fill propagation into controlled execution remain unimplemented rather than inferred. Recovery-provider failures remain fail-closed and credential-free.
