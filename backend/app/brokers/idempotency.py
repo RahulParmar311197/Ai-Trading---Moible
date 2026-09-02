@@ -14,7 +14,7 @@ class IdempotencyConflict(ValueError):
 class BrokerIdempotencyStore:
     """In-memory idempotency registry for a single broker process.
 
-    The registry never creates or authorizes orders. It only prevents the same
+    The registry never creates or authorizes orders. It prevents the same
     client_order_id from being submitted twice and rejects conflicting reuse.
     A durable implementation can replace this store without changing the
     provider-neutral broker contract.
@@ -54,6 +54,14 @@ class BrokerIdempotencyStore:
         return result
 
     def clear(self, client_order_id: str) -> None:
+        """Forget a key only after the caller has externally resolved its state.
+
+        A broker submission exception can be ambiguous: the broker may have
+        accepted an order even when the client observed a timeout or transport
+        error. Therefore the idempotent decorator intentionally does not clear
+        failed submissions automatically. Callers should reconcile the broker
+        state before explicitly clearing a key for a fresh submission.
+        """
         self._requests.pop(client_order_id, None)
         self._results.pop(client_order_id, None)
 
@@ -76,9 +84,9 @@ class IdempotentBroker:
         try:
             result = await self._broker.place_order(order)
         except Exception:
-            # A failed submission is not a successful idempotent operation.
-            # Remove the reservation so a caller can safely retry the same key.
-            self._idempotency.clear(order.client_order_id)
+            # Preserve the idempotency reservation because the broker may have
+            # accepted the order before a transport/provider error was observed.
+            # Reconciliation must resolve the ambiguous state before reuse.
             raise
         return self._idempotency.complete(order, result)
 
