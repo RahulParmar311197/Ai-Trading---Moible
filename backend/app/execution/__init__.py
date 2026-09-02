@@ -1,7 +1,7 @@
 """Deterministic execution approval and controlled execution boundaries."""
 
 from .audit import DurableExecutionAuditSink, PostgresExecutionAuditRepository
-from .controlled import ControlledBrokerExecution, ControlledExecutionError, ExecutionAuditEvent
+from .controlled import ControlledBrokerExecution, ControlledExecutionError, ExecutionAuditEvent, PostFillStateSynchronizer
 from .gate import DeterministicExecutionGate, ExecutionDecision, RiskLimits, RiskSnapshot
 from .risk_session import (
     PostgresRiskSessionBaselineStore,
@@ -22,6 +22,7 @@ __all__ = [
     "ControlledBrokerExecution",
     "ControlledExecutionError",
     "ExecutionAuditEvent",
+    "PostFillStateSynchronizer",
     "DurableExecutionAuditSink",
     "PostgresExecutionAuditRepository",
     "DeterministicExecutionGate",
