@@ -9,31 +9,46 @@ permissions:
 
 jobs:
   bootstrap:
-    if: ${{ !hashFiles('android/gradle/wrapper/gradle-wrapper.jar') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
+      - name: Check whether wrapper is already present
+        id: wrapper
+        run: |
+          if [ -f android/gradle/wrapper/gradle-wrapper.jar ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Stop when wrapper is already present
+        if: steps.wrapper.outputs.present == 'true'
+        run: echo "Official Gradle wrapper artifact is already present."
       - uses: actions/setup-java@v4
+        if: steps.wrapper.outputs.present != 'true'
         with:
           distribution: temurin
           java-version: '17'
       - name: Install pinned Gradle
+        if: steps.wrapper.outputs.present != 'true'
         run: |
           curl -fsSL https://services.gradle.org/distributions/gradle-8.10.2-bin.zip -o /tmp/gradle.zip
           echo "31c55713e40233a8303827ceb42ca48a47267a0ad4bab9177123121e71524c26  /tmp/gradle.zip" | sha256sum --check
           unzip -q /tmp/gradle.zip -d /tmp
       - name: Generate official wrapper
+        if: steps.wrapper.outputs.present != 'true'
         working-directory: android
         run: /tmp/gradle-8.10.2/bin/gradle --no-daemon wrapper --gradle-version 8.10.2
       - name: Verify wrapper checksum
+        if: steps.wrapper.outputs.present != 'true'
         working-directory: android/gradle/wrapper
         run: |
           curl -fsSL https://services.gradle.org/distributions/gradle-8.10.2-wrapper.jar.sha256 -o /tmp/gradle-wrapper.jar.sha256
           echo "  gradle-wrapper.jar" >> /tmp/gradle-wrapper.jar.sha256
           sha256sum --check /tmp/gradle-wrapper.jar.sha256
       - name: Commit wrapper artifact to main
+        if: steps.wrapper.outputs.present != 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
