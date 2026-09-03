@@ -12,8 +12,9 @@ from app.database.session import SQLAlchemyExecutor, create_database_engine
 from .audit import DurableExecutionAuditSink, PostgresExecutionAuditRepository
 from .controlled import ControlledBrokerExecution
 from .gate import DeterministicExecutionGate, RiskLimits
-from .post_fill_sync import PostFillBrokerStateSynchronizer
+from .post_fill_sync import PostFillBrokerStateSynchronizer, RiskSnapshotSink
 from .risk_session import PostgresRiskSessionBaselineStore
+from .risk_state import PostgresExecutionRiskStateSink
 from .session_lifecycle import TradingSessionIdentityProvider, TradingSessionLifecycle
 from .state_sync import BrokerStateSynchronizer
 
@@ -42,10 +43,14 @@ def build_execution_runtime(
     session_identity_provider: TradingSessionIdentityProvider,
     risk_limits: RiskLimits,
     confirmation_phrase: str,
-    risk_state_sink: Callable,
+    risk_state_sink: RiskSnapshotSink | None = None,
     database_url: str | None = None,
 ) -> ExecutionRuntime:
-    """Compose durable execution controls without authenticating or activating them."""
+    """Compose durable execution controls without authenticating or activating them.
+
+    A PostgreSQL risk-state sink is the default so a concrete runtime cannot
+    accidentally omit durable post-fill state propagation.
+    """
     engine = create_database_engine(database_url)
     db = SQLAlchemyExecutor(engine)
     baseline_store = PostgresRiskSessionBaselineStore(db)
@@ -57,11 +62,15 @@ def build_execution_runtime(
         baseline_store,
         broker_state,
     )
+    sink = risk_state_sink or PostgresExecutionRiskStateSink(
+        db,
+        session_id=session_identity_provider.current_session_id(),
+    )
     post_fill_sync = PostFillBrokerStateSynchronizer(
         broker_state=broker_state,
         baseline_store=baseline_store,
         session_id=session_identity_provider.current_session_id(),
-        sink=risk_state_sink,
+        sink=sink,
     )
     executor = ControlledBrokerExecution(
         broker,
