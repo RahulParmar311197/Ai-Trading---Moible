@@ -10,7 +10,7 @@ RUN find /etc/apt/sources.list.d -type f -print0 2>/dev/null \
     && rm -rf /var/lib/apt/lists/*
 
 # Codespaces exposes the host Docker daemon through the mounted socket.
-RUN groupadd --system docker-host 2>/dev/null || true \
-    && usermod -aG docker-host vscode
+# The docker.io package creates the matching group for the socket.
+RUN usermod -aG docker vscode
 
 USER vscode
