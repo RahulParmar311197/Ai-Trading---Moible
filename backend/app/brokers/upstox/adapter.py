@@ -101,9 +101,12 @@ class UpstoxBroker:
         body = self._order_payload(order, instrument)
         payload = await self._client.request("POST", "/order/place", json=body)
         data = payload.get("data") if isinstance(payload, dict) else None
-        order_id = str((data or {}).get("order_id", order.order_id)) if isinstance(data, dict) else order.order_id
-        if isinstance(data, dict) and not order_id and data.get("order_ids"):
+        if isinstance(data, dict) and data.get("order_id"):
+            order_id = str(data["order_id"])
+        elif isinstance(data, dict) and data.get("order_ids"):
             order_id = str(data["order_ids"][0])
+        else:
+            order_id = order.order_id
         return order.model_copy(update={"order_id": order_id, "status": BrokerOrderStatus.NEW})
 
     @staticmethod
@@ -122,7 +125,7 @@ class UpstoxBroker:
             "disclosed_quantity": 0,
             "trigger_price": 0,
             "is_amo": False,
-            "market_protection": 0,
+            "market_protection": -1,
         }
 
     async def cancel_order(self, order_id: str) -> BrokerOrder:
