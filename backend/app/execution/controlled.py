@@ -8,6 +8,7 @@ from typing import Awaitable, Callable, Protocol, Sequence
 from app.brokers.base import BrokerAuthentication, BrokerOrder, BrokerOrderStatus, BrokerPosition, BrokerReconciliation
 from app.brokers.idempotency import BrokerIdempotencyStore, IdempotentBroker
 
+from .emergency_control import EmergencyControlError, EmergencyControlStore
 from .gate import DeterministicExecutionGate, RiskSnapshot
 
 
@@ -54,6 +55,7 @@ class ControlledBrokerExecution:
         audit_sink: Callable[[ExecutionAuditEvent], None] | None = None,
         idempotency_store: BrokerIdempotencyStore,
         post_fill_state_sync: PostFillStateSynchronizer | None = None,
+        emergency_control: EmergencyControlStore | None = None,
     ) -> None:
         if not confirmation_phrase.strip():
             raise ValueError("confirmation phrase must be non-empty")
@@ -63,6 +65,7 @@ class ControlledBrokerExecution:
         self._confirmation_phrase = confirmation_phrase
         self._audit_sink = audit_sink
         self._post_fill_state_sync = post_fill_state_sync
+        self._emergency_control = emergency_control
         self._activated = False
         self._kill_switch = True
         self._started = False
@@ -96,6 +99,14 @@ class ControlledBrokerExecution:
         if not authentication.authenticated:
             self._audit("STARTUP_REJECTED", "", "broker session is not authenticated")
             raise ControlledExecutionError("broker session is not authenticated")
+        if self._emergency_control is not None:
+            try:
+                emergency_state = self._emergency_control.get_state()
+            except EmergencyControlError as exc:
+                self._audit("STARTUP_REJECTED", "", "durable emergency control state unavailable")
+                raise ControlledExecutionError("durable emergency control state unavailable") from exc
+            if emergency_state.active:
+                self._audit("EMERGENCY_STOP_ACTIVE", "", emergency_state.reason)
         self._started = True
         self._kill_switch = True
         self._audit("EXECUTION_READY", "", "authenticated broker session verified; kill switch remains active")
@@ -176,6 +187,15 @@ class ControlledBrokerExecution:
         if confirmation != self._confirmation_phrase:
             self._audit("ACTIVATION_REJECTED", "", "explicit confirmation did not match")
             raise ControlledExecutionError("explicit live-execution confirmation required")
+        if self._emergency_control is not None:
+            try:
+                emergency_state = self._emergency_control.get_state()
+            except EmergencyControlError as exc:
+                self._audit("ACTIVATION_REJECTED", "", "durable emergency control state unavailable")
+                raise ControlledExecutionError("durable emergency control state unavailable") from exc
+            if emergency_state.active:
+                self._audit("ACTIVATION_REJECTED", "", "durable emergency stop is active")
+                raise ControlledExecutionError("durable emergency stop is active")
         self._activated = True
         self._kill_switch = False
         self._audit("EXECUTION_ACTIVATED", "", "explicit confirmation accepted")
@@ -184,7 +204,37 @@ class ControlledBrokerExecution:
         if not reason.strip():
             raise ValueError("kill-switch reason must be non-empty")
         self._kill_switch = True
+        self._activated = False
+        if self._emergency_control is not None:
+            try:
+                self._emergency_control.set_active(True, reason)
+            except EmergencyControlError:
+                self._audit("EMERGENCY_STOP_PERSIST_FAILED", "", "durable emergency stop could not be persisted; local stop remains active")
+                self._audit("KILL_SWITCH_ACTIVATED", "", reason)
+                raise ControlledExecutionError("durable emergency stop could not be persisted")
         self._audit("KILL_SWITCH_ACTIVATED", "", reason)
+        self._audit("EMERGENCY_STOP_PERSISTED", "", reason)
+
+    def clear_emergency_stop(self, confirmation: str, reason: str = "manual reset") -> None:
+        if not self._started:
+            self._audit("EMERGENCY_RESET_REJECTED", "", "execution startup has not completed")
+            raise ControlledExecutionError("execution startup has not completed")
+        if confirmation != self._confirmation_phrase:
+            self._audit("EMERGENCY_RESET_REJECTED", "", "explicit confirmation did not match")
+            raise ControlledExecutionError("explicit live-execution confirmation required")
+        if not reason.strip():
+            raise ValueError("emergency reset reason must be non-empty")
+        if self._emergency_control is None:
+            raise ControlledExecutionError("durable emergency control is not configured")
+        try:
+            self._emergency_control.set_active(False, reason)
+        except EmergencyControlError as exc:
+            self._audit("EMERGENCY_RESET_FAILED", "", "durable emergency stop could not be cleared")
+            raise ControlledExecutionError("durable emergency stop could not be cleared") from exc
+        self._kill_switch = True
+        self._activated = False
+        self._audit("EMERGENCY_STOP_CLEARED", "", reason)
+        self._audit("EXECUTION_DEACTIVATED", "", "emergency stop cleared; explicit activation remains required")
 
     def deactivate(self, reason: str = "manual") -> None:
         if not reason.strip():
@@ -215,6 +265,21 @@ class ControlledBrokerExecution:
             self._reject(order.client_order_id, "live execution is not activated")
         if self._kill_switch:
             self._reject(order.client_order_id, "live execution kill switch is active")
+        if self._emergency_control is not None:
+            try:
+                emergency_state = self._emergency_control.get_state()
+            except EmergencyControlError as exc:
+                self._started = False
+                self._activated = False
+                self._kill_switch = True
+                self._audit("EMERGENCY_CONTROL_UNAVAILABLE", order.client_order_id, "durable emergency control state unavailable; execution fail-closed")
+                raise ControlledExecutionError("durable emergency control state unavailable") from exc
+            if emergency_state.active:
+                self._started = False
+                self._activated = False
+                self._kill_switch = True
+                self._audit("EMERGENCY_STOP_ACTIVE", order.client_order_id, emergency_state.reason)
+                raise ControlledExecutionError("durable emergency stop is active")
         await self._validate_fresh_position(order, snapshot)
         decision = self._risk_gate.evaluate(order, market_price, snapshot)
         if not decision.approved:
