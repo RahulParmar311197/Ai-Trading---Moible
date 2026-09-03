@@ -6,7 +6,7 @@ from decimal import Decimal
 from math import isfinite
 
 from .gate import DeterministicExecutionGate, ExecutionDecision, RiskSnapshot
-from .portfolio_risk import PortfolioPosition, PortfolioRiskAssessment, PortfolioRiskLimits, assess_portfolio
+from .portfolio_risk import PortfolioPosition, PortfolioRiskAssessment, PortfolioRiskError, PortfolioRiskLimits, assess_portfolio
 
 
 class AutonomousDecisionError(RuntimeError):
@@ -140,7 +140,7 @@ class AutonomousDecisionPipeline:
 
         try:
             portfolio = assess_portfolio(projected_positions, self._portfolio_limits)
-        except Exception as exc:
+        except PortfolioRiskError as exc:
             return AutonomousDecision(False, f"portfolio risk evaluation failed: {type(exc).__name__}", None)
         if not portfolio.approved:
             return AutonomousDecision(False, "portfolio risk rejected candidate: " + "; ".join(portfolio.reasons), None)

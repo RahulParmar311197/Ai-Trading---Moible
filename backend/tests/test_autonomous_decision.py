@@ -3,9 +3,10 @@ from decimal import Decimal
 
 import pytest
 
+from app.execution import autonomous
 from app.execution.autonomous import AutonomousDecisionContext, AutonomousDecisionPipeline, DecisionCandidate
 from app.execution.gate import DeterministicExecutionGate, RiskLimits, RiskSnapshot
-from app.execution.portfolio_risk import PortfolioPosition, PortfolioRiskLimits
+from app.execution.portfolio_risk import PortfolioPosition, PortfolioRiskError, PortfolioRiskLimits
 
 
 NOW = datetime(2026, 9, 3, 10, 0, tzinfo=timezone.utc)
@@ -94,3 +95,31 @@ def test_existing_position_is_projected_before_portfolio_check() -> None:
     assert not decision.approved
     assert decision.intent is None
     assert "portfolio risk rejected" in decision.reason
+
+
+def test_unexpected_portfolio_risk_error_is_propagated(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fail(*args, **kwargs):
+        raise RuntimeError("programmer defect")
+
+    monkeypatch.setattr(autonomous, "assess_portfolio", fail)
+
+    with pytest.raises(RuntimeError, match="programmer defect"):
+        make_pipeline().evaluate(make_candidate(), make_context())
+
+
+def test_expected_portfolio_risk_error_fails_closed() -> None:
+    def reject(*args, **kwargs):
+        raise PortfolioRiskError("invalid portfolio state")
+
+    # The domain-level risk error is intentionally converted to a deterministic rejection.
+    # Unexpected exceptions remain visible so defects cannot be silently masked.
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(autonomous, "assess_portfolio", reject)
+    try:
+        decision = make_pipeline().evaluate(make_candidate(), make_context())
+    finally:
+        monkeypatch.undo()
+
+    assert not decision.approved
+    assert decision.intent is None
+    assert "portfolio risk evaluation failed" in decision.reason
