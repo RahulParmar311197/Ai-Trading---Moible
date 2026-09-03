@@ -130,7 +130,7 @@ Last updated: 2026-09-03
 
 - Run `33734700589` for Dhan option-chain runtime wiring head `ff023700c2b9d2e26c4fff612d2ad42964eb8025`: **backend-tests completed successfully** and **Android `assembleDebug` completed successfully**.
 - PR #8 `feat(options): wire Dhan option chain through authoritative catalogue` was merged as squash commit `13d3802fa621bd59ad33fbf8d3bef1f79b4c2e8c` after both CI workflows completed successfully.
-- Run `33734236062` for the full-flow verification head `ccc278f42428d08e52383ea747a0a7d9b2885d78`: backend and companion Android CI passed; PR #7 was merged as squash commit `957e310d25a6d0ca95f634f491a5044f3303f49c.
+- Run `33734236062` for the full-flow verification head `ccc278f42428d08e52383ea747a0a7d9b2885d78`: backend and companion Android CI passed; PR #7 was merged as squash commit `957e310d25a6d0ca95f634f491a5044f3303f49c`.
 - Previous successful CI runs include `33733719815`, `33733720002`, `33722008311`, `33715221668`, `33713476172`, `33712940894`, `33627523956`, `33627198878`, and `33624319414`.
 
 ## Runtime verification
