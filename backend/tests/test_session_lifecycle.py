@@ -38,8 +38,8 @@ async def test_establish_persists_first_broker_realized_pnl_as_session_baseline(
     identity = Identity("session-2026-09-03")
     store = Store()
     state = BrokerStateSynchronizer(
-        lambda: _account(100_000),
-        lambda: _positions(realized=Decimal("1250")),
+        _async_account,
+        lambda: _async_positions(realized=Decimal("1250")),
     )
     lifecycle = TradingSessionLifecycle(identity, store, state)
 
@@ -55,7 +55,7 @@ async def test_refresh_rejects_non_authoritative_session() -> None:
     lifecycle = TradingSessionLifecycle(
         Identity("authoritative"),
         Store(),
-        BrokerStateSynchronizer(lambda: _account(100_000), lambda: _positions()),
+        BrokerStateSynchronizer(_async_account, _async_positions),
     )
 
     with pytest.raises(TradingSessionError, match="does not match authoritative"):
@@ -67,8 +67,8 @@ async def test_risk_snapshot_uses_persisted_baseline_not_current_realized_pnl() 
     identity = Identity("session-1")
     store = Store()
     state = BrokerStateSynchronizer(
-        lambda: _account(100_000),
-        lambda: _positions(realized=Decimal("1250")),
+        _async_account,
+        lambda: _async_positions(realized=Decimal("1250")),
     )
     lifecycle = TradingSessionLifecycle(identity, store, state)
     await lifecycle.establish()
@@ -84,6 +84,14 @@ def _account(balance: int) -> Account:
         balance=Decimal(balance),
         available_margin=Decimal(balance),
     )
+
+
+async def _async_account() -> Account:
+    return _account(100_000)
+
+
+async def _async_positions(*, realized: Decimal = Decimal("0")) -> tuple[BrokerPosition, ...]:
+    return _positions(realized=realized)
 
 
 def _positions(*, realized: Decimal = Decimal("0")) -> tuple[BrokerPosition, ...]:
