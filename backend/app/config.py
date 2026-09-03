@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     execution_max_position_quantity: int | None = None
     execution_max_daily_loss: Decimal | None = None
 
+    # Live option-chain reads are separately configurable and never enable order execution.
+    options_provider: str = ""
+    options_timeout_seconds: float = 10.0
+
     ai_provider_url: str = ""
     ai_provider_api_key: str = ""
     ai_provider_model: str = ""
