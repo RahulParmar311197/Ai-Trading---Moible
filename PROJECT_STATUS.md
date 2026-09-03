@@ -117,12 +117,13 @@ Last updated: 2026-09-03
 
 ## Latest CI evidence
 
-- Run `33712940894` for current `main` commit `e0fbf77b7fc55970a6d1d96a8f91d62a7e4a5821`: **full CI completed successfully**. GitHub reports both `backend-tests` and `android-build` completed successfully; backend executed official Upstox protobuf verification plus non-integration and PostgreSQL integration pytest jobs, and Android completed `assembleDebug` using pinned Gradle 8.10.2.
+- Run `33713476172` for current `main` commit `8399d66e2d5d58f57c5c8e274229c9abb505d3c3`: **full CI completed successfully**. GitHub reports both `backend-tests` and `android-build` completed successfully; backend executed official Upstox protobuf verification plus non-integration and PostgreSQL integration pytest jobs, and Android completed `assembleDebug` using pinned Gradle 8.10.2.
+- Run `33712940894` for previous current `main` commit `e0fbf77b7fc55970a6d1d96a8f91d62a7e4a5821`: **full CI completed successfully**.
 - Run `33627523956` for documentation commit `59380f03127abf3880c01fce0b0e7501293d5daf`: **full CI completed successfully**.
 - Run `33627198878` for documentation/status commit `25234ba5e14817bdee0bd0934b4cfebf4086ff02f`: **full CI completed successfully**.
 - Run `33625211010` for status commit `23b9f479d5f776dd92cc2e73395221d23c0a71e6`: **full CI completed successfully**.
 - Run `33624319414` for implementation commit `ba78f6ff248d6f7e08cb47963997e868868be12f`: **full CI completed successfully**. Backend completed official Upstox protobuf verification plus non-integration and PostgreSQL integration pytest jobs; Android `assembleDebug` completed successfully.
-- Run `33712769202` for the intermediate sandbox workflow commit `f77b8996955ae426a71dc39e7dd4025ca0288d2e`: backend exposed one unrelated fixed-date Dhan-auth fixture regression (268 passed, 1 failed, 6 deselected); that fixture was corrected in commit `7267d144b6bc7e4a5c6e0dc03d56889ecb85a879`. The corrected state is verified green by `33712940894`.
+- Run `33712769202` for the intermediate sandbox workflow commit `f77b8996955ae426a71dc39e7dd4025ca0288d2e`: backend exposed one unrelated fixed-date Dhan-auth fixture regression (268 passed, 1 failed, 6 deselected); that fixture was corrected in commit `7267d144b6bc7e4a5c6e0dc03d56889ecb85a879`. The corrected state was verified green by `33712940894`.
 
 ## Runtime limitation
 
