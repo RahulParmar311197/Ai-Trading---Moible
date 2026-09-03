@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
+from datetime import date
+from decimal import Decimal
 from typing import Any
 
 from .order_config import (
     BrokerInstrument,
     ExchangeSegment,
     InstrumentResolver,
+    OptionInstrumentMetadata,
+    OptionType,
     OrderValidity,
     ProductType,
 )
@@ -49,6 +53,24 @@ def _segment(value: str) -> ExchangeSegment:
         raise InstrumentCatalogueError(f"unsupported exchange segment: {value}") from exc
 
 
+def _option_metadata(row: Mapping[str, Any]) -> OptionInstrumentMetadata | None:
+    expiry_raw = next((row.get(name) for name in ("SEM_EXPIRY_DATE", "EXPIRY_DATE", "expiry") if row.get(name)), None)
+    strike_raw = next((row.get(name) for name in ("SEM_STRIKE_PRICE", "STRIKE_PRICE", "strike") if row.get(name) is not None), None)
+    type_raw = next((row.get(name) for name in ("SEM_OPTION_TYPE", "OPTION_TYPE", "option_type") if row.get(name)), None)
+    if expiry_raw is None and strike_raw is None and type_raw is None:
+        return None
+    if expiry_raw is None or strike_raw is None or type_raw is None:
+        raise InstrumentCatalogueError("option catalogue metadata is incomplete")
+    try:
+        expiry = date.fromisoformat(str(expiry_raw)[:10])
+        strike = Decimal(str(strike_raw))
+        normalized = str(type_raw).strip().upper()
+        option_type = {"CE": OptionType.CALL, "CALL": OptionType.CALL, "PE": OptionType.PUT, "PUT": OptionType.PUT}[normalized]
+        return OptionInstrumentMetadata(expiry=expiry, strike=strike, option_type=option_type)
+    except (KeyError, TypeError, ValueError, ArithmeticError) as exc:
+        raise InstrumentCatalogueError("invalid option catalogue metadata") from exc
+
+
 def upstox_catalogue(
     rows: Iterable[Mapping[str, Any]],
     *,
@@ -68,6 +90,7 @@ def upstox_catalogue(
                 product_type=product_type,
                 validity=validity,
                 lot_size=_lot_size(row, "lot_size", "minimum_lot"),
+                option_metadata=_option_metadata(row),
             )
         )
     return tuple(result)
@@ -106,6 +129,7 @@ def dhan_catalogue(
                 product_type=product_type,
                 validity=validity,
                 lot_size=_lot_size(row, "SEM_LOT_UNITS", "LOT_SIZE"),
+                option_metadata=_option_metadata(row),
             )
         )
     return tuple(result)
