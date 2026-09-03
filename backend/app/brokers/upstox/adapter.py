@@ -21,11 +21,13 @@ class UpstoxBroker:
     """Provider adapter for Upstox v2 account/portfolio/order APIs.
 
     Read operations are available with a token. Live mutation is intentionally
-    disabled unless the caller explicitly opts in. Authentication state is
-    owned by a secret-safe session boundary and never returned in domain DTOs.
+    disabled unless the caller explicitly opts in. Sandbox mutation is a
+    separate explicit opt-in and always targets Upstox's sandbox host.
     """
 
     provider = "upstox"
+    LIVE_BASE_URL = "https://api.upstox.com/v2"
+    SANDBOX_BASE_URL = "https://sandbox.upstox.com/v2"
 
     def __init__(
         self,
@@ -33,21 +35,32 @@ class UpstoxBroker:
         *,
         timeout: float = 10.0,
         allow_live_orders: bool = False,
+        sandbox: bool = False,
+        allow_sandbox_orders: bool = False,
         instrument_resolver: InstrumentResolver | None = None,
         session_expires_at: datetime | None = None,
     ) -> None:
+        self._sandbox = sandbox
+        self._allow_live_orders = allow_live_orders
+        self._allow_sandbox_orders = allow_sandbox_orders
         self._session = StaticTokenBrokerSession(
             self.provider, "upstox", access_token, expires_at=session_expires_at
         )
-        self._client = HTTPBrokerClient(
-            "https://api.upstox.com/v2", session=self._session, timeout=timeout
-        )
-        self._allow_live_orders = allow_live_orders
+        base_url = self.SANDBOX_BASE_URL if sandbox else self.LIVE_BASE_URL
+        self._client = HTTPBrokerClient(base_url, session=self._session, timeout=timeout)
         self._instrument_resolver = instrument_resolver or InstrumentResolver()
 
     @property
     def session(self) -> StaticTokenBrokerSession:
         return self._session
+
+    @property
+    def sandbox(self) -> bool:
+        return self._sandbox
+
+    @property
+    def orders_enabled(self) -> bool:
+        return self._allow_sandbox_orders if self._sandbox else self._allow_live_orders
 
     async def authenticate(self) -> BrokerAuthentication:
         return self._session.authentication()
@@ -80,12 +93,17 @@ class UpstoxBroker:
         return tuple(self._map_order(row) for row in rows)
 
     async def place_order(self, order: BrokerOrder) -> BrokerOrder:
-        if not self._allow_live_orders:
+        if not self.orders_enabled:
+            if self._sandbox:
+                raise LiveBrokerDisabled("Upstox sandbox order submission is disabled")
             raise LiveBrokerDisabled("Upstox live order submission is disabled")
         instrument = self._instrument_resolver.resolve(order.symbol)
         body = self._order_payload(order, instrument)
         payload = await self._client.request("POST", "/order/place", json=body)
-        order_id = str((payload.get("data") or {}).get("order_id", order.order_id)) if isinstance(payload, dict) else order.order_id
+        data = payload.get("data") if isinstance(payload, dict) else None
+        order_id = str((data or {}).get("order_id", order.order_id)) if isinstance(data, dict) else order.order_id
+        if isinstance(data, dict) and not order_id and data.get("order_ids"):
+            order_id = str(data["order_ids"][0])
         return order.model_copy(update={"order_id": order_id, "status": BrokerOrderStatus.NEW})
 
     @staticmethod
@@ -108,7 +126,9 @@ class UpstoxBroker:
         }
 
     async def cancel_order(self, order_id: str) -> BrokerOrder:
-        if not self._allow_live_orders:
+        if not self.orders_enabled:
+            if self._sandbox:
+                raise LiveBrokerDisabled("Upstox sandbox order cancellation is disabled")
             raise LiveBrokerDisabled("Upstox live order cancellation is disabled")
         payload = await self._client.request("DELETE", "/order/cancel", params={"order_id": order_id})
         data = payload.get("data", {}) if isinstance(payload, dict) else {}
