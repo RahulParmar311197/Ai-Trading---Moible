@@ -23,6 +23,7 @@ Last updated: 2026-09-03
 - Ambiguous broker submission exceptions preserve the idempotency reservation and force fail-closed reconciliation before reuse.
 - Durable PostgreSQL idempotency uses atomic reservation and transactional result persistence; concurrent callers cannot both claim a new client-order key.
 - Recovery refreshes broker positions/orders, reconciles requested IDs, and rejects unexpected live broker orders outside the explicit expected local order set. It never auto-activates trading.
+- Recovery now carries an authoritative reconciled `BrokerOrder` and completes idempotency only for confirmed terminal `FILLED` results; unresolved NEW/OPEN/PARTIALLY_FILLED states remain pending, while REJECTED/CANCELLED remain explicitly clearable.
 - Before every controlled live submission, the execution boundary refreshes broker positions and requires the submitted `RiskSnapshot.position_quantity` to match the current broker position for the order symbol.
 - Risk/session state is durable and explicitly session-bound; no local wall-clock trading-day boundary is invented.
 - Partial/filled confirmations require explicit post-fill broker-state synchronization. Synchronization failure stops the lifecycle and keeps the kill switch active.
@@ -96,6 +97,8 @@ Last updated: 2026-09-03
 - [x] Atomic durable reservation and concurrency regression coverage
 - [x] Terminal `REJECTED`/`CANCELLED` reservation clearing after reconciliation
 - [x] Durable idempotency unresolved/completed/conflict/reuse regression coverage
+- [x] Recovered terminal `FILLED` result completes idempotency and replays without broker resubmission
+- [x] Reconciliation rejects inconsistent embedded broker-order identity/status
 - [x] Regression test for stale/mismatched position snapshot
 - [x] Broker-state synchronization primitive with explicit daily-P&L baseline
 - [x] Fail-closed validation for non-finite risk snapshot inputs
@@ -111,6 +114,7 @@ Last updated: 2026-09-03
 - [x] Local full backend pytest verification: 279 passed, 1 skipped
 - [x] Local PostgreSQL integration verification: 5 passed, 1 skipped
 - [x] Local FastAPI runtime smoke verification: `/health` 200/ok and `/ready` 200/degraded with execution/market-data intentionally unconfigured
+- [x] PR #22 backend CI and Android CI verified successfully after reconciliation regression fixes
 - [ ] Production broker runtime verification
 - [ ] Real live activation
 
@@ -126,9 +130,9 @@ Last updated: 2026-09-03
 
 ## Latest CI evidence
 
+- PR #22 head `3b24a27848ee215f82bc2fabedb6baed92e5a3bb`: CI run `33746835072` backend-tests and Android build both completed successfully; PR merged to `main` as `62f66671c97dd9bec19a66617d0025222bae378b`.
 - PR #20 head `b15ed867a4f1ff42644003d41f68814a0cfe82af`: backend CI and Android CI both completed successfully; merged to `main` as `7dc9ebe30b22e7d33549d5cdef86aafc18dc6df8`.
-- PR #21 head `9031a808cf70702a8e6875cb605cea2cd3b6f4c8`: backend CI and Android CI both completed successfully; PR merged to `main` as `6cd16f083baa6e8e836b4d00865a6314e73b8f21`.
-- PR #15 autonomous-decision head `9ef0cc54172496686ff46b616a11cbebaa0a3086`: backend-tests and Android build both completed successfully; merged to `main` as squash commit `ee22d88ca96f8c63d482bfe0caa8252fe336e386`.
+- PR #21 head `9031a808cf70702a8e6875cb605cea2cd3b6f4c8`: backend CI and Android CI both completed successfully; merged to `main` as `6cd16f083baa6e8e836b4d00865a6314e73b8f21`.
 
 ## Runtime verification
 
