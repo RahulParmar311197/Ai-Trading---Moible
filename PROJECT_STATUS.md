@@ -13,7 +13,7 @@ Last updated: 2026-09-03
 ## Verified implementation state
 
 - Deterministic strategy/backtest/replay foundations are integrated; AI remains advisory and cannot authorize execution.
-- Options analytics and provider-neutral option-chain contracts are implemented. A fail-closed DhanHQ v2 option-chain adapter is now implemented behind the provider boundary and requires authoritative Dhan catalogue metadata for execution fields; live provider runtime remains unverified.
+- Options analytics and provider-neutral option-chain contracts are implemented. A fail-closed DhanHQ v2 option-chain adapter is now wired behind explicit runtime configuration and requires authoritative Dhan catalogue metadata for execution fields; live provider runtime remains unverified.
 - Paper trading has deterministic order/fill/position/P&L/risk/kill-switch behavior, durable persistence, restart hydration, and replay-to-paper execution.
 - Provider-neutral broker contracts, authentication boundaries, reconciliation, idempotency, Upstox/Dhan adapters, instrument resolution/catalogue ingestion, and secret-safe session handling are implemented.
 - Upstox and Dhan live mutation remains disabled by default.
@@ -72,6 +72,7 @@ Last updated: 2026-09-03
 - [x] Contracts, quotes/OI/volume/IV fields, lot sizes, Black-Scholes Greeks, liquidity/spread validation, delta strike selection, multi-leg payoff/risk metrics, strategy selection, analytics API, provider-neutral chain interface
 - [x] Fail-closed DhanHQ v2 option-chain adapter with authoritative catalogue metadata resolution and documented 3-second unique-request cooldown
 - [x] Dhan adapter deterministic MockTransport tests covering mapping, missing metadata, and cooldown behavior
+- [x] Dhan option-chain runtime configuration boundary using explicit credentials, segment, and deployment-supplied authoritative catalogue CSV
 - [ ] Live option-chain provider runtime integration
 - [ ] Fresh runtime verification of latest options changes
 
@@ -127,15 +128,16 @@ Last updated: 2026-09-03
 
 ## Latest CI evidence
 
-- Run `33734236062` for the full-flow verification head `ccc278f42428d08e52383ea747a0a7d9b2885d78`: **backend-tests completed successfully**, including non-integration and PostgreSQL integration pytest jobs. The Android build was still running at the time of the backend completion check; the companion Android run `33734236255` for the same head completed `assembleDebug` successfully.
-- The verification PR was merged as squash commit `957e310d25a6d0ca95f634f491a5044f3303f49c` after the backend and companion Android CI evidence passed.
+- Run `33734700589` for Dhan option-chain runtime wiring head `ff023700c2b9d2e26c4fff612d2ad42964eb8025`: **backend-tests completed successfully** and **Android `assembleDebug` completed successfully**.
+- PR #8 `feat(options): wire Dhan option chain through authoritative catalogue` was merged as squash commit `13d3802fa621bd59ad33fbf8d3bef1f79b4c2e8c` after both CI workflows completed successfully.
+- Run `33734236062` for the full-flow verification head `ccc278f42428d08e52383ea747a0a7d9b2885d78`: backend and companion Android CI passed; PR #7 was merged as squash commit `957e310d25a6d0ca95f634f491a5044f3303f49c.
 - Previous successful CI runs include `33733719815`, `33733720002`, `33722008311`, `33715221668`, `33713476172`, `33712940894`, `33627523956`, `33627198878`, and `33624319414`.
 
 ## Runtime verification
 
 The Codespaces environment has been rebuilt successfully with a self-contained Docker client/Compose setup. PostgreSQL 16 and Redis 7 were started locally and health-checked. The local backend suite and PostgreSQL integration suite were executed successfully. The FastAPI application was also started under Uvicorn and its liveness/readiness endpoints were verified. Readiness was correctly degraded because live market-data and controlled execution prerequisites were intentionally not configured.
 
-The Dhan option-chain adapter has CI-level verification only. No live Dhan credential, real option-chain request, or production broker runtime has been performed.
+The Dhan option-chain adapter and its runtime configuration boundary have CI-level verification only. No live Dhan credential, real option-chain request, or production broker runtime has been performed.
 
 ## Safety status
 
