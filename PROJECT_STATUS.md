@@ -28,9 +28,9 @@ Last updated: 2026-09-03
 - Partial/filled confirmations require explicit post-fill broker-state synchronization. Synchronization failure stops the lifecycle and keeps the kill switch active.
 - The application runtime composes durable PostgreSQL audit, idempotency, risk-state, session-baseline, and emergency-control stores. Runtime construction remains inert and never activates trading.
 - Provider-neutral AI HTTP compatibility and Android advisory AI integration are verified; AI cannot authorize execution.
-- A deterministic portfolio risk monitor now provides gross/net exposure, per-position notional, P&L, and pairwise correlation checks without any broker mutation or execution authorization.
-- A durable emergency execution stop now defaults active, persists its state in PostgreSQL, fails closed on persistence/read failure, and is checked at startup, activation, and submission boundaries. Clearing it is explicit and does not auto-activate trading.
-- The emergency-control implementation was merged to `main` as squash commit `956c91590f6ae4c5c5a1a1bf2df16771b4059805` after CI and Android CI passed for the exact PR head.
+- A deterministic portfolio risk monitor provides gross/net exposure, per-position notional, P&L, and pairwise correlation checks without any broker mutation or execution authorization.
+- A durable emergency execution stop defaults active, persists its state in PostgreSQL, fails closed on persistence/read failure, and is checked at startup, activation, and submission boundaries. Clearing it is explicit and does not auto-activate trading.
+- The deterministic autonomous decision pipeline is now merged to `main` as squash commit `ee22d88ca96f8c63d482bfe0caa8252fe336e386` after backend and Android CI passed for exact PR head `9ef0cc54172496686ff46b616a11cbebaa0a3086`.
 
 ## Stage status
 
@@ -114,13 +114,14 @@ Last updated: 2026-09-03
 
 ### Stage 10 — Autonomous Trading
 
-- [ ] Autonomous decision pipeline
-- [x] Portfolio-level risk/correlation exposure/position monitoring implemented and unit-tested; merge/CI verification of the corresponding portfolio-risk change still needs confirmation on `main`
+- [x] Deterministic autonomous decision pipeline: candidate validation, authoritative state freshness, projected portfolio exposure/correlation checks, deterministic execution gate, broker-neutral `ExecutionIntent`, and no broker mutation/live activation path
+- [x] Portfolio-level risk/correlation exposure/position monitoring implemented and unit-tested; merged to `main` in commit `9e5566f94b5031d1e00ef9beaad48abcd9fd2d3f`
 - [x] Emergency controls implemented and CI verified; runtime/production verification remains outstanding
 - [ ] Production validation
 
 ## Latest CI evidence
 
+- PR #15 autonomous-decision head `9ef0cc54172496686ff46b616a11cbebaa0a3086`: backend-tests and Android build both completed successfully; merged to `main` as squash commit `ee22d88ca96f8c63d482bfe0caa8252fe336e386`.
 - PR #13 emergency-control head `0055fa50d2f65ca9901d64d2b35967ebbf8476b3`: CI run `33737569540` and Android CI run `33737569541` both completed successfully before squash merge to `956c91590f6ae4c5c5a1a1bf2df16771b4059805`.
 - Run `33734700589` for Dhan option-chain runtime wiring head `ff023700c2b9d2e26c4fff612d2ad42964eb8025`: backend-tests and Android `assembleDebug` completed successfully.
 - PR #8 was merged as squash commit `13d3802fa621bd59ad33fbf8d3bef1f79b4c2e8c` after both CI workflows completed successfully.
@@ -130,16 +131,15 @@ Last updated: 2026-09-03
 
 The Codespaces environment was previously rebuilt successfully with self-contained Docker client/Compose setup. PostgreSQL 16 and Redis 7 were started locally and health-checked. The local backend suite and PostgreSQL integration suite were executed successfully. FastAPI `/health` returned 200/ok and `/ready` returned 200/degraded because live market-data and controlled execution prerequisites were intentionally not configured.
 
-The Dhan option-chain adapter, emergency-control runtime, and production broker integrations have CI-level or code-level verification only unless explicitly stated above. No live Dhan credential, real option-chain request, production broker runtime, or real live activation has been performed.
+The Dhan option-chain adapter, emergency-control runtime, autonomous decision pipeline, and production broker integrations have CI-level or code-level verification only unless explicitly stated above. No live Dhan credential, real option-chain request, production broker runtime, or real live activation has been performed.
 
 ## Safety status
 
-**LIVE/AUTONOMOUS TRADING REMAINS GATED.** Controlled execution requires authenticated startup plus exact explicit activation; broker position state is refreshed before submission and must agree with the supplied risk snapshot; partial/filled confirmations require explicit post-fill synchronization and failures stop the lifecycle with the kill switch active; recovery/startup keep the kill switch active; shutdown and ambiguous broker failures fail closed. The durable emergency stop defaults active and fails closed on persistence/read errors. Dhan/Upstox live mutation remains disabled by default. AI remains subordinate to deterministic validation, strategy, risk and execution controls. Production broker runtime verification and real live activation have not been performed.
+**LIVE/AUTONOMOUS TRADING REMAINS GATED.** Controlled execution requires authenticated startup plus exact explicit activation; broker position state is refreshed before submission and must agree with the supplied risk snapshot; partial/filled confirmations require explicit post-fill synchronization and failures stop the lifecycle with the kill switch active; recovery/startup keep the kill switch active; shutdown and ambiguous broker failures fail closed. The durable emergency stop defaults active and fails closed on persistence/read errors. Dhan/Upstox live mutation remains disabled by default. AI remains subordinate to deterministic validation, strategy, risk and execution controls. The autonomous decision pipeline produces broker-neutral intents only and does not authorize broker submission. Production broker runtime verification and real live activation have not been performed.
 
 ## Remaining blockers / unverified items
 
 1. Production broker runtime and real live activation are unverified. Upstox has a documented sandbox path, but the manual sandbox smoke workflow remains environment-dependent and requires an intentionally supplied sandbox token.
 2. Stage 5 real external AI-provider runtime verification remains unverified; provider contract compatibility and Android integration are verified.
 3. Stage 6 live option-chain provider runtime integration and fresh runtime verification remain unverified.
-4. Stage 10 autonomous decision pipeline and production validation remain unverified and gated.
-5. Portfolio-risk merge/CI state on `main` must be independently verified before treating that item as fully merged/CI-verified.
+4. Stage 10 production validation remains unverified and gated; autonomous decision evaluation is implemented and CI verified but is not an execution authorization path.
