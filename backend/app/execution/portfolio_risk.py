@@ -21,13 +21,26 @@ class PortfolioPosition:
     def __post_init__(self) -> None:
         if not self.symbol.strip():
             raise PortfolioRiskError("portfolio position symbol is required")
-        for name, value in (("quantity", self.quantity), ("mark_price", self.mark_price), ("realized_pnl", self.realized_pnl), ("unrealized_pnl", self.unrealized_pnl)):
+        try:
+            quantity = Decimal(str(self.quantity))
+            mark_price = Decimal(str(self.mark_price))
+            realized_pnl = Decimal(str(self.realized_pnl))
+            unrealized_pnl = Decimal(str(self.unrealized_pnl))
+            returns = tuple(Decimal(str(value)) for value in self.returns)
+        except (ArithmeticError, ValueError, TypeError) as exc:
+            raise PortfolioRiskError("portfolio financial values must be numeric") from exc
+        for name, value in (("quantity", quantity), ("mark_price", mark_price), ("realized_pnl", realized_pnl), ("unrealized_pnl", unrealized_pnl)):
             if not value.is_finite():
                 raise PortfolioRiskError(f"portfolio {name} must be finite")
-        if self.mark_price < 0:
+        if mark_price < 0:
             raise PortfolioRiskError("portfolio mark price cannot be negative")
-        if any(not value.is_finite() for value in self.returns):
+        if any(not value.is_finite() for value in returns):
             raise PortfolioRiskError("portfolio returns must be finite")
+        object.__setattr__(self, "quantity", quantity)
+        object.__setattr__(self, "mark_price", mark_price)
+        object.__setattr__(self, "realized_pnl", realized_pnl)
+        object.__setattr__(self, "unrealized_pnl", unrealized_pnl)
+        object.__setattr__(self, "returns", returns)
 
     @property
     def notional(self) -> Decimal:
@@ -42,13 +55,24 @@ class PortfolioRiskLimits:
     max_pair_correlation: Decimal = Decimal("1")
 
     def __post_init__(self) -> None:
-        for name, value in (("max_gross_exposure", self.max_gross_exposure), ("max_net_exposure", self.max_net_exposure), ("max_single_position_notional", self.max_single_position_notional), ("max_pair_correlation", self.max_pair_correlation)):
+        try:
+            values = {
+                "max_gross_exposure": Decimal(str(self.max_gross_exposure)),
+                "max_net_exposure": Decimal(str(self.max_net_exposure)),
+                "max_single_position_notional": Decimal(str(self.max_single_position_notional)),
+                "max_pair_correlation": Decimal(str(self.max_pair_correlation)),
+            }
+        except (ArithmeticError, ValueError, TypeError) as exc:
+            raise PortfolioRiskError("portfolio risk limits must be numeric") from exc
+        for name, value in values.items():
             if not value.is_finite():
                 raise PortfolioRiskError(f"portfolio risk limit {name} must be finite")
             if value < 0:
                 raise PortfolioRiskError(f"portfolio risk limit {name} cannot be negative")
-        if self.max_pair_correlation > 1:
+        if values["max_pair_correlation"] > 1:
             raise PortfolioRiskError("max_pair_correlation cannot exceed 1")
+        for name, value in values.items():
+            object.__setattr__(self, name, value)
 
 
 @dataclass(frozen=True)
