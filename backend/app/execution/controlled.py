@@ -46,17 +46,7 @@ class ControlledExecutionError(RuntimeError):
 class ControlledBrokerExecution:
     """Explicitly activated broker execution with deterministic safety gates."""
 
-    def __init__(
-        self,
-        broker: ExecutionBroker,
-        risk_gate: DeterministicExecutionGate,
-        *,
-        confirmation_phrase: str,
-        audit_sink: Callable[[ExecutionAuditEvent], None] | None = None,
-        idempotency_store: BrokerIdempotencyStore,
-        post_fill_state_sync: PostFillStateSynchronizer | None = None,
-        emergency_control: EmergencyControlStore | None = None,
-    ) -> None:
+    def __init__(self, broker: ExecutionBroker, risk_gate: DeterministicExecutionGate, *, confirmation_phrase: str, audit_sink: Callable[[ExecutionAuditEvent], None] | None = None, idempotency_store: BrokerIdempotencyStore, post_fill_state_sync: PostFillStateSynchronizer | None = None, emergency_control: EmergencyControlStore | None = None) -> None:
         if not confirmation_phrase.strip():
             raise ValueError("confirmation phrase must be non-empty")
         self._idempotency_store = idempotency_store
@@ -154,6 +144,15 @@ class ControlledBrokerExecution:
                 if reconciliation.broker_status in {BrokerOrderStatus.REJECTED, BrokerOrderStatus.CANCELLED}:
                     self._idempotency_store.clear(client_order_id)
                     self._audit("IDEMPOTENCY_RESERVATION_CLEARED", client_order_id, "broker reconciliation reached a terminal non-live status")
+                elif reconciliation.broker_status is BrokerOrderStatus.FILLED:
+                    if reconciliation.broker_order is None:
+                        self._audit("RECONCILIATION_REQUIRED", client_order_id, "filled broker status lacks authoritative order result")
+                        self._started = False
+                        self._activated = False
+                        self._kill_switch = True
+                        raise ControlledExecutionError("filled broker reconciliation lacks authoritative order result")
+                    self._idempotency_store.complete(reconciliation.broker_order, reconciliation.broker_order)
+                    self._audit("IDEMPOTENCY_RESERVATION_COMPLETED", client_order_id, "broker reconciliation supplied an authoritative terminal fill")
             self._started = True
             self._activated = False
             self._kill_switch = True
