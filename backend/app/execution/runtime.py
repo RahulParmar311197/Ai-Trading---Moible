@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Callable
 
 from app.brokers.base import Broker
-from app.brokers.durable_idempotency import PostgresBrokerIdempotencyStore
+from app.brokers.durable_idempotency import DurableBrokerIdempotencyStore
 from app.database.session import SQLAlchemyExecutor, create_database_engine
 
 from .audit import DurableExecutionAuditSink, PostgresExecutionAuditRepository
@@ -50,7 +50,7 @@ def build_execution_runtime(
     db = SQLAlchemyExecutor(engine)
     baseline_store = PostgresRiskSessionBaselineStore(db)
     audit_repository = PostgresExecutionAuditRepository(db)
-    idempotency_store = PostgresBrokerIdempotencyStore(db)
+    idempotency_store = DurableBrokerIdempotencyStore(db)
     broker_state = BrokerStateSynchronizer(broker.get_account, broker.get_positions)
     sessions = TradingSessionLifecycle(
         session_identity_provider,
