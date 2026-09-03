@@ -44,6 +44,40 @@ async def test_upstox_live_submission_is_gated_by_default() -> None:
 
 
 @pytest.mark.asyncio
+async def test_upstox_sandbox_submission_is_separately_gated() -> None:
+    broker = UpstoxBroker("sandbox-token", sandbox=True, instrument_resolver=resolver())
+    assert broker.sandbox is True
+    assert broker.orders_enabled is False
+    assert broker._client.base_url == UpstoxBroker.SANDBOX_BASE_URL
+    with pytest.raises(LiveBrokerDisabled, match="sandbox order submission is disabled"):
+        await broker.place_order(order())
+
+
+@pytest.mark.asyncio
+async def test_upstox_sandbox_order_gate_does_not_enable_live_mode() -> None:
+    broker = UpstoxBroker(
+        "sandbox-token",
+        sandbox=True,
+        allow_sandbox_orders=True,
+        instrument_resolver=resolver(),
+    )
+    assert broker.orders_enabled is True
+    assert broker._client.base_url == UpstoxBroker.SANDBOX_BASE_URL
+
+
+@pytest.mark.asyncio
+async def test_upstox_live_order_gate_is_not_reused_for_sandbox() -> None:
+    broker = UpstoxBroker(
+        "token",
+        allow_live_orders=True,
+        sandbox=True,
+        instrument_resolver=resolver(),
+    )
+    assert broker.orders_enabled is False
+    assert broker._client.base_url == UpstoxBroker.SANDBOX_BASE_URL
+
+
+@pytest.mark.asyncio
 async def test_dhan_live_submission_is_gated_by_default() -> None:
     broker = DhanBroker("client", "token")
     with pytest.raises(LiveBrokerDisabled):
