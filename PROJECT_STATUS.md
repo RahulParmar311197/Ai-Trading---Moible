@@ -38,6 +38,7 @@ Last updated: 2026-09-03
 - Android has an advisory-only AI analysis client and UI; it does not contain broker credentials or order-execution paths.
 - Automated broker tests use deterministic synthetic client IDs; real Upstox/Dhan client IDs are reserved for intentional manual UI configuration and are never required by CI. See `docs/BROKER_TEST_IDENTITIES.md`.
 - The official Gradle wrapper JAR is now present in the repository, and the bootstrap workflow generated and SHA-256 verified it before committing to `main`.
+- Fresh full-flow regression now verifies the shared candle scenario across backtest and replay-to-paper: identical look-ahead-safe strategy visibility, deterministic entry/target behavior, matching realized P&L, and paper-only execution isolation.
 
 ## Stage status
 
@@ -49,7 +50,7 @@ Last updated: 2026-09-03
 ### Stage 2 — SMC/ICT
 
 - [x] Swing structure, BOS/MSS/CHOCH, liquidity pools/sweeps, FVG, displacement/order-block candidates, premium/discount, session levels, deterministic orchestration/tests
-- [ ] Fresh full product-flow verification
+- [x] Fresh full product-flow verification covering backtest and replay-to-paper continuity; CI backend and Android builds passed for the verification commit
 
 ### Stage 3 — Replay
 
@@ -126,8 +127,9 @@ Last updated: 2026-09-03
 
 ## Latest CI evidence
 
-- Run `33733719815` for the Dhan option-chain PR head `461eb2d269cb6f752f393f3442c8065de85f01d0`: **backend-tests completed successfully**, including non-integration and PostgreSQL integration pytest jobs. The companion Android run `33733720002` for the same head completed `assembleDebug` successfully.
-- Earlier successful CI runs include `33722008311`, `33715221668`, `33713476172`, `33712940894`, `33627523956`, `33627198878`, and `33624319414` as recorded in prior status evidence.
+- Run `33734236062` for the full-flow verification head `ccc278f42428d08e52383ea747a0a7d9b2885d78`: **backend-tests completed successfully**, including non-integration and PostgreSQL integration pytest jobs. The Android build was still running at the time of the backend completion check; the companion Android run `33734236255` for the same head completed `assembleDebug` successfully.
+- The verification PR was merged as squash commit `957e310d25a6d0ca95f634f491a5044f3303f49c` after the backend and companion Android CI evidence passed.
+- Previous successful CI runs include `33733719815`, `33733720002`, `33722008311`, `33715221668`, `33713476172`, `33712940894`, `33627523956`, `33627198878`, and `33624319414`.
 
 ## Runtime verification
 
@@ -144,5 +146,4 @@ The Dhan option-chain adapter has CI-level verification only. No live Dhan crede
 1. Production broker runtime and real live activation are unverified. Upstox has a documented sandbox path, but the manual sandbox smoke workflow remains environment-dependent; the local sandbox test currently skips because `UPSTOX_SANDBOX_ACCESS_TOKEN` is not configured.
 2. Stage 5 real external AI-provider runtime verification remains unverified; provider contract compatibility and Android integration are verified.
 3. Stage 6 live option-chain provider runtime integration and fresh runtime verification remain unverified.
-4. Stage 2 fresh full product-flow verification remains unverified.
-5. Stage 10 autonomous trading remains gated and must not be enabled without all blueprint prerequisites and evidence.
+4. Stage 10 autonomous trading remains gated and must not be enabled without all blueprint prerequisites and evidence.
