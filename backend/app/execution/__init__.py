@@ -11,6 +11,7 @@ from .risk_session import (
     RiskSessionBaselineMissing,
     RiskSessionBaselineStore,
 )
+from .risk_state import PostgresExecutionRiskStateSink
 from .runtime import ExecutionRuntime, StaticTradingSessionIdentityProvider, build_execution_runtime
 from .session_lifecycle import TradingSession, TradingSessionError, TradingSessionIdentityProvider, TradingSessionLifecycle
 from .state_sync import (
@@ -30,6 +31,7 @@ __all__ = [
     "RiskSnapshotSink",
     "DurableExecutionAuditSink",
     "PostgresExecutionAuditRepository",
+    "PostgresExecutionRiskStateSink",
     "DeterministicExecutionGate",
     "ExecutionDecision",
     "RiskLimits",
