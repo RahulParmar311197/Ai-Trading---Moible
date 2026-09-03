@@ -42,7 +42,7 @@ async def test_upstox_authorization_code_exchange_uses_documented_form_fields_wi
 async def test_dhan_consent_and_consume_return_expiring_token() -> None:
     responses = [
         httpx.Response(200, json={"redirect_URL": "https://example.test/callback?tokenId=consent-123"}),
-        httpx.Response(200, json={"accessToken": "secret-token", "expiryTime": "2026-09-02T18:00:00"}),
+        httpx.Response(200, json={"accessToken": "secret-token", "expiryTime": "2027-09-02T18:00:00"}),
     ]
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -64,7 +64,7 @@ async def test_dhan_renew_uses_existing_access_token_only_at_transport_boundary(
     def handler(request: httpx.Request) -> httpx.Response:
         assert request.headers["access-token"] == "old-token"
         assert request.headers["dhanClientId"] == "client"
-        return httpx.Response(200, json={"accessToken": "new-token", "expiryTime": "2026-09-02T18:00:00+00:00"})
+        return httpx.Response(200, json={"accessToken": "new-token", "expiryTime": "2027-09-02T18:00:00+00:00"})
 
     token = await DhanOAuth(transport=transport_for(handler)).renew(client_id="client", access_token="old-token")
 
