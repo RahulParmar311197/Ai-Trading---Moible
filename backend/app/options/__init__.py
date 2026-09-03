@@ -4,7 +4,7 @@ from .greeks import Greeks, black_scholes
 from .liquidity import liquid, select_by_delta, spread_percent
 from .models import OptionChain, OptionContract, OptionLeg, OptionLiquidityLimits, OptionPayoffReport, OptionSelection, OptionType
 from .payoff import payoff_at, payoff_report
-from .provider import OptionChainProvider, UnconfiguredOptionChainProvider
+from .provider import OptionChainProvider, OptionChainProviderError, UnconfiguredOptionChainProvider, UpstoxOptionChainProvider
 from .strategies import MarketBias, RiskProfile, permitted_strategies, select_liquid_contracts
 
 __all__ = [
@@ -12,6 +12,7 @@ __all__ = [
     "MarketBias",
     "OptionChain",
     "OptionChainProvider",
+    "OptionChainProviderError",
     "OptionContract",
     "OptionLeg",
     "OptionLiquidityLimits",
@@ -20,6 +21,7 @@ __all__ = [
     "OptionType",
     "RiskProfile",
     "UnconfiguredOptionChainProvider",
+    "UpstoxOptionChainProvider",
     "black_scholes",
     "liquid",
     "payoff_at",
