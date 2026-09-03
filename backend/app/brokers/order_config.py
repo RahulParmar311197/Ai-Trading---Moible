@@ -1,6 +1,8 @@
-from __future__ import annotations
+from __future__
 
 from dataclasses import dataclass
+from datetime import date
+from decimal import Decimal
 from enum import StrEnum
 
 
@@ -22,6 +24,22 @@ class OrderValidity(StrEnum):
     IOC = "IOC"
 
 
+class OptionType(StrEnum):
+    CALL = "CALL"
+    PUT = "PUT"
+
+
+@dataclass(frozen=True, slots=True)
+class OptionInstrumentMetadata:
+    expiry: date
+    strike: Decimal
+    option_type: OptionType
+
+    def __post_init__(self) -> None:
+        if self.strike <= 0:
+            raise ValueError("option strike must be positive")
+
+
 @dataclass(frozen=True, slots=True)
 class BrokerInstrument:
     canonical_symbol: str
@@ -30,6 +48,7 @@ class BrokerInstrument:
     product_type: ProductType = ProductType.INTRADAY
     validity: OrderValidity = OrderValidity.DAY
     lot_size: int = 1
+    option_metadata: OptionInstrumentMetadata | None = None
 
     def __post_init__(self) -> None:
         if not self.canonical_symbol.strip() or not self.provider_symbol.strip():
