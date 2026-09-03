@@ -44,16 +44,32 @@ class DurableBrokerIdempotencyStore:
             raise IdempotencyConflict(f"client_order_id already used for a different order: {key}")
         if row["result"] is None:
             raise IdempotencyPending(f"client_order_id has an unresolved broker submission: {key}")
-        return BrokerOrder.model_validate(row["result"])
+        stored_result = row["result"]
+        if isinstance(stored_result, str):
+            stored_result = json.loads(stored_result)
+        return BrokerOrder.model_validate(stored_result)
 
     def complete(self, order: BrokerOrder, result: BrokerOrder) -> BrokerOrder:
-        """Persist a broker result only when it matches the existing reservation."""
+        """Persist a broker result only when it matches the completion order."""
         key = order.client_order_id
         fingerprint = self.fingerprint(order)
         if self.fingerprint(result) != fingerprint:
             raise IdempotencyConflict(
                 f"broker result does not match idempotency reservation: {key}"
             )
+        self.db.execute(
+            """
+            INSERT INTO broker_idempotency_keys (client_order_id, fingerprint, result, updated_at)
+            VALUES (:client_order_id, :fingerprint, CAST(:result AS JSONB), :updated_at)
+            ON CONFLICT (client_order_id) DO NOTHING
+            """,
+            {
+                "client_order_id": key,
+                "fingerprint": fingerprint,
+                "result": json.dumps(result.model_dump(mode="json"), sort_keys=True, separators=(",", ":")),
+                "updated_at": datetime.now(timezone.utc),
+            },
+        )
         self.db.execute(
             """
             UPDATE broker_idempotency_keys
