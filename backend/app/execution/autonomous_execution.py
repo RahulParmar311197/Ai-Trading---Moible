@@ -40,6 +40,8 @@ async def submit_autonomous_intent(
     """
     if not intent.portfolio_risk.approved:
         raise AutonomousExecutionBridgeError("only a portfolio-risk-approved intent may reach controlled execution")
+    if not intent.risk_decision.approved:
+        raise AutonomousExecutionBridgeError("only an execution-risk-approved intent may reach controlled execution")
     order = build_broker_order(intent, client_order_id=client_order_id)
     try:
         return await executor.submit(order, market_price=intent.market_price, snapshot=snapshot)
