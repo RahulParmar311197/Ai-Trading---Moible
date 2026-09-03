@@ -4,7 +4,7 @@ import hashlib
 import json
 from typing import Protocol
 
-from .base import BrokerOrder
+from .base import BrokerOrder, BrokerOrderStatus
 
 
 class IdempotencyConflict(ValueError):
@@ -69,7 +69,27 @@ class BrokerIdempotencyStore:
 
     def complete(self, order: BrokerOrder, result: BrokerOrder) -> BrokerOrder:
         key = order.client_order_id
-        self._requests[key] = self.fingerprint(order)
+        fingerprint = self.fingerprint(order)
+        result_fingerprint = self.fingerprint(result)
+        if result_fingerprint != fingerprint:
+            # NEW/OPEN results are still subject to the controlled execution
+            # confirmation validator. Never cache an identity-mismatched live
+            # result, but allow that validator to report the precise mismatch.
+            if result.status not in {BrokerOrderStatus.NEW, BrokerOrderStatus.OPEN}:
+                raise IdempotencyConflict(
+                    f"broker result does not match idempotency reservation: {key}"
+                )
+            return result
+        previous = self._requests.get(key)
+        if previous is None:
+            # Recovery may discover a terminal broker order whose reservation
+            # was not loaded into this process. The authoritative broker order
+            # itself is the only safe basis for reconstructing that reservation.
+            self._requests[key] = fingerprint
+        elif previous != fingerprint:
+            raise IdempotencyConflict(
+                f"client_order_id reservation does not match completion order: {key}"
+            )
         self._results[key] = result
         return result
 
@@ -79,8 +99,8 @@ class BrokerIdempotencyStore:
         A broker submission exception can be ambiguous: the broker may have
         accepted the order even when the client observed a timeout or transport
         error. Therefore the idempotent decorator intentionally does not clear
-        failed submissions automatically. Callers should reconcile the broker
-        state before explicitly clearing a key for a fresh submission.
+        failed submissions automatically. Reconciliation must resolve the
+        broker state before explicitly clearing a key for a fresh submission.
         """
         self._requests.pop(client_order_id, None)
         self._results.pop(client_order_id, None)
