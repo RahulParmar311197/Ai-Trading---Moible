@@ -32,6 +32,8 @@ Last updated: 2026-09-03
 - `risk_snapshot_from_persisted_session` binds fresh broker state to the persisted baseline for an explicitly supplied session ID, so callers cannot silently substitute a wall-clock baseline or broker lifetime P&L.
 - Partial/fill confirmations require an explicit post-fill state-synchronization callback. Missing or failed synchronization forces the controlled executor into a stopped/kill-switch state and emits an audit event; successful synchronization is audited before the lifecycle remains active.
 - `PostFillBrokerStateSynchronizer` is a concrete provider-neutral composition that refreshes broker state, binds derived risk state to the persisted session baseline, and requires an explicit risk-state sink. It never invents a session/trading-day boundary or derives P&L from the fill.
+- The application now accepts an explicit `TRADING_SESSION_ID` at its execution boundary and establishes that session during startup; it does not derive a market/trading day from the local wall clock.
+- The application runtime now composes a concrete PostgreSQL-backed execution risk-state sink by default, alongside durable audit and idempotency stores. Runtime construction remains inert and never activates trading.
 - Provider-neutral AI HTTP compatibility is covered for generic and OpenAI-style response shapes, malformed responses, sanitized transport failures, and API-key-free operation.
 - Android has an advisory-only AI analysis client and UI; it does not contain broker credentials or order-execution paths.
 - Automated broker tests use deterministic synthetic client IDs; real Upstox/Dhan client IDs are reserved for intentional manual UI configuration and are never required by CI. See `docs/BROKER_TEST_IDENTITIES.md`.
@@ -104,8 +106,9 @@ Last updated: 2026-09-03
 - [x] CI verification of the risk-session baseline and persisted-session risk snapshot implementation
 - [x] Fail-closed post-fill synchronization boundary for partial/filled confirmations
 - [x] Concrete provider-neutral post-fill synchronizer requiring broker refresh, persisted session baseline, and explicit risk-state sink
-- [ ] Authoritative trading-session boundary/lifecycle integration
-- [ ] Application/runtime wiring to a concrete durable live-state sink
+- [x] Explicit application session-identity integration
+- [x] Application/runtime composition with concrete durable PostgreSQL risk-state sink
+- [ ] CI verification of the latest application-wiring/risk-state changes
 - [ ] Production broker runtime verification
 - [ ] Real live activation
 
@@ -128,7 +131,7 @@ Last updated: 2026-09-03
 
 ## Runtime limitation
 
-No local/Codespace runtime is exposed through the connected tools. No local test execution is claimed; GitHub Actions is the available runtime verification path.
+No local/Codespace runtime is exposed through the connected tools. No local test execution is claimed; GitHub Actions is the available runtime verification path. The user has opened a Codespace for interactive local verification.
 
 ## Safety status
 
@@ -136,10 +139,9 @@ No local/Codespace runtime is exposed through the connected tools. No local test
 
 ## Remaining blockers / unverified items
 
-1. Authoritative upstream trading-session boundary/lifecycle is not implemented. The application must supply session identity rather than silently deriving a market day.
-2. The concrete post-fill synchronizer is implemented and tested, but application/runtime wiring to a concrete durable live-state sink remains unverified.
-3. Production broker runtime and real live activation are unverified. Upstox has a documented sandbox path, but no sandbox access token is available through the connected tools and the manual sandbox smoke workflow has not been executed here.
-4. Stage 5 real external AI-provider runtime verification remains unverified; provider contract compatibility and Android integration are verified.
-5. Stage 6 live option-chain provider integration remains unverified.
-6. Stage 2 fresh full product-flow verification remains unverified.
-7. Stage 10 autonomous trading remains gated and must not be enabled without all blueprint prerequisites and evidence.
+1. CI verification of the latest application execution-wiring and durable risk-state changes is pending.
+2. Production broker runtime and real live activation are unverified. Upstox has a documented sandbox path, but the manual sandbox smoke workflow remains environment-dependent and has not completed successfully here; the last attempt failed during runner DNS resolution before broker authentication.
+3. Stage 5 real external AI-provider runtime verification remains unverified; provider contract compatibility and Android integration are verified.
+4. Stage 6 live option-chain provider integration remains unverified.
+5. Stage 2 fresh full product-flow verification remains unverified.
+6. Stage 10 autonomous trading remains gated and must not be enabled without all blueprint prerequisites and evidence.
