@@ -211,8 +211,9 @@ async def test_kill_switch_blocks_after_activation() -> None:
     await guarded.startup()
     guarded.activate("CONFIRM-LIVE")
     guarded.trip_kill_switch("emergency stop")
-    with pytest.raises(ControlledExecutionError, match="kill switch"):
+    with pytest.raises(ControlledExecutionError, match="not activated"):
         await guarded.submit(make_order(), market_price=Decimal("100"), snapshot=snapshot())
+    assert guarded.kill_switch_active
     assert broker.calls == 0
 
 

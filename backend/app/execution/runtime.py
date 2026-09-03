@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable
 
 from app.brokers.base import Broker
 from app.brokers.durable_idempotency import DurableBrokerIdempotencyStore
@@ -11,6 +10,7 @@ from app.database.session import SQLAlchemyExecutor, create_database_engine
 
 from .audit import DurableExecutionAuditSink, PostgresExecutionAuditRepository
 from .controlled import ControlledBrokerExecution
+from .emergency_control import PostgresEmergencyControlStore
 from .gate import DeterministicExecutionGate, RiskLimits
 from .post_fill_sync import PostFillBrokerStateSynchronizer, RiskSnapshotSink
 from .risk_session import PostgresRiskSessionBaselineStore
@@ -48,20 +48,18 @@ def build_execution_runtime(
 ) -> ExecutionRuntime:
     """Compose durable execution controls without authenticating or activating them.
 
-    A PostgreSQL risk-state sink is the default so a concrete runtime cannot
-    accidentally omit durable post-fill state propagation.
+    A PostgreSQL risk-state sink and emergency-control store are mandatory
+    parts of the concrete runtime so restart-critical safety state cannot be
+    silently replaced by process-local defaults.
     """
     engine = create_database_engine(database_url)
     db = SQLAlchemyExecutor(engine)
     baseline_store = PostgresRiskSessionBaselineStore(db)
     audit_repository = PostgresExecutionAuditRepository(db)
     idempotency_store = DurableBrokerIdempotencyStore(db)
+    emergency_control = PostgresEmergencyControlStore(db)
     broker_state = BrokerStateSynchronizer(broker.get_account, broker.get_positions)
-    sessions = TradingSessionLifecycle(
-        session_identity_provider,
-        baseline_store,
-        broker_state,
-    )
+    sessions = TradingSessionLifecycle(session_identity_provider, baseline_store, broker_state)
     sink = risk_state_sink or PostgresExecutionRiskStateSink(
         db,
         session_id=session_identity_provider.current_session_id(),
@@ -79,5 +77,6 @@ def build_execution_runtime(
         audit_sink=DurableExecutionAuditSink(audit_repository),
         idempotency_store=idempotency_store,
         post_fill_state_sync=post_fill_sync,
+        emergency_control=emergency_control,
     )
     return ExecutionRuntime(executor=executor, sessions=sessions)
