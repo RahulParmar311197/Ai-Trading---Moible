@@ -11,6 +11,7 @@ class FilledRecoveryBroker:
     def __init__(self, broker_order: BrokerOrder) -> None:
         self.broker_order = broker_order
         self.place_calls = 0
+        self.post_fill_sync_calls = 0
 
     async def authenticate(self) -> BrokerAuthentication:
         return BrokerAuthentication(provider="fake", account_id="account-1", authenticated=True)
@@ -34,6 +35,7 @@ class FilledRecoveryBroker:
         return self.broker_order
 
 
+
 def make_order() -> BrokerOrder:
     return BrokerOrder(
         order_id="local-1",
@@ -53,11 +55,17 @@ async def test_filled_reconciliation_completes_idempotency_and_replays_without_r
     store = BrokerIdempotencyStore()
     assert store.begin(submitted) is None
     broker = FilledRecoveryBroker(filled)
+
+    async def post_fill_sync(result: BrokerOrder) -> None:
+        broker.post_fill_sync_calls += 1
+        assert result == filled
+
     execution = ControlledBrokerExecution(
         broker,
         DeterministicExecutionGate(RiskLimits(max_order_notional=Decimal("1000"), max_position_quantity=10)),
         confirmation_phrase="CONFIRM-LIVE",
         idempotency_store=store,
+        post_fill_state_sync=post_fill_sync,
     )
 
     result = await execution.recover(("client-1",))
@@ -68,3 +76,4 @@ async def test_filled_reconciliation_completes_idempotency_and_replays_without_r
 
     assert replay == filled
     assert broker.place_calls == 0
+    assert broker.post_fill_sync_calls == 1
