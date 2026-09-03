@@ -2,6 +2,7 @@
 
 from .audit import DurableExecutionAuditSink, PostgresExecutionAuditRepository
 from .controlled import ControlledBrokerExecution, ControlledExecutionError, ExecutionAuditEvent, PostFillStateSynchronizer
+from .emergency_control import EmergencyControlError, EmergencyControlState, PostgresEmergencyControlStore
 from .gate import DeterministicExecutionGate, ExecutionDecision, RiskLimits, RiskSnapshot
 from .portfolio_risk import (
     PortfolioPosition,
@@ -39,6 +40,9 @@ __all__ = [
     "DurableExecutionAuditSink",
     "PostgresExecutionAuditRepository",
     "PostgresExecutionRiskStateSink",
+    "EmergencyControlError",
+    "EmergencyControlState",
+    "PostgresEmergencyControlStore",
     "DeterministicExecutionGate",
     "ExecutionDecision",
     "RiskLimits",
