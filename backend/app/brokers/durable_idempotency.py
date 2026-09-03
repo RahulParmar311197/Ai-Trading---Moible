@@ -1,4 +1,4 @@
-from __future__ import annotations
+from __future__
 
 import json
 from datetime import datetime, timezone
@@ -50,19 +50,30 @@ class DurableBrokerIdempotencyStore:
         return BrokerOrder.model_validate(stored_result)
 
     def complete(self, order: BrokerOrder, result: BrokerOrder) -> BrokerOrder:
-        """Persist a broker result only when it matches the completion order."""
+        """Persist a broker result only when it matches the existing reservation."""
         key = order.client_order_id
         fingerprint = self.fingerprint(order)
+        reservation = self.db.fetch_one(
+            "SELECT fingerprint FROM broker_idempotency_keys WHERE client_order_id = :client_order_id",
+            {"client_order_id": key},
+        )
+        if reservation is None:
+            # Recovery may legitimately bootstrap a durable terminal result.
+            if self.fingerprint(result) != fingerprint:
+                raise IdempotencyConflict(
+                    f"broker result does not match idempotency reservation: {key}"
+                )
+        elif reservation["fingerprint"] != fingerprint:
+            raise RuntimeError("idempotency reservation missing or fingerprint mismatch")
+
         result_fingerprint = self.fingerprint(result)
         if result_fingerprint != fingerprint:
-            # NEW/OPEN results are still subject to the controlled execution
-            # confirmation validator. Never cache an identity-mismatched live
-            # result, but allow that validator to report the precise mismatch.
             if result.status not in {BrokerOrderStatus.NEW, BrokerOrderStatus.OPEN}:
                 raise IdempotencyConflict(
                     f"broker result does not match idempotency reservation: {key}"
                 )
             return result
+
         self.db.execute(
             """
             INSERT INTO broker_idempotency_keys (client_order_id, fingerprint, result, updated_at)
