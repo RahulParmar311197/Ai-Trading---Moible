@@ -1,5 +1,7 @@
 """Application configuration loaded from environment variables."""
 
+from decimal import Decimal
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -14,6 +16,20 @@ class Settings(BaseSettings):
     market_data_provider: str = ""
     market_data_instrument_ids: str = ""
     upstox_access_token: str = ""
+    upstox_sandbox_access_token: str = ""
+
+    # Controlled execution remains inert unless all required execution settings
+    # are explicitly supplied. These settings never activate trading by themselves.
+    execution_broker: str = ""
+    execution_sandbox: bool = False
+    execution_allow_live_orders: bool = False
+    execution_allow_sandbox_orders: bool = False
+    execution_confirmation_phrase: str = ""
+    trading_session_id: str = ""
+    execution_max_order_notional: Decimal | None = None
+    execution_max_position_quantity: int | None = None
+    execution_max_daily_loss: Decimal | None = None
+
     ai_provider_url: str = ""
     ai_provider_api_key: str = ""
     ai_provider_model: str = ""
