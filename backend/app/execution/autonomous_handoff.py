@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from decimal import Decimal
-
 from app.brokers.base import BrokerOrder, BrokerOrderType, BrokerSide, BrokerOrderStatus
 
 from .autonomous import ExecutionIntent
@@ -46,5 +44,8 @@ def build_broker_order(intent: ExecutionIntent, *, client_order_id: str) -> Brok
         order_type=BrokerOrderType.MARKET,
         quantity=intent.quantity,
         status=BrokerOrderStatus.NEW,
-        average_price=Decimal(str(intent.market_price)),
+        # Execution/fill price must come only from broker confirmation; the
+        # intent market price is reference state and must never become a limit
+        # or fill price during handoff.
+        average_price=None,
     )
