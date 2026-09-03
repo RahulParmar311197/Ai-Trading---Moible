@@ -35,13 +35,14 @@ Last updated: 2026-09-03
 - Provider-neutral AI HTTP compatibility is covered for generic and OpenAI-style response shapes, malformed responses, sanitized transport failures, and API-key-free operation.
 - Android has an advisory-only AI analysis client and UI; it does not contain broker credentials or order-execution paths.
 - Automated broker tests use deterministic synthetic client IDs; real Upstox/Dhan client IDs are reserved for intentional manual UI configuration and are never required by CI. See `docs/BROKER_TEST_IDENTITIES.md`.
+- The official Gradle wrapper JAR is now present in the repository, and the bootstrap workflow generated and SHA-256 verified it before committing to `main`.
 
 ## Stage status
 
 ### Stage 1 — Market Data
 
 - [x] Canonical contracts, provider-neutral interfaces, Upstox boundaries, normalization/quality validation, aggregation, Redis live-state boundaries, PostgreSQL persistence, REST/WebSocket APIs, safe degraded startup, historical CI verification
-- [ ] Final verification including the official Gradle wrapper artifact requirement
+- [x] Official Gradle wrapper artifact generated, checksum verified, committed to `main`, and consumed by the Android build workflow
 
 ### Stage 2 — SMC/ICT
 
@@ -117,13 +118,13 @@ Last updated: 2026-09-03
 
 ## Latest CI evidence
 
-- Run `33713476172` for current `main` commit `8399d66e2d5d58f57c5c8e274229c9abb505d3c3`: **full CI completed successfully**. GitHub reports both `backend-tests` and `android-build` completed successfully; backend executed official Upstox protobuf verification plus non-integration and PostgreSQL integration pytest jobs, and Android completed `assembleDebug` using pinned Gradle 8.10.2.
-- Run `33712940894` for previous current `main` commit `e0fbf77b7fc55970a6d1d96a8f91d62a7e4a5821`: **full CI completed successfully**.
+- Run `33715221668` for commit `d5809e0456c521e54057032fd849fc440ae0debf`: **backend-tests and android-build completed successfully**; backend ran official Upstox protobuf verification plus non-integration and PostgreSQL integration pytest jobs, and Android completed `assembleDebug` with pinned Gradle 8.10.2.
+- Run `33715221696` for commit `d5809e0456c521e54057032fd849fc440ae0debf`: **official Gradle wrapper bootstrap completed successfully**, including generation, SHA-256 verification, and commit of the wrapper artifact to `main`.
+- Run `33713476172` for commit `8399d66e2d5d58f57c5c8e274229c9abb505d3c3`: **full CI completed successfully**.
+- Run `33712940894` for commit `e0fbf77b7fc55970a6d1d96a8f91d62a7e4a5821`: **full CI completed successfully**.
 - Run `33627523956` for documentation commit `59380f03127abf3880c01fce0b0e7501293d5daf`: **full CI completed successfully**.
 - Run `33627198878` for documentation/status commit `25234ba5e14817bdee0bd0934b4cfebf4086ff02f`: **full CI completed successfully**.
-- Run `33625211010` for status commit `23b9f479d5f776dd92cc2e73395221d23c0a71e6`: **full CI completed successfully**.
-- Run `33624319414` for implementation commit `ba78f6ff248d6f7e08cb47963997e868868be12f`: **full CI completed successfully**. Backend completed official Upstox protobuf verification plus non-integration and PostgreSQL integration pytest jobs; Android `assembleDebug` completed successfully.
-- Run `33712769202` for the intermediate sandbox workflow commit `f77b8996955ae426a71dc39e7dd4025ca0288d2e`: backend exposed one unrelated fixed-date Dhan-auth fixture regression (268 passed, 1 failed, 6 deselected); that fixture was corrected in commit `7267d144b6bc7e4a5c6e0dc03d56889ecb85a879`. The corrected state was verified green by `33712940894`.
+- Run `33624319414` for implementation commit `ba78f6ff248d6f7e08cb47963997e868868be12f`: **full CI completed successfully**.
 
 ## Runtime limitation
 
@@ -135,11 +136,10 @@ No local/Codespace runtime is exposed through the connected tools. No local test
 
 ## Remaining blockers / unverified items
 
-1. Official Gradle wrapper artifact (`gradle-wrapper.jar`) is still absent from the repository; CI installs Gradle 8.10.2 directly, so final Stage 1 wrapper verification remains blocked.
-2. The authoritative upstream trading-session boundary/lifecycle is not implemented. The application must supply session identity rather than silently deriving a market day.
-3. The concrete post-fill synchronizer is implemented and tested, but application/runtime wiring to a concrete durable live-state sink remains unverified.
-4. Production broker runtime and real live activation are unverified. Upstox now has a documented sandbox path, but no sandbox access token is available through the connected tools and the manual sandbox smoke workflow has not been executed here.
-5. Stage 5 real external AI-provider runtime verification remains unverified; provider contract compatibility and Android integration are now verified.
-6. Stage 6 live option-chain provider integration remains unverified.
-7. Stage 2 fresh full product-flow verification remains unverified.
-8. Stage 10 autonomous trading remains gated and must not be enabled without all blueprint prerequisites and evidence.
+1. Authoritative upstream trading-session boundary/lifecycle is not implemented. The application must supply session identity rather than silently deriving a market day.
+2. The concrete post-fill synchronizer is implemented and tested, but application/runtime wiring to a concrete durable live-state sink remains unverified.
+3. Production broker runtime and real live activation are unverified. Upstox has a documented sandbox path, but no sandbox access token is available through the connected tools and the manual sandbox smoke workflow has not been executed here.
+4. Stage 5 real external AI-provider runtime verification remains unverified; provider contract compatibility and Android integration are verified.
+5. Stage 6 live option-chain provider integration remains unverified.
+6. Stage 2 fresh full product-flow verification remains unverified.
+7. Stage 10 autonomous trading remains gated and must not be enabled without all blueprint prerequisites and evidence.
