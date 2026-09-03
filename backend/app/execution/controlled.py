@@ -45,16 +45,7 @@ class ControlledExecutionError(RuntimeError):
 class ControlledBrokerExecution:
     """Explicitly activated broker execution with deterministic safety gates."""
 
-    def __init__(
-        self,
-        broker: ExecutionBroker,
-        risk_gate: DeterministicExecutionGate,
-        *,
-        confirmation_phrase: str,
-        audit_sink: Callable[[ExecutionAuditEvent], None] | None = None,
-        idempotency_store: BrokerIdempotencyStore,
-        post_fill_state_sync: PostFillStateSynchronizer | None = None,
-    ) -> None:
+    def __init__(self, broker: ExecutionBroker, risk_gate: DeterministicExecutionGate, *, confirmation_phrase: str, audit_sink: Callable[[ExecutionAuditEvent], None] | None = None, idempotency_store: BrokerIdempotencyStore, post_fill_state_sync: PostFillStateSynchronizer | None = None) -> None:
         if not confirmation_phrase.strip():
             raise ValueError("confirmation phrase must be non-empty")
         self._idempotency_store = idempotency_store
@@ -80,7 +71,6 @@ class ControlledBrokerExecution:
         return self._kill_switch
 
     async def startup(self) -> BrokerAuthentication:
-        """Verify broker authentication without enabling order mutation."""
         self._started = False
         self._activated = False
         self._kill_switch = True
@@ -102,7 +92,6 @@ class ControlledBrokerExecution:
         return authentication
 
     async def recover(self, client_order_ids: Sequence[str] = ()) -> tuple[BrokerReconciliation, ...]:
-        """Reconnect and reconcile broker state without automatically resuming trading."""
         self._started = False
         self._activated = False
         self._kill_switch = True
@@ -120,22 +109,11 @@ class ControlledBrokerExecution:
             await get_positions()
             broker_orders = await get_orders()
             expected_ids = {client_order_id for client_order_id in client_order_ids if client_order_id.strip()}
-            live_statuses = {
-                BrokerOrderStatus.NEW,
-                BrokerOrderStatus.OPEN,
-                BrokerOrderStatus.PARTIALLY_FILLED,
-            }
-            unexpected_live_orders = tuple(
-                order for order in broker_orders
-                if order.status in live_statuses and order.client_order_id not in expected_ids
-            )
+            live_statuses = {BrokerOrderStatus.NEW, BrokerOrderStatus.OPEN, BrokerOrderStatus.PARTIALLY_FILLED}
+            unexpected_live_orders = tuple(order for order in broker_orders if order.status in live_statuses and order.client_order_id not in expected_ids)
             if unexpected_live_orders:
                 client_order_id = unexpected_live_orders[0].client_order_id
-                self._audit(
-                    "RECONCILIATION_REQUIRED",
-                    client_order_id,
-                    "broker reported live order outside expected local order set",
-                )
+                self._audit("RECONCILIATION_REQUIRED", client_order_id, "broker reported live order outside expected local order set")
                 self._started = False
                 self._activated = False
                 self._kill_switch = True
@@ -194,7 +172,6 @@ class ControlledBrokerExecution:
         self._audit("EXECUTION_DEACTIVATED", "", reason)
 
     async def shutdown(self, reason: str = "shutdown") -> None:
-        """Fail closed before returning control to the application."""
         if not reason.strip():
             raise ValueError("shutdown reason must be non-empty")
         self._activated = False
@@ -202,13 +179,7 @@ class ControlledBrokerExecution:
         self._started = False
         self._audit("EXECUTION_SHUTDOWN", "", reason)
 
-    async def submit(
-        self,
-        order: BrokerOrder,
-        *,
-        market_price: Decimal,
-        snapshot: RiskSnapshot,
-    ) -> BrokerOrder:
+    async def submit(self, order: BrokerOrder, *, market_price: Decimal, snapshot: RiskSnapshot) -> BrokerOrder:
         if not self._started:
             self._reject(order.client_order_id, "execution startup has not completed")
         if not self._activated:
@@ -226,11 +197,7 @@ class ControlledBrokerExecution:
             self._started = False
             self._activated = False
             self._kill_switch = True
-            self._audit(
-                "BROKER_SUBMISSION_FAILED",
-                order.client_order_id,
-                f"broker submission failed: {type(exc).__name__}; execution fail-closed pending reconciliation",
-            )
+            self._audit("BROKER_SUBMISSION_FAILED", order.client_order_id, f"broker submission failed: {type(exc).__name__}; execution fail-closed pending reconciliation")
             raise
         try:
             self._validate_confirmation(order, result)
@@ -249,16 +216,11 @@ class ControlledBrokerExecution:
         return result
 
     async def _synchronize_post_fill_state(self, result: BrokerOrder) -> None:
-        """Refresh/propagate broker state after any confirmed fill; never infer it locally."""
         if self._post_fill_state_sync is None:
             self._started = False
             self._activated = False
             self._kill_switch = True
-            self._audit(
-                "POST_FILL_STATE_SYNC_REQUIRED",
-                result.client_order_id,
-                "filled broker confirmation requires an explicit post-fill state synchronizer; execution fail-closed",
-            )
+            self._audit("POST_FILL_STATE_SYNC_REQUIRED", result.client_order_id, "filled broker confirmation requires an explicit post-fill state synchronizer; execution fail-closed")
             raise ControlledExecutionError("post-fill broker state synchronization is required")
         try:
             await self._post_fill_state_sync(result)
@@ -266,11 +228,7 @@ class ControlledBrokerExecution:
             self._started = False
             self._activated = False
             self._kill_switch = True
-            self._audit(
-                "POST_FILL_STATE_SYNC_FAILED",
-                result.client_order_id,
-                f"post-fill broker state synchronization failed: {type(exc).__name__}; execution fail-closed",
-            )
+            self._audit("POST_FILL_STATE_SYNC_FAILED", result.client_order_id, f"post-fill broker state synchronization failed: {type(exc).__name__}; execution fail-closed")
             raise ControlledExecutionError("post-fill broker state synchronization failed") from exc
         self._audit("POST_FILL_STATE_SYNCHRONIZED", result.client_order_id, "post-fill broker state synchronization completed")
 
@@ -284,11 +242,7 @@ class ControlledBrokerExecution:
             self._started = False
             self._activated = False
             self._kill_switch = True
-            self._audit(
-                "POSITION_REFRESH_FAILED",
-                order.client_order_id,
-                f"broker position refresh failed: {type(exc).__name__}; execution fail-closed",
-            )
+            self._audit("POSITION_REFRESH_FAILED", order.client_order_id, f"broker position refresh failed: {type(exc).__name__}; execution fail-closed")
             raise
         if not isinstance(positions, (tuple, list)) or any(not isinstance(position, BrokerPosition) for position in positions):
             self._started = False
@@ -301,11 +255,7 @@ class ControlledBrokerExecution:
             self._started = False
             self._activated = False
             self._kill_switch = True
-            self._audit(
-                "POSITION_STATE_MISMATCH",
-                order.client_order_id,
-                "broker position differs from supplied risk snapshot; execution fail-closed",
-            )
+            self._audit("POSITION_STATE_MISMATCH", order.client_order_id, "broker position differs from supplied risk snapshot; execution fail-closed")
             raise ControlledExecutionError("broker position differs from supplied risk snapshot")
 
     @staticmethod
