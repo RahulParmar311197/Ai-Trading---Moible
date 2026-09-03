@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import csv
 from collections.abc import Iterable, Mapping
 from datetime import date
 from decimal import Decimal
+from pathlib import Path
 from typing import Any
 
 from .order_config import (
@@ -133,6 +135,27 @@ def dhan_catalogue(
             )
         )
     return tuple(result)
+
+
+def load_dhan_catalogue_csv(path: str) -> tuple[BrokerInstrument, ...]:
+    """Load a Dhan instrument-master CSV from an explicitly configured file."""
+    configured = path.strip()
+    if not configured:
+        raise InstrumentCatalogueError("Dhan catalogue path is required")
+    file_path = Path(configured)
+    if not file_path.is_file():
+        raise InstrumentCatalogueError("Dhan catalogue file is not available")
+    try:
+        with file_path.open("r", encoding="utf-8-sig", newline="") as handle:
+            reader = csv.DictReader(handle)
+            if not reader.fieldnames:
+                raise InstrumentCatalogueError("Dhan catalogue CSV header is missing")
+            rows = list(reader)
+    except (OSError, UnicodeError, csv.Error) as exc:
+        raise InstrumentCatalogueError("Dhan catalogue file could not be read") from exc
+    if not rows:
+        raise InstrumentCatalogueError("Dhan catalogue file is empty")
+    return dhan_catalogue(rows)
 
 
 def resolver_from_catalogue(instruments: Iterable[BrokerInstrument]) -> InstrumentResolver:

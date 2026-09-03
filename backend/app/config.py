@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     market_data_instrument_ids: str = ""
     upstox_access_token: str = ""
     upstox_sandbox_access_token: str = ""
+    dhan_client_id: str = ""
+    dhan_access_token: str = ""
 
     # Controlled execution remains inert unless all required execution settings
     # are explicitly supplied. These settings never activate trading by themselves.
@@ -33,6 +35,8 @@ class Settings(BaseSettings):
     # Live option-chain reads are separately configurable and never enable order execution.
     options_provider: str = ""
     options_timeout_seconds: float = 10.0
+    dhan_option_catalogue_path: str = ""
+    dhan_option_underlying_segment: str = ""
 
     ai_provider_url: str = ""
     ai_provider_api_key: str = ""
