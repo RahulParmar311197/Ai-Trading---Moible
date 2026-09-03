@@ -13,8 +13,11 @@ from .state_sync import BrokerRiskState
 class PostgresExecutionRiskStateSink:
     """Persist the latest risk state for an explicit trading session."""
 
-    def __init__(self, executor: SQLAlchemyExecutor) -> None:
+    def __init__(self, executor: SQLAlchemyExecutor, *, session_id: str) -> None:
+        if not session_id.strip():
+            raise ValueError("session_id must not be blank")
         self._executor = executor
+        self._session_id = session_id
 
     async def __call__(self, snapshot: RiskSnapshot, state: BrokerRiskState) -> None:
         self._executor.execute(
@@ -31,7 +34,7 @@ class PostgresExecutionRiskStateSink:
                 updated_at = NOW()
             """,
             {
-                "session_id": state.session_id,
+                "session_id": self._session_id,
                 "balance": Decimal(snapshot.balance),
                 "realized_pnl": Decimal(snapshot.realized_pnl),
                 "position_quantity": snapshot.position_quantity,
