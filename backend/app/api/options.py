@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+from datetime import date
 from decimal import Decimal
 from typing import Literal
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from app.options.models import OptionChain, OptionLeg, OptionLiquidityLimits, OptionPayoffReport, OptionSelection
 from app.options.payoff import payoff_at, payoff_report
+from app.options.provider import OptionChainProvider, OptionChainProviderError
 from app.options.strategies import MarketBias, RiskProfile, permitted_strategies, select_liquid_contracts
 
 router = APIRouter(prefix="/api/v1/options", tags=["options"])
@@ -34,6 +36,18 @@ class StrategySelectionRequest(BaseModel):
 
 class StrategySelectionResponse(BaseModel):
     strategies: tuple[str, ...]
+
+
+@router.get("/chain", response_model=OptionChain)
+async def get_option_chain(request: Request, underlying: str, expiry: date) -> OptionChain:
+    """Return live option-chain data only when an explicit provider is configured."""
+    provider = getattr(request.app.state, "option_chain_provider", None)
+    if not isinstance(provider, OptionChainProvider):
+        raise HTTPException(status_code=503, detail="live option-chain provider is not configured")
+    try:
+        return await provider.get_option_chain(underlying, expiry)
+    except (OptionChainProviderError, ValueError) as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 @router.post("/payoff", response_model=PayoffResponse)
