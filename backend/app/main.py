@@ -10,6 +10,7 @@ from app.api.market_stream import router as market_stream_router
 from app.api.markets import router as markets_router
 from app.api.options import router as options_router
 from app.api.paper import router as paper_router
+from app.brokers.catalogue import InstrumentCatalogueError, load_dhan_catalogue_csv
 from app.brokers.upstox.adapter import UpstoxBroker
 from app.config import settings
 from app.execution import (
@@ -23,7 +24,13 @@ from app.market.provider_runtime import ProviderMarketRunner
 from app.market.providers import ProviderConfigurationError, get_market_data_feed
 from app.market.redis_client import get_redis_client
 from app.market.redis_publisher import RedisMarketPublisher
-from app.options.provider import OptionChainProvider, OptionChainProviderError, UnconfiguredOptionChainProvider, UpstoxOptionChainProvider
+from app.options.dhan_provider import DhanOptionChainProvider
+from app.options.provider import (
+    OptionChainProvider,
+    OptionChainProviderError,
+    UnconfiguredOptionChainProvider,
+    UpstoxOptionChainProvider,
+)
 
 
 def _execution_runtime_configured() -> bool:
@@ -80,6 +87,22 @@ def _build_option_chain_provider() -> OptionChainProvider:
         if not access_token.strip():
             raise OptionChainProviderError("Upstox option-chain access token is not configured")
         return UpstoxOptionChainProvider(access_token, timeout=settings.options_timeout_seconds)
+    if provider == "dhan":
+        if not settings.dhan_client_id.strip() or not settings.dhan_access_token.strip():
+            raise OptionChainProviderError("Dhan option-chain credentials are not configured")
+        if not settings.dhan_option_underlying_segment.strip():
+            raise OptionChainProviderError("Dhan option-chain underlying segment is not configured")
+        try:
+            catalogue = load_dhan_catalogue_csv(settings.dhan_option_catalogue_path)
+        except InstrumentCatalogueError as exc:
+            raise OptionChainProviderError("Dhan option catalogue is not configured or invalid") from exc
+        return DhanOptionChainProvider(
+            settings.dhan_client_id,
+            settings.dhan_access_token,
+            underlying_segment=settings.dhan_option_underlying_segment,
+            catalogue={item.provider_symbol: item for item in catalogue},
+            timeout=settings.options_timeout_seconds,
+        )
     raise OptionChainProviderError(f"Unsupported option-chain provider: {provider}")
 
 
