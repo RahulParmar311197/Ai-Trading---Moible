@@ -11,7 +11,7 @@ from app.brokers.base import (
     BrokerReconciliation,
     BrokerSide,
 )
-from app.brokers.idempotency import BrokerIdempotencyStore
+from app.brokers.idempotency import BrokerIdempotencyStore, IdempotencyPending
 from app.execution import ControlledBrokerExecution, ControlledExecutionError, DeterministicExecutionGate, RiskLimits, RiskSnapshot
 
 
@@ -192,15 +192,15 @@ async def test_position_state_must_match_risk_snapshot_before_submission() -> No
 
 
 @pytest.mark.asyncio
-async def test_approved_order_reaches_broker_once_and_duplicate_is_idempotent() -> None:
+async def test_approved_open_order_remains_pending_until_reconciliation() -> None:
     broker = FakeBroker()
     guarded = execution(broker)
     await guarded.startup()
     guarded.activate("CONFIRM-LIVE")
     first = await guarded.submit(make_order(), market_price=Decimal("100"), snapshot=snapshot())
-    second = await guarded.submit(make_order(), market_price=Decimal("100"), snapshot=snapshot())
+    with pytest.raises(IdempotencyPending):
+        await guarded.submit(make_order(), market_price=Decimal("100"), snapshot=snapshot())
     assert first.order_id == "broker-1"
-    assert second == first
     assert broker.calls == 1
 
 

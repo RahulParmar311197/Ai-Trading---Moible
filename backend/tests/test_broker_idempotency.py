@@ -42,6 +42,26 @@ async def test_duplicate_client_order_id_returns_original_result() -> None:
 
 
 @pytest.mark.asyncio
+async def test_deferred_completion_keeps_unresolved_broker_result_pending() -> None:
+    broker = FakeBroker()
+    store = BrokerIdempotencyStore()
+    guarded = IdempotentBroker(broker, store, auto_complete=False)
+    order = make_order()
+
+    first = await guarded.place_order(order)
+
+    assert first.status is BrokerOrderStatus.OPEN
+    with pytest.raises(IdempotencyPending):
+        await guarded.place_order(order)
+    assert broker.calls == 1
+
+    completed = store.complete(order, first)
+    assert completed == first
+    assert await guarded.place_order(order) == first
+    assert broker.calls == 1
+
+
+@pytest.mark.asyncio
 async def test_conflicting_reuse_is_rejected() -> None:
     broker = FakeBroker()
     guarded = IdempotentBroker(broker, BrokerIdempotencyStore())

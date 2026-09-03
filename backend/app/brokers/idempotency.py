@@ -109,9 +109,10 @@ class BrokerIdempotencyStore:
 class IdempotentBroker:
     """Provider-neutral broker decorator enforcing client-order idempotency."""
 
-    def __init__(self, broker: object, store: IdempotencyStore) -> None:
+    def __init__(self, broker: object, store: IdempotencyStore, *, auto_complete: bool = True) -> None:
         self._broker = broker
         self._idempotency = store
+        self._auto_complete = auto_complete
 
     @property
     def idempotency(self) -> IdempotencyStore:
@@ -128,6 +129,8 @@ class IdempotentBroker:
             # accepted the order before a transport/provider error was observed.
             # Reconciliation must resolve the ambiguous state before reuse.
             raise
+        if not self._auto_complete:
+            return result
         return self._idempotency.complete(order, result)
 
     def __getattr__(self, name: str) -> object:

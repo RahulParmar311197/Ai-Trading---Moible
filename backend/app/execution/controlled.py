@@ -50,7 +50,7 @@ class ControlledBrokerExecution:
         if not confirmation_phrase.strip():
             raise ValueError("confirmation phrase must be non-empty")
         self._idempotency_store = idempotency_store
-        self._broker = IdempotentBroker(broker, idempotency_store)
+        self._broker = IdempotentBroker(broker, idempotency_store, auto_complete=False)
         self._risk_gate = risk_gate
         self._confirmation_phrase = confirmation_phrase
         self._audit_sink = audit_sink
@@ -285,6 +285,16 @@ class ControlledBrokerExecution:
             raise ControlledExecutionError("broker rejected order")
         if result.status in {BrokerOrderStatus.PARTIALLY_FILLED, BrokerOrderStatus.FILLED}:
             await self._synchronize_post_fill_state(result)
+        if result.status is BrokerOrderStatus.FILLED:
+            try:
+                self._idempotency_store.complete(order, result)
+            except Exception as exc:
+                self._started = False
+                self._activated = False
+                self._kill_switch = True
+                self._audit("IDEMPOTENCY_COMPLETION_FAILED", order.client_order_id, f"terminal idempotency completion failed: {type(exc).__name__}; execution fail-closed")
+                raise ControlledExecutionError("terminal idempotency completion failed") from exc
+            self._audit("IDEMPOTENCY_RESERVATION_COMPLETED", order.client_order_id, "post-fill synchronization completed before terminal idempotency completion")
         self._audit("BROKER_CONFIRMED", order.client_order_id, result.status.value)
         return result
 
