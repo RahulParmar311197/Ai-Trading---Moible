@@ -1,3 +1,4 @@
+import json
 from datetime import date
 from decimal import Decimal
 
@@ -30,7 +31,7 @@ def _provider(payload, clock=lambda: 100.0):
     def handler(request: httpx.Request) -> httpx.Response:
         assert request.headers["access-token"] == "token"
         assert request.headers["client-id"] == "client"
-        assert request.json() == {
+        assert json.loads(request.content) == {
             "UnderlyingScrip": 13,
             "UnderlyingSeg": "IDX_I",
             "Expiry": "2026-09-24",
