@@ -1,1 +1,0 @@
-"""Regression coverage is intentionally kept in test_idempotency_completion_integrity."""
