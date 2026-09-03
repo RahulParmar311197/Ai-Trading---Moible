@@ -2,9 +2,22 @@ from decimal import Decimal
 
 import pytest
 
-from app.brokers.base import BrokerAuthentication, BrokerOrder, BrokerOrderStatus, BrokerOrderType, BrokerPosition, BrokerReconciliation, BrokerSide
+from app.brokers.base import (
+    BrokerAuthentication,
+    BrokerOrder,
+    BrokerOrderStatus,
+    BrokerOrderType,
+    BrokerPosition,
+    BrokerReconciliation,
+    BrokerSide,
+)
 from app.brokers.idempotency import BrokerIdempotencyStore, IdempotencyPending
-from app.execution import ControlledBrokerExecution, DeterministicExecutionGate, RiskLimits
+from app.execution import (
+    ControlledBrokerExecution,
+    DeterministicExecutionGate,
+    RiskLimits,
+    RiskSnapshot,
+)
 
 
 class PartialRecoveryBroker:
@@ -71,6 +84,10 @@ async def test_recovered_partial_fill_remains_pending_and_blocks_resubmission() 
     execution.activate("CONFIRM-LIVE")
 
     with pytest.raises(IdempotencyPending, match="unresolved broker submission"):
-        await execution.submit(submitted, market_price=Decimal("100"), snapshot=__import__("app.execution", fromlist=["RiskSnapshot"]).RiskSnapshot(Decimal("100000"), Decimal("0"), False, 0))
+        await execution.submit(
+            submitted,
+            market_price=Decimal("100"),
+            snapshot=RiskSnapshot(Decimal("100000"), Decimal("0"), False, 0),
+        )
 
     assert broker.place_calls == 0
