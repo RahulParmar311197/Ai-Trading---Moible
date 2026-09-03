@@ -69,7 +69,18 @@ class BrokerIdempotencyStore:
 
     def complete(self, order: BrokerOrder, result: BrokerOrder) -> BrokerOrder:
         key = order.client_order_id
-        self._requests[key] = self.fingerprint(order)
+        fingerprint = self.fingerprint(order)
+        previous = self._requests.get(key)
+        if previous is None:
+            raise RuntimeError("idempotency reservation missing")
+        if previous != fingerprint:
+            raise IdempotencyConflict(
+                f"client_order_id reservation does not match completion order: {key}"
+            )
+        if self.fingerprint(result) != fingerprint:
+            raise IdempotencyConflict(
+                f"broker result does not match idempotency reservation: {key}"
+            )
         self._results[key] = result
         return result
 
