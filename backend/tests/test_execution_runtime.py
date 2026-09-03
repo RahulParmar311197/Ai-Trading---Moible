@@ -31,14 +31,13 @@ class BrokerStub:
         raise AssertionError("runtime composition must not submit an order")
 
 
-
 def test_runtime_composition_is_fail_closed_and_does_not_start_broker() -> None:
     runtime = build_execution_runtime(
         BrokerStub(),
         session_identity_provider=StaticTradingSessionIdentityProvider("session-1"),
         risk_limits=RiskLimits(
-            max_order_value=Decimal("100000"),
-            max_position_value=Decimal("100000"),
+            max_order_notional=Decimal("100000"),
+            max_position_quantity=100,
             max_daily_loss=Decimal("5000"),
         ),
         confirmation_phrase="CONFIRM LIVE TRADING",
