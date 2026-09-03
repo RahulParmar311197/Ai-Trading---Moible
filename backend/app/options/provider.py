@@ -106,9 +106,16 @@ class UpstoxOptionChainProvider(OptionChainProvider):
                     option = row.get(key)
                     if not isinstance(option, dict):
                         continue
-                    market = option.get("market_data") or {}
+                    market = option.get("market_data")
                     greeks = option.get("option_greeks") or {}
-                    instrument_key = str(option["instrument_key"])
+                    if not isinstance(market, dict):
+                        raise OptionChainProviderError("Upstox option market data is missing")
+                    required_market = ("bid_price", "ask_price", "ltp", "volume", "oi")
+                    if any(field not in market or market[field] is None for field in required_market):
+                        raise OptionChainProviderError("Upstox option market data is incomplete")
+                    instrument_key = str(option.get("instrument_key", ""))
+                    if not instrument_key:
+                        raise OptionChainProviderError("Upstox option instrument key is missing")
                     metadata = metadata_by_key.get(instrument_key)
                     if metadata is None:
                         raise OptionChainProviderError(
@@ -133,11 +140,11 @@ class UpstoxOptionChainProvider(OptionChainProvider):
                             strike=strike,
                             option_type=option_type,
                             lot_size=lot_size,
-                            bid=Decimal(str(market.get("bid_price", 0))),
-                            ask=Decimal(str(market.get("ask_price", 0))),
-                            ltp=Decimal(str(market.get("ltp", 0))),
-                            volume=int(market.get("volume", 0)),
-                            open_interest=int(market.get("oi", 0)),
+                            bid=Decimal(str(market["bid_price"])),
+                            ask=Decimal(str(market["ask_price"])),
+                            ltp=Decimal(str(market["ltp"])),
+                            volume=int(market["volume"]),
+                            open_interest=int(market["oi"]),
                             # Upstox reports IV as a percentage; the internal
                             # contract stores IV as a decimal fraction.
                             iv=Decimal(str(greeks["iv"])) / Decimal("100") if greeks.get("iv") is not None else None,

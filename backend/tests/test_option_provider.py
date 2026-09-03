@@ -75,7 +75,7 @@ def test_upstox_option_chain_rejects_missing_contract_metadata(monkeypatch):
     client = httpx.AsyncClient()
     monkeypatch.setattr(client, "get", fake_get)
     provider = UpstoxOptionChainProvider("token", client=client)
-    with pytest.raises(OptionChainProviderError, match="missing"):
+    with pytest.raises(OptionChainProviderError, match="incomplete|missing"):
         import asyncio
         asyncio.run(provider.get_option_chain("NSE_INDEX|Nifty 50", date(2026, 9, 24)))
     asyncio.run(client.aclose())
