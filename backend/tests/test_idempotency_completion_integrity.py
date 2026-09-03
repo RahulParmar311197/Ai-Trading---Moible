@@ -46,10 +46,18 @@ class FakeDurableDb:
             return {"client_order_id": params["client_order_id"]}
         return None
 
-    def execute(self, _query: str, params: dict) -> None:
+    def execute(self, query: str, params: dict) -> None:
         self.update_calls += 1
+        if "INSERT INTO broker_idempotency_keys" in query and self.row is None:
+            self.row = {
+                "client_order_id": params["client_order_id"],
+                "fingerprint": params["fingerprint"],
+                "result": params["result"],
+            }
+            return
         if self.row is not None and self.row["client_order_id"] == params["client_order_id"] and self.row["fingerprint"] == params["fingerprint"]:
-            self.row["result"] = params["result"]
+            if "result" in params:
+                self.row["result"] = params["result"]
 
     def fetch_one(self, query: str, params: dict):
         if "SELECT fingerprint, result" in query:
