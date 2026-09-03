@@ -1,9 +1,10 @@
 # CI Verification Log
 
-Last updated: 2026-09-02
+Last updated: 2026-09-03
 
 ## Verified passing runs
 
+- `33712940894` — current `main` commit `e0fbf77b7fc55970a6d1d96a8f91d62a7e4a5821`: **full CI completed successfully**. GitHub reports `backend-tests` and `android-build` both completed successfully. Backend completed official Upstox protobuf verification, non-integration pytest, and PostgreSQL integration pytest; Android completed `assembleDebug` using pinned Gradle 8.10.2.
 - `33627198878` — documentation/status commit `25234ba5e14817bdee0bd0934b4cfebf4086ff02`: **full CI completed successfully**. GitHub reports `backend-tests` and `android-build` both completed successfully. Backend completed official Upstox protobuf verification, non-integration pytest, and PostgreSQL integration pytest; Android completed `assembleDebug` using pinned Gradle 8.10.2.
 - `33625211010` — status commit `23b9f479d5f776dd92cc2e73395221d23c0a71e6`: **full CI completed successfully**. GitHub reports `backend-tests` and `android-build` both completed successfully. Backend completed official Upstox protobuf verification, non-integration pytest, and PostgreSQL integration pytest; Android completed `assembleDebug` using pinned Gradle 8.10.2.
 - `33624319414` — implementation commit `ba78f6ff248d6f7e08cb47963997e868868be12f`: **full CI completed successfully**. Backend completed official Upstox protobuf verification, non-integration pytest, and PostgreSQL integration pytest; Android `assembleDebug` completed successfully.
@@ -16,7 +17,7 @@ Last updated: 2026-09-02
 
 ## Backend evidence
 
-Run `33627198878` is the latest full-CI verification. Its backend job completed successfully for official Upstox protobuf verification, non-integration pytest, and PostgreSQL integration pytest.
+Run `33712940894` is the latest full-CI verification for the current main commit. Its backend job completed successfully for official Upstox protobuf verification, non-integration pytest, and PostgreSQL integration pytest.
 
 The paper-trading hardening in `ba78f6ff248d6f7e08cb47963997e868868be12f` therefore has full CI verification. The tests specifically cover fail-closed financial-input validation without weakening the underlying validation.
 
@@ -24,13 +25,15 @@ The concrete `PostFillBrokerStateSynchronizer` remains provider-neutral and test
 
 ## Android evidence
 
-Run `33627198878` completed Android `assembleDebug` successfully. The Android AI integration remains advisory-only and does not authorize or execute broker orders.
+Run `33712940894` completed Android `assembleDebug` successfully. The Android AI integration remains advisory-only and does not authorize or execute broker orders.
 
 ## Current verification
 
-The latest full-CI verification is `33627198878` and is green. Documentation records only observed GitHub Actions evidence.
+The latest full-CI verification is `33712940894` for `e0fbf77b7fc55970a6d1d96a8f91d62a7e4a5821` and is green. Documentation records only observed GitHub Actions evidence.
 
 ## Historical failed verification
+
+Run `33712769202` for intermediate commit `f77b8996955ae426a71dc39e7dd4025ca0288d2e` failed only in backend non-integration tests because a fixed-date Dhan-auth fixture had expired relative to the 2026-09-03 runner date. The failing test was corrected in `7267d144b6bc7e4a5c6e0dc03d56889ecb85a879`; the corrected state is verified green by run `33712940894` on the subsequent `e0fbf77b7fc55970a6d1d96a8f91d62a7e4a5821` head.
 
 The predecessor risk-state verification run `33617011571` failed because the newly hardened `RiskSnapshot` rejected non-finite P&L before the old test could exercise the gate. The test was corrected rather than weakening validation, and the corrected commit is green.
 
