@@ -45,16 +45,19 @@ class TerminalOrderBroker(UnexpectedLiveOrderBroker):
                 order_type=BrokerOrderType.MARKET,
                 quantity=1,
                 filled_quantity=1,
+                average_price=Decimal("100"),
                 status=BrokerOrderStatus.FILLED,
             ),
         )
 
     async def reconcile_order(self, client_order_id: str) -> BrokerReconciliation:
+        broker_order = (await self.get_orders())[0]
         return BrokerReconciliation(
             client_order_id=client_order_id,
             local_status=BrokerOrderStatus.FILLED,
             broker_status=BrokerOrderStatus.FILLED,
             matched=True,
+            broker_order=broker_order,
         )
 
 
@@ -93,6 +96,8 @@ async def test_recovery_does_not_treat_terminal_broker_history_as_unexpected_liv
     reconciliations = await guarded.recover(("history-1",))
 
     assert reconciliations[0].matched
+    assert reconciliations[0].broker_order is not None
+    assert reconciliations[0].broker_order.status is BrokerOrderStatus.FILLED
     assert guarded.started
     assert not guarded.active
     assert guarded.kill_switch_active

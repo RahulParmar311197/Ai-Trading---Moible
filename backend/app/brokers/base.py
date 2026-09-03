@@ -95,6 +95,18 @@ class BrokerReconciliation(BaseModel):
     broker_status: BrokerOrderStatus | None = None
     matched: bool
     reason: str | None = None
+    broker_order: BrokerOrder | None = None
+
+    @model_validator(mode="after")
+    def validate_broker_result(self) -> "BrokerReconciliation":
+        if self.broker_order is not None:
+            if self.broker_order.client_order_id != self.client_order_id:
+                raise ValueError("broker order client order id does not match reconciliation key")
+            if self.broker_status is not None and self.broker_order.status is not self.broker_status:
+                raise ValueError("broker order status does not match reconciliation status")
+            if not self.matched:
+                raise ValueError("unmatched reconciliation cannot carry a broker order")
+        return self
 
 
 class Broker(Protocol):
