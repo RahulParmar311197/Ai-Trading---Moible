@@ -136,6 +136,7 @@ def test_upstox_payload_uses_resolved_provider_configuration() -> None:
     assert payload["product"] == "D"
     assert payload["validity"] == "IOC"
     assert payload["price"] == 101.25
+    assert payload["market_protection"] == -1
 
 
 def test_dhan_payload_uses_resolved_provider_configuration() -> None:
