@@ -1,6 +1,6 @@
 # AI Trading Platform — Project Status
 
-Last updated: 2026-09-02
+Last updated: 2026-09-03
 
 ## Current branch
 
@@ -113,10 +113,10 @@ Last updated: 2026-09-02
 
 ## Latest CI evidence
 
-- Run `33625211010` for status commit `23b9f479d5f776dd92cc2e73395221d23c0a71e6`: **full CI completed successfully**. GitHub reports both `backend-tests` and `android-build` completed successfully; backend executed official Upstox protobuf verification plus non-integration and PostgreSQL integration pytest jobs, and Android completed `assembleDebug` using pinned Gradle 8.10.2.
+- Run `33627523956` for documentation commit `59380f03127abf3880c01fce0b0e7501293d5daf`: **full CI completed successfully**. GitHub reports both `backend-tests` and `android-build` completed successfully; backend executed official Upstox protobuf verification plus non-integration and PostgreSQL integration pytest jobs, and Android completed `assembleDebug` using pinned Gradle 8.10.2.
+- Run `33627198878` for documentation/status commit `25234ba5e14817bdee0bd0934b4cfebf4086ff02`: **full CI completed successfully**.
+- Run `33625211010` for status commit `23b9f479d5f776dd92cc2e73395221d23c0a71e6`: **full CI completed successfully**.
 - Run `33624319414` for implementation commit `ba78f6ff248d6f7e08cb47963997e868868be12f`: **full CI completed successfully**. Backend completed official Upstox protobuf verification plus non-integration and PostgreSQL integration pytest jobs; Android `assembleDebug` completed successfully.
-- Run `33623091606` for documentation commit `f929c6b60bde69dd42d7e5b7a7ce778f01c752fd`: full CI completed successfully.
-- The current documentation-only commits `b6c4a1c146ca11a8c729f7b3401c6ece803b02f4` and this status update require fresh GitHub Actions verification; no CI result is claimed until GitHub reports it.
 
 ## Runtime limitation
 
