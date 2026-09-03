@@ -5,10 +5,10 @@ from fastapi.testclient import TestClient
 
 import app.main as main
 from app.options.models import OptionChain, OptionContract, OptionType
-from app.options.provider import UnconfiguredOptionChainProvider
+from app.options.provider import OptionChainProvider, UnconfiguredOptionChainProvider
 
 
-class FakeOptionChainProvider:
+class FakeOptionChainProvider(OptionChainProvider):
     async def get_option_chain(self, underlying: str, expiry: date | None = None) -> OptionChain:
         assert expiry is not None
         return OptionChain(
