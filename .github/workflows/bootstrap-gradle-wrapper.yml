@@ -29,17 +29,28 @@ jobs:
       - name: Stop when wrapper is already present
         if: steps.wrapper.outputs.present == 'true'
         run: echo "Official Gradle wrapper artifact is already present."
-      - name: Download official Gradle 8.10.2 wrapper
+      - uses: actions/setup-java@v4
+        if: steps.wrapper.outputs.present != 'true'
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install pinned Gradle
         if: steps.wrapper.outputs.present != 'true'
         run: |
-          curl -fsSL https://services.gradle.org/distributions/gradle-8.10.2-wrapper.jar -o android/gradle/wrapper/gradle-wrapper.jar
-          echo "2db75c40782f5e8ba1fc278a5574bab070adccb2d21ca5a6e5ed840888448046  android/gradle/wrapper/gradle-wrapper.jar" | sha256sum --check
-      - name: Verify wrapper launcher files
+          curl -fsSL https://services.gradle.org/distributions/gradle-8.10.2-bin.zip -o /tmp/gradle.zip
+          echo "31c55713e40233a8303827ceb42ca48a47267a0ad4bab9177123121e71524c26  /tmp/gradle.zip" | sha256sum --check
+          unzip -q /tmp/gradle.zip -d /tmp
+      - name: Generate official wrapper
         if: steps.wrapper.outputs.present != 'true'
+        working-directory: android
+        run: /tmp/gradle-8.10.2/bin/gradle --no-daemon wrapper --gradle-version 8.10.2
+      - name: Verify wrapper checksum
+        if: steps.wrapper.outputs.present != 'true'
+        working-directory: android/gradle/wrapper
         run: |
-          test -f android/gradlew
-          test -f android/gradlew.bat
-          grep -F 'distributionUrl=https\\://services.gradle.org/distributions/gradle-8.10.2-bin.zip' android/gradle/wrapper/gradle-wrapper.properties
+          curl -fsSL https://services.gradle.org/distributions/gradle-8.10.2-wrapper.jar.sha256 -o /tmp/gradle-wrapper.jar.sha256
+          echo "  gradle-wrapper.jar" >> /tmp/gradle-wrapper.jar.sha256
+          sha256sum --check /tmp/gradle-wrapper.jar.sha256
       - name: Commit wrapper artifact to main
         if: steps.wrapper.outputs.present != 'true'
         run: |
