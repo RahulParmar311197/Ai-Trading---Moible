@@ -13,7 +13,7 @@ Last updated: 2026-09-03
 ## Verified implementation state
 
 - Deterministic strategy/backtest/replay foundations are integrated; AI remains advisory and cannot authorize execution.
-- Options analytics and provider-neutral option-chain contracts are implemented; live option-chain integration remains unverified.
+- Options analytics and provider-neutral option-chain contracts are implemented. A fail-closed DhanHQ v2 option-chain adapter is now implemented behind the provider boundary and requires authoritative Dhan catalogue metadata for execution fields; live provider runtime remains unverified.
 - Paper trading has deterministic order/fill/position/P&L/risk/kill-switch behavior, durable persistence, restart hydration, and replay-to-paper execution.
 - Provider-neutral broker contracts, authentication boundaries, reconciliation, idempotency, Upstox/Dhan adapters, instrument resolution/catalogue ingestion, and secret-safe session handling are implemented.
 - Upstox and Dhan live mutation remains disabled by default.
@@ -69,7 +69,9 @@ Last updated: 2026-09-03
 ### Stage 6 — Options
 
 - [x] Contracts, quotes/OI/volume/IV fields, lot sizes, Black-Scholes Greeks, liquidity/spread validation, delta strike selection, multi-leg payoff/risk metrics, strategy selection, analytics API, provider-neutral chain interface
-- [ ] Live option-chain provider integration
+- [x] Fail-closed DhanHQ v2 option-chain adapter with authoritative catalogue metadata resolution and documented 3-second unique-request cooldown
+- [x] Dhan adapter deterministic MockTransport tests covering mapping, missing metadata, and cooldown behavior
+- [ ] Live option-chain provider runtime integration
 - [ ] Fresh runtime verification of latest options changes
 
 ### Stage 7 — Paper Trading
@@ -124,18 +126,14 @@ Last updated: 2026-09-03
 
 ## Latest CI evidence
 
-- Run `33722008311` for commit `a70dce541a64af7ba970795efc8e9797f6b62e4e`: **CI completed successfully**, covering backend tests and Android debug build after the Codespaces Docker-client fix.
-- Run `33715221668` for commit `d5809e0456c521e54057032fd849fc440ae0debf`: **backend-tests and android-build completed successfully**; backend ran official Upstox protobuf verification plus non-integration and PostgreSQL integration pytest jobs, and Android completed `assembleDebug` with pinned Gradle 8.10.2.
-- Run `33715221696` for commit `d5809e0456c521e54057032fd849fc440ae0debf`: **official Gradle wrapper bootstrap completed successfully**, including generation, SHA-256 verification, and commit of the wrapper artifact to `main`.
-- Run `33713476172` for commit `8399d66e2d5d58f57c5c8e274229c9abb505d3c3`: **full CI completed successfully**.
-- Run `33712940894` for commit `e0fbf77b7fc55970a6d1d96a8f91d62a7e4a5821`: **full CI completed successfully**.
-- Run `33627523956` for documentation commit `59380f03127abf3880c01fce0b0e7501293d5daf`: **full CI completed successfully**.
-- Run `33627198878` for documentation/status commit `25234ba5e14817bdee0bd0934b4cfebf4086ff02f`: **full CI completed successfully**.
-- Run `33624319414` for implementation commit `ba78f6ff248d6f7e08cb47963997e868868be12f`: **full CI completed successfully**.
+- Run `33733719815` for the Dhan option-chain PR head `461eb2d269cb6f752f393f3442c8065de85f01d0`: **backend-tests completed successfully**, including non-integration and PostgreSQL integration pytest jobs. The companion Android run `33733720002` for the same head completed `assembleDebug` successfully.
+- Earlier successful CI runs include `33722008311`, `33715221668`, `33713476172`, `33712940894`, `33627523956`, `33627198878`, and `33624319414` as recorded in prior status evidence.
 
 ## Runtime verification
 
 The Codespaces environment has been rebuilt successfully with a self-contained Docker client/Compose setup. PostgreSQL 16 and Redis 7 were started locally and health-checked. The local backend suite and PostgreSQL integration suite were executed successfully. The FastAPI application was also started under Uvicorn and its liveness/readiness endpoints were verified. Readiness was correctly degraded because live market-data and controlled execution prerequisites were intentionally not configured.
+
+The Dhan option-chain adapter has CI-level verification only. No live Dhan credential, real option-chain request, or production broker runtime has been performed.
 
 ## Safety status
 
@@ -145,6 +143,6 @@ The Codespaces environment has been rebuilt successfully with a self-contained D
 
 1. Production broker runtime and real live activation are unverified. Upstox has a documented sandbox path, but the manual sandbox smoke workflow remains environment-dependent; the local sandbox test currently skips because `UPSTOX_SANDBOX_ACCESS_TOKEN` is not configured.
 2. Stage 5 real external AI-provider runtime verification remains unverified; provider contract compatibility and Android integration are verified.
-3. Stage 6 live option-chain provider integration remains unverified.
+3. Stage 6 live option-chain provider runtime integration and fresh runtime verification remain unverified.
 4. Stage 2 fresh full product-flow verification remains unverified.
 5. Stage 10 autonomous trading remains gated and must not be enabled without all blueprint prerequisites and evidence.
