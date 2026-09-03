@@ -4,13 +4,6 @@
     "dockerfile": "Dockerfile",
     "context": "."
   },
-  "features": {
-    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
-      "moby": false,
-      "dockerDashComposeVersion": "v2",
-      "installDockerBuildx": true
-    }
-  },
   "customizations": {
     "vscode": {
       "extensions": [
@@ -32,5 +25,11 @@
     "8000": { "label": "FastAPI", "onAutoForward": "notify" },
     "5432": { "label": "PostgreSQL", "onAutoForward": "silent" },
     "6379": { "label": "Redis", "onAutoForward": "silent" }
+  },
+  "mounts": [
+    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+  ],
+  "remoteEnv": {
+    "DOCKER_HOST": "unix:///var/run/docker.sock"
   }
 }
