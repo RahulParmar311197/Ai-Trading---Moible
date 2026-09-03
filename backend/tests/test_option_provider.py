@@ -1,4 +1,5 @@
 from datetime import date
+from decimal import Decimal
 
 import httpx
 import pytest
@@ -89,10 +90,10 @@ def test_upstox_option_chain_maps_market_data_and_contract_metadata(monkeypatch)
 
     assert len(chain.contracts) == 2
     assert chain.contracts[0].symbol == "NIFTY 25000 CE 24 SEP 26"
-    assert chain.contracts[0].iv == pytest.approx(0.2)
+    assert chain.contracts[0].iv == Decimal("0.2")
     assert chain.contracts[0].lot_size == 65
     assert chain.contracts[1].symbol == "NIFTY 25000 PE 24 SEP 26"
-    assert chain.contracts[1].delta == pytest.approx(-0.5)
+    assert chain.contracts[1].delta == Decimal("-0.5")
 
 
 def test_upstox_option_chain_requires_explicit_expiry():
