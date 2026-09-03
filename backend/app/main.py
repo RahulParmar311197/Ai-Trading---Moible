@@ -23,6 +23,7 @@ from app.market.provider_runtime import ProviderMarketRunner
 from app.market.providers import ProviderConfigurationError, get_market_data_feed
 from app.market.redis_client import get_redis_client
 from app.market.redis_publisher import RedisMarketPublisher
+from app.options.provider import OptionChainProvider, OptionChainProviderError, UnconfiguredOptionChainProvider, UpstoxOptionChainProvider
 
 
 def _execution_runtime_configured() -> bool:
@@ -70,10 +71,29 @@ def _build_execution_runtime():
     return runtime, None
 
 
+def _build_option_chain_provider() -> OptionChainProvider:
+    provider = settings.options_provider.strip().lower()
+    if not provider:
+        return UnconfiguredOptionChainProvider()
+    if provider == "upstox":
+        access_token = settings.upstox_access_token
+        if not access_token.strip():
+            raise OptionChainProviderError("Upstox option-chain access token is not configured")
+        return UpstoxOptionChainProvider(access_token, timeout=settings.options_timeout_seconds)
+    raise OptionChainProviderError(f"Unsupported option-chain provider: {provider}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     runner_task: asyncio.Task[None] | None = None
     execution_runtime = None
+
+    try:
+        app.state.option_chain_provider = _build_option_chain_provider()
+        app.state.option_chain_startup_error = None
+    except OptionChainProviderError as exc:
+        app.state.option_chain_provider = UnconfiguredOptionChainProvider()
+        app.state.option_chain_startup_error = str(exc)
 
     if settings.market_data_provider and settings.configured_market_data_instruments:
         try:
@@ -135,7 +155,8 @@ def health() -> dict[str, str]:
 
 @app.get("/ready")
 def readiness() -> dict[str, str]:
-    """Readiness reflects configured market-data and execution prerequisites."""
+    """Readiness reflects configured market-data, option-chain and execution prerequisites."""
     market_error = getattr(app.state, "market_data_startup_error", None)
+    option_error = getattr(app.state, "option_chain_startup_error", None)
     execution_error = getattr(app.state, "execution_startup_error", None)
-    return {"status": "ok" if market_error is None and execution_error is None else "degraded"}
+    return {"status": "ok" if market_error is None and option_error is None and execution_error is None else "degraded"}
