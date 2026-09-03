@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal
-from math import sqrt
 from typing import Mapping, Sequence
 
 
@@ -82,9 +81,12 @@ def _pearson(left: Sequence[Decimal], right: Sequence[Decimal]) -> Decimal:
     covariance = sum((a - left_mean) * (b - right_mean) for a, b in zip(left, right))
     left_var = sum((a - left_mean) ** 2 for a in left)
     right_var = sum((b - right_mean) ** 2 for b in right)
-    if left_var == 0 or right_var == 0:
+    denominator = left_var * right_var
+    if denominator <= 0:
         raise PortfolioRiskError("correlation is undefined for constant return history")
-    return covariance / Decimal(str(sqrt(float(left_var * right_var))))
+    # Avoid float conversion so high-precision Decimal inputs remain deterministic.
+    denominator_sqrt = Decimal(str(denominator.sqrt()))
+    return covariance / denominator_sqrt
 
 
 def assess_portfolio(
@@ -97,7 +99,14 @@ def assess_portfolio(
     mutation path; callers must apply its result through the deterministic
     execution risk gate.
     """
+    if not isinstance(positions, Sequence):
+        raise PortfolioRiskError("portfolio positions must be a sequence")
+    if not isinstance(limits, PortfolioRiskLimits):
+        raise PortfolioRiskError("portfolio risk limits are required")
+
     symbols = [position.symbol for position in positions]
+    if any(not isinstance(position, PortfolioPosition) for position in positions):
+        raise PortfolioRiskError("portfolio contains invalid position state")
     if len(set(symbols)) != len(symbols):
         raise PortfolioRiskError("portfolio contains duplicate symbols")
 
