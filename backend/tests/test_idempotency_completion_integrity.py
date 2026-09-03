@@ -26,11 +26,13 @@ def test_in_memory_completion_preserves_reservation_and_rejects_mismatch() -> No
         store.begin(submitted)
 
 
-def test_in_memory_completion_requires_existing_reservation() -> None:
+def test_in_memory_completion_can_bootstrap_authoritative_recovery() -> None:
     store = BrokerIdempotencyStore()
     submitted = order()
-    with pytest.raises(RuntimeError, match="reservation missing"):
-        store.complete(submitted, filled_result(submitted))
+    result = filled_result(submitted)
+
+    assert store.complete(result, result) == result
+    assert store.begin(submitted) == result
 
 
 class FakeDurableDb:
@@ -75,5 +77,14 @@ def test_durable_completion_accepts_matching_result() -> None:
     assert store.begin(submitted) is None
     result = filled_result(submitted)
     assert store.complete(submitted, result) == result
-    assert db.update_calls == 1
+    assert db.update_calls == 2
     assert store.begin(submitted) == result
+
+
+def test_durable_completion_can_bootstrap_authoritative_recovery() -> None:
+    db = FakeDurableDb()
+    store = DurableBrokerIdempotencyStore(db)
+    result = filled_result(order())
+
+    assert store.complete(result, result) == result
+    assert store.begin(order()) == result
