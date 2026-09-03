@@ -2,7 +2,7 @@ from decimal import Decimal
 
 import pytest
 
-from app.execution.autonomous import AutonomousDecision, ExecutionIntent
+from app.execution.autonomous import ExecutionIntent
 from app.execution.autonomous_handoff import AutonomousIntentHandoffError, build_broker_order
 from app.execution.gate import ExecutionDecision
 from app.execution.portfolio_risk import PortfolioRiskAssessment
@@ -13,9 +13,9 @@ def approved_intent() -> ExecutionIntent:
     portfolio = PortfolioRiskAssessment(
         gross_exposure=Decimal("100"),
         net_exposure=Decimal("100"),
-        realized_pnl=Decimal("0"),
-        unrealized_pnl=Decimal("0"),
-        per_symbol_notional={"NIFTY": Decimal("100")},
+        total_realized_pnl=Decimal("0"),
+        total_unrealized_pnl=Decimal("0"),
+        single_position_notional=(("NIFTY", Decimal("100")),),
         correlated_pairs=(),
         approved=True,
         reasons=(),
