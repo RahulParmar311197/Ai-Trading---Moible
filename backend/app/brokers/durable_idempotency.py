@@ -4,7 +4,7 @@ import json
 from datetime import datetime, timezone
 from typing import Any
 
-from .base import BrokerOrder
+from .base import BrokerOrder, BrokerOrderStatus
 from .idempotency import BrokerIdempotencyStore, IdempotencyConflict, IdempotencyPending
 
 
@@ -53,10 +53,16 @@ class DurableBrokerIdempotencyStore:
         """Persist a broker result only when it matches the completion order."""
         key = order.client_order_id
         fingerprint = self.fingerprint(order)
-        if self.fingerprint(result) != fingerprint:
-            raise IdempotencyConflict(
-                f"broker result does not match idempotency reservation: {key}"
-            )
+        result_fingerprint = self.fingerprint(result)
+        if result_fingerprint != fingerprint:
+            # NEW/OPEN results are still subject to the controlled execution
+            # confirmation validator. Never cache an identity-mismatched live
+            # result, but allow that validator to report the precise mismatch.
+            if result.status not in {BrokerOrderStatus.NEW, BrokerOrderStatus.OPEN}:
+                raise IdempotencyConflict(
+                    f"broker result does not match idempotency reservation: {key}"
+                )
+            return result
         self.db.execute(
             """
             INSERT INTO broker_idempotency_keys (client_order_id, fingerprint, result, updated_at)
