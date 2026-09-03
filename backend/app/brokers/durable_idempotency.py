@@ -47,7 +47,13 @@ class DurableBrokerIdempotencyStore:
         return BrokerOrder.model_validate(row["result"])
 
     def complete(self, order: BrokerOrder, result: BrokerOrder) -> BrokerOrder:
-        """Persist a broker result only against an existing matching reservation."""
+        """Persist a broker result only when it matches the existing reservation."""
+        key = order.client_order_id
+        fingerprint = self.fingerprint(order)
+        if self.fingerprint(result) != fingerprint:
+            raise IdempotencyConflict(
+                f"broker result does not match idempotency reservation: {key}"
+            )
         self.db.execute(
             """
             UPDATE broker_idempotency_keys
@@ -55,15 +61,15 @@ class DurableBrokerIdempotencyStore:
             WHERE client_order_id = :client_order_id AND fingerprint = :fingerprint
             """,
             {
-                "client_order_id": order.client_order_id,
-                "fingerprint": self.fingerprint(order),
+                "client_order_id": key,
+                "fingerprint": fingerprint,
                 "result": json.dumps(result.model_dump(mode="json"), sort_keys=True, separators=(",", ":")),
                 "updated_at": datetime.now(timezone.utc),
             },
         )
         row = self.db.fetch_one(
             "SELECT client_order_id FROM broker_idempotency_keys WHERE client_order_id = :client_order_id AND fingerprint = :fingerprint AND result IS NOT NULL",
-            {"client_order_id": order.client_order_id, "fingerprint": self.fingerprint(order)},
+            {"client_order_id": key, "fingerprint": fingerprint},
         )
         if row is None:
             raise RuntimeError("idempotency reservation missing or fingerprint mismatch")
