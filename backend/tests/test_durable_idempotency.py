@@ -1,3 +1,4 @@
+import json
 from decimal import Decimal
 
 import pytest
@@ -17,10 +18,7 @@ class FakeDb:
         key = str(params["client_order_id"])
         if key in self.rows:
             return None
-        self.rows[key] = {
-            "fingerprint": params["fingerprint"],
-            "result": None,
-        }
+        self.rows[key] = {"fingerprint": params["fingerprint"], "result": None}
         return {"client_order_id": key}
 
     def fetch_one(self, sql: str, params: dict[str, object]) -> dict[str, object] | None:
@@ -42,7 +40,7 @@ class FakeDb:
         if sql.lstrip().startswith("UPDATE"):
             row = self.rows.get(key)
             if row is not None and row["fingerprint"] == params["fingerprint"]:
-                row["result"] = params["result"]
+                row["result"] = json.loads(str(params["result"]))
         elif sql.lstrip().startswith("DELETE"):
             self.rows.pop(key, None)
 
@@ -80,7 +78,6 @@ def test_durable_store_rejects_reuse_while_submission_is_unresolved() -> None:
     request = order()
 
     assert store.begin(request) is None
-
     with pytest.raises(IdempotencyPending, match="unresolved broker submission"):
         store.begin(request)
 
