@@ -3,7 +3,6 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from datetime import date, datetime, timezone
 from decimal import Decimal
-from typing import Any
 
 import httpx
 
@@ -33,9 +32,14 @@ class UpstoxOptionChainProvider(OptionChainProvider):
     """Upstox v2 option-chain adapter mapped into the provider-neutral contract.
 
     ``underlying`` is the Upstox instrument key (for example
-    ``NSE_INDEX|Nifty 50``). An explicit expiry is required because the Upstox
-    put/call endpoint requires one; the adapter never guesses an expiry.
+    ``NSE_INDEX|Nifty 50``). An explicit expiry is required because both the
+    Upstox put/call and option-contract endpoints require it for a precise
+    chain. Contract metadata is fetched alongside quotes so lot size and the
+    broker trading symbol are never silently defaulted.
     """
+
+    _CHAIN_URL = "https://api.upstox.com/v2/option/chain"
+    _CONTRACT_URL = "https://api.upstox.com/v2/option/contract"
 
     def __init__(self, access_token: str, *, timeout: float = 10.0, client: httpx.AsyncClient | None = None) -> None:
         if not access_token.strip():
@@ -60,9 +64,13 @@ class UpstoxOptionChainProvider(OptionChainProvider):
         own_client = self._client is None
         client = self._client or httpx.AsyncClient(timeout=self.timeout)
         try:
-            response = await client.get("https://api.upstox.com/v2/option/chain", params=params, headers=headers)
-            response.raise_for_status()
-            payload = response.json()
+            chain_response = await client.get(self._CHAIN_URL, params=params, headers=headers)
+            chain_response.raise_for_status()
+            chain_payload = chain_response.json()
+
+            contract_response = await client.get(self._CONTRACT_URL, params=params, headers=headers)
+            contract_response.raise_for_status()
+            contract_payload = contract_response.json()
         except (httpx.HTTPError, ValueError) as exc:
             raise OptionChainProviderError("Upstox option-chain request failed") from exc
         finally:
@@ -70,27 +78,61 @@ class UpstoxOptionChainProvider(OptionChainProvider):
                 await client.aclose()
 
         try:
-            if payload.get("status") != "success" or not isinstance(payload.get("data"), list):
+            if chain_payload.get("status") != "success" or not isinstance(chain_payload.get("data"), list):
                 raise OptionChainProviderError("Upstox returned an invalid option-chain response")
+            if contract_payload.get("status") != "success" or not isinstance(contract_payload.get("data"), list):
+                raise OptionChainProviderError("Upstox returned invalid option-contract metadata")
+
+            metadata_by_key: dict[str, dict] = {}
+            for metadata in contract_payload["data"]:
+                if not isinstance(metadata, dict) or not metadata.get("instrument_key"):
+                    raise OptionChainProviderError("Upstox returned malformed option-contract metadata")
+                key = str(metadata["instrument_key"])
+                if key in metadata_by_key:
+                    raise OptionChainProviderError("Upstox returned duplicate option-contract metadata")
+                metadata_by_key[key] = metadata
+
             contracts: list[OptionContract] = []
-            for row in payload["data"]:
+            for row in chain_payload["data"]:
                 row_expiry = date.fromisoformat(str(row["expiry"]))
+                if row_expiry != expiry:
+                    raise OptionChainProviderError("Upstox returned an unexpected option expiry")
                 strike = Decimal(str(row["strike_price"]))
                 underlying_key = str(row["underlying_key"])
-                for key, option_type in (("call_options", OptionType.CALL), ("put_options", OptionType.PUT)):
+                for key, option_type, expected_type in (
+                    ("call_options", OptionType.CALL, "CE"),
+                    ("put_options", OptionType.PUT, "PE"),
+                ):
                     option = row.get(key)
                     if not isinstance(option, dict):
                         continue
                     market = option.get("market_data") or {}
                     greeks = option.get("option_greeks") or {}
                     instrument_key = str(option["instrument_key"])
+                    metadata = metadata_by_key.get(instrument_key)
+                    if metadata is None:
+                        raise OptionChainProviderError(
+                            "Upstox option-contract metadata is missing for a chain instrument"
+                        )
+                    if str(metadata.get("instrument_type")) != expected_type:
+                        raise OptionChainProviderError("Upstox option-contract type does not match chain side")
+                    if date.fromisoformat(str(metadata["expiry"])) != expiry:
+                        raise OptionChainProviderError("Upstox option-contract metadata has an unexpected expiry")
+                    lot_size = int(metadata["lot_size"])
+                    if lot_size <= 0:
+                        raise OptionChainProviderError("Upstox returned an invalid option lot size")
+                    if str(metadata["underlying_key"]) != underlying_key:
+                        raise OptionChainProviderError("Upstox option-contract underlying does not match chain")
+                    if Decimal(str(metadata["strike_price"])) != strike:
+                        raise OptionChainProviderError("Upstox option-contract strike does not match chain")
                     contracts.append(
                         OptionContract(
-                            symbol=instrument_key,
+                            symbol=str(metadata["trading_symbol"]),
                             underlying=underlying_key,
                             expiry=row_expiry,
                             strike=strike,
                             option_type=option_type,
+                            lot_size=lot_size,
                             bid=Decimal(str(market.get("bid_price", 0))),
                             ask=Decimal(str(market.get("ask_price", 0))),
                             ltp=Decimal(str(market.get("ltp", 0))),
@@ -112,7 +154,7 @@ class UpstoxOptionChainProvider(OptionChainProvider):
                 as_of=datetime.now(timezone.utc),
                 contracts=tuple(contracts),
             )
+        except OptionChainProviderError:
+            raise
         except (KeyError, TypeError, ValueError, ArithmeticError) as exc:
-            if isinstance(exc, OptionChainProviderError):
-                raise
             raise OptionChainProviderError("Upstox returned malformed option-chain data") from exc
