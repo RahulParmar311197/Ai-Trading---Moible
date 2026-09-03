@@ -4,7 +4,7 @@ import pytest
 
 from app.brokers.base import BrokerOrder, BrokerOrderStatus, BrokerOrderType, BrokerSide
 from app.brokers.durable_idempotency import DurableBrokerIdempotencyStore
-from app.brokers.idempotency import BrokerIdempotencyStore, IdempotencyConflict
+from app.brokers.idempotency import BrokerIdempotencyStore, IdempotencyConflict, IdempotencyPending
 
 
 def order(*, client_order_id: str = "client-1", quantity: int = 5, symbol: str = "NIFTY") -> BrokerOrder:
@@ -36,10 +36,12 @@ def test_in_memory_completion_preserves_reservation_and_rejects_mismatch() -> No
     submitted = order()
     store.begin(submitted)
 
+    mismatched = filled_result(submitted.model_copy(update={"quantity": 10}))
     with pytest.raises(IdempotencyConflict, match="broker result does not match"):
-        store.complete(submitted, filled_result(submitted.model_copy(update={"quantity": 10})))
+        store.complete(submitted, mismatched)
 
-    assert store.begin(submitted) is None or True
+    with pytest.raises(IdempotencyPending, match="unresolved broker submission"):
+        store.begin(submitted)
 
 
 def test_in_memory_completion_requires_existing_reservation() -> None:
