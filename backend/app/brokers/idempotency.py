@@ -4,7 +4,7 @@ import hashlib
 import json
 from typing import Protocol
 
-from .base import BrokerOrder
+from .base import BrokerOrder, BrokerOrderStatus
 
 
 class IdempotencyConflict(ValueError):
@@ -70,10 +70,16 @@ class BrokerIdempotencyStore:
     def complete(self, order: BrokerOrder, result: BrokerOrder) -> BrokerOrder:
         key = order.client_order_id
         fingerprint = self.fingerprint(order)
-        if self.fingerprint(result) != fingerprint:
-            raise IdempotencyConflict(
-                f"broker result does not match idempotency reservation: {key}"
-            )
+        result_fingerprint = self.fingerprint(result)
+        if result_fingerprint != fingerprint:
+            # NEW/OPEN results are still subject to the controlled execution
+            # confirmation validator. Never cache an identity-mismatched live
+            # result, but allow that validator to report the precise mismatch.
+            if result.status not in {BrokerOrderStatus.NEW, BrokerOrderStatus.OPEN}:
+                raise IdempotencyConflict(
+                    f"broker result does not match idempotency reservation: {key}"
+                )
+            return result
         previous = self._requests.get(key)
         if previous is None:
             # Recovery may discover a terminal broker order whose reservation
