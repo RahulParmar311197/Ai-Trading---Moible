@@ -17,6 +17,8 @@ Last updated: 2026-09-03
 - Paper trading has deterministic order/fill/position/P&L/risk/kill-switch behavior, durable persistence, restart hydration, and replay-to-paper execution.
 - Provider-neutral broker contracts, authentication boundaries, reconciliation, idempotency, Upstox/Dhan adapters, instrument resolution/catalogue ingestion, and secret-safe session handling are implemented.
 - Upstox and Dhan live mutation remains disabled by default.
+- Upstox now has an explicit sandbox mode using the documented sandbox host, with a separate `allow_sandbox_orders` gate. Sandbox permission cannot enable live orders. See `docs/UPSTOX_SANDBOX_TESTING.md`.
+- A manual GitHub Actions Upstox sandbox smoke workflow is present. It uses only the `UPSTOX_SANDBOX_ACCESS_TOKEN` Actions secret when intentionally dispatched; no sandbox or live credential is stored in the repository.
 - `ControlledBrokerExecution` is inert until authenticated startup and exact explicit activation. The kill switch defaults active, deterministic risk approval is mandatory before mutation, broker order-id confirmation is required, audit events are emitted, and shutdown/recovery fail closed.
 - Controlled live construction requires an explicitly supplied idempotency store; there is no silent process-local fallback.
 - Ambiguous broker submission exceptions preserve the idempotency reservation and force fail-closed reconciliation before reuse.
@@ -74,7 +76,9 @@ Last updated: 2026-09-03
 ### Stage 8 — Brokers
 
 - [x] Provider-neutral broker/auth/reconciliation contracts, idempotency, durable PostgreSQL idempotency, ambiguous-submission protection, Upstox/Dhan adapters, mutation gating, instrument resolution/catalogues, secret-safe sessions, token exchange/renewal boundaries, CI verification
+- [x] Explicit Upstox sandbox adapter mode and opt-in place/cancel smoke-test path
 - [ ] Live broker runtime verification
+- [ ] Upstox sandbox smoke execution with a real sandbox token
 
 ### Stage 9 — Controlled Live Trading
 
@@ -117,6 +121,7 @@ Last updated: 2026-09-03
 - Run `33627198878` for documentation/status commit `25234ba5e14817bdee0bd0934b4cfebf4086ff02`: **full CI completed successfully**.
 - Run `33625211010` for status commit `23b9f479d5f776dd92cc2e73395221d23c0a71e6`: **full CI completed successfully**.
 - Run `33624319414` for implementation commit `ba78f6ff248d6f7e08cb47963997e868868be12f`: **full CI completed successfully**. Backend completed official Upstox protobuf verification plus non-integration and PostgreSQL integration pytest jobs; Android `assembleDebug` completed successfully.
+- Run `33712769202` for the intermediate sandbox workflow commit `f77b8996955ae426a71dc39e7dd4025ca0288d2e`: backend exposed one unrelated fixed-date Dhan-auth fixture regression (268 passed, 1 failed, 6 deselected); that fixture was corrected in commit `7267d144b6bc7e4a5c6e0dc03d56889ecb85a879`. The corresponding replacement CI run was still in progress when this status was recorded, so no green result is claimed for it here.
 
 ## Runtime limitation
 
@@ -124,14 +129,14 @@ No local/Codespace runtime is exposed through the connected tools. No local test
 
 ## Safety status
 
-**LIVE/AUTONOMOUS TRADING REMAINS GATED.** Controlled execution requires successful authenticated startup plus exact explicit activation; broker position state is refreshed before every submission and must agree with the supplied risk snapshot; partial/filled confirmations require explicit post-fill synchronization and failures stop the lifecycle with the kill switch active; recovery/startup keep the kill switch active; shutdown and ambiguous broker failures fail closed. Dhan/Upstox live mutation remains disabled by default. AI remains subordinate to deterministic validation, strategy, risk and execution controls. Production broker runtime verification and real live activation have not been performed.
+**LIVE/AUTONOMOUS TRADING REMAINS GATED.** Controlled execution requires successful authenticated startup plus exact explicit activation; broker position state is refreshed before every submission and must agree with the supplied risk snapshot; partial/filled confirmations require explicit post-fill synchronization and failures stop the lifecycle with the kill switch active; recovery/startup keep the kill switch active; shutdown and ambiguous broker failures fail closed. Dhan/Upstox live mutation remains disabled by default. Upstox sandbox mutation is separately gated and targets only the sandbox host. AI remains subordinate to deterministic validation, strategy, risk and execution controls. Production broker runtime verification and real live activation have not been performed.
 
 ## Remaining blockers / unverified items
 
 1. Official Gradle wrapper artifact (`gradle-wrapper.jar`) is still absent from the repository; CI installs Gradle 8.10.2 directly, so final Stage 1 wrapper verification remains blocked.
 2. The authoritative upstream trading-session boundary/lifecycle is not implemented. The application must supply session identity rather than silently deriving a market day.
 3. The concrete post-fill synchronizer is implemented and tested, but application/runtime wiring to a concrete durable live-state sink remains unverified.
-4. Production broker runtime and real live activation are unverified because no sandbox/test broker credentials are available through the connected tools. Synthetic test client IDs do not count as broker runtime credentials.
+4. Production broker runtime and real live activation are unverified. Upstox now has a documented sandbox path, but no sandbox access token is available through the connected tools and the manual sandbox smoke workflow has not been executed here.
 5. Stage 5 real external AI-provider runtime verification remains unverified; provider contract compatibility and Android integration are now verified.
 6. Stage 6 live option-chain provider integration remains unverified.
 7. Stage 2 fresh full product-flow verification remains unverified.
