@@ -2,7 +2,10 @@ from datetime import datetime, timezone
 
 import pytest
 
-from app.execution.emergency_control import EmergencyControlError, PostgresEmergencyControlStore
+from app.brokers.base import BrokerAuthentication
+from app.brokers.idempotency import BrokerIdempotencyStore
+from app.execution import ControlledBrokerExecution, ControlledExecutionError, DeterministicExecutionGate, RiskLimits
+from app.execution.emergency_control import EmergencyControlError, EmergencyControlState, PostgresEmergencyControlStore
 
 
 class FakeExecutor:
@@ -67,3 +70,66 @@ def test_set_active_persists_only_non_empty_reason():
 def test_write_failure_fails_closed():
     with pytest.raises(EmergencyControlError, match="could not be persisted"):
         PostgresEmergencyControlStore(FakeExecutor(fail_write=True)).set_active(True, "operator stop")
+
+
+class FakeBroker:
+    async def authenticate(self):
+        return BrokerAuthentication(provider="fake", account_id="account-1", authenticated=True)
+
+
+class MemoryEmergencyStore:
+    def __init__(self, active=True):
+        self.state = EmergencyControlState(active, "persisted emergency stop" if active else "cleared", datetime.now(timezone.utc))
+
+    def get_state(self):
+        return self.state
+
+    def set_active(self, active, reason):
+        self.state = EmergencyControlState(active, reason, datetime.now(timezone.utc))
+        return self.state
+
+
+def build_execution(store):
+    return ControlledBrokerExecution(
+        FakeBroker(),
+        DeterministicExecutionGate(RiskLimits()),
+        confirmation_phrase="ENABLE LIVE",
+        idempotency_store=BrokerIdempotencyStore(),
+        emergency_control=store,
+    )
+
+
+@pytest.mark.asyncio
+async def test_startup_keeps_kill_switch_active_when_persisted_stop_exists():
+    execution = build_execution(MemoryEmergencyStore(active=True))
+    await execution.startup()
+    assert execution.started
+    assert execution.kill_switch_active
+    with pytest.raises(ControlledExecutionError, match="durable emergency stop is active"):
+        execution.activate("ENABLE LIVE")
+
+
+@pytest.mark.asyncio
+async def test_emergency_stop_reset_requires_explicit_confirmation_and_stays_deactivated():
+    store = MemoryEmergencyStore(active=True)
+    execution = build_execution(store)
+    await execution.startup()
+    with pytest.raises(ControlledExecutionError, match="explicit live-execution confirmation required"):
+        execution.clear_emergency_stop("WRONG")
+    execution.clear_emergency_stop("ENABLE LIVE", "operator reviewed state")
+    assert store.state.active is False
+    assert execution.kill_switch_active
+    assert not execution.active
+
+
+@pytest.mark.asyncio
+async def test_emergency_stop_persistence_failure_keeps_local_stop_active():
+    class FailingStore(MemoryEmergencyStore):
+        def set_active(self, active, reason):
+            raise EmergencyControlError("persistence failed")
+
+    execution = build_execution(FailingStore(active=False))
+    with pytest.raises(ControlledExecutionError, match="could not be persisted"):
+        execution.trip_kill_switch("operator stop")
+    assert execution.kill_switch_active
+    assert not execution.active
