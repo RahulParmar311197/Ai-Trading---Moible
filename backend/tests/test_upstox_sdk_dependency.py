@@ -1,8 +1,10 @@
 import importlib.util
+from pathlib import Path
 
 
 def test_upstox_sdk_dependency_is_declared():
-    requirements = open("requirements.txt", encoding="utf-8").read().splitlines()
+    requirements_path = Path(__file__).resolve().parents[1] / "requirements.txt"
+    requirements = requirements_path.read_text(encoding="utf-8").splitlines()
     assert any(line.strip().lower().startswith("upstox-python-sdk") for line in requirements)
 
 
