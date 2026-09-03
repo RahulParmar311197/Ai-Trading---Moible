@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime
 from decimal import Decimal
 from math import isfinite
-from typing import Mapping, Sequence
 
 from .gate import DeterministicExecutionGate, ExecutionDecision, RiskSnapshot
 from .portfolio_risk import PortfolioPosition, PortfolioRiskAssessment, PortfolioRiskLimits, assess_portfolio
@@ -26,6 +25,7 @@ class DecisionCandidate:
     generated_by_ai: bool = False
     conditions_satisfied: tuple[str, ...] = ()
     conditions_missing: tuple[str, ...] = ()
+    returns: tuple[float, ...] = ()
 
     def __post_init__(self) -> None:
         if not self.strategy_id.strip():
@@ -40,6 +40,8 @@ class DecisionCandidate:
             raise ValueError("market price must be finite and positive")
         if self.conditions_missing:
             raise ValueError("candidate contains unsatisfied conditions")
+        if len(self.returns) < 2 or any(not isfinite(value) for value in self.returns):
+            raise ValueError("candidate return history must contain at least two finite observations")
 
 
 @dataclass(frozen=True)
@@ -110,20 +112,34 @@ class AutonomousDecisionPipeline:
         if age > context.max_state_age_seconds:
             return AutonomousDecision(False, "authoritative decision state is stale", None)
 
-        if candidate.symbol not in {position.symbol for position in context.positions} and context.positions:
-            positions = context.positions + (
-                PortfolioPosition(
-                    symbol=candidate.symbol,
-                    quantity=0,
-                    mark_price=candidate.market_price,
-                    returns=(0.0, 0.0),
-                ),
+        current = {position.symbol: position for position in context.positions}
+        existing = current.get(candidate.symbol)
+        if existing is None:
+            projected_position = PortfolioPosition(
+                symbol=candidate.symbol,
+                quantity=candidate.quantity if candidate.side.upper() == "BUY" else -candidate.quantity,
+                mark_price=candidate.market_price,
+                returns=candidate.returns,
             )
         else:
-            positions = context.positions
+            signed_quantity = candidate.quantity if candidate.side.upper() == "BUY" else -candidate.quantity
+            projected_position = PortfolioPosition(
+                symbol=existing.symbol,
+                quantity=existing.quantity + signed_quantity,
+                mark_price=candidate.market_price,
+                realized_pnl=existing.realized_pnl,
+                unrealized_pnl=existing.unrealized_pnl,
+                returns=existing.returns,
+            )
+        projected_positions = tuple(
+            projected_position if position.symbol == candidate.symbol else position
+            for position in context.positions
+        )
+        if existing is None:
+            projected_positions += (projected_position,)
 
         try:
-            portfolio = assess_portfolio(positions, self._portfolio_limits)
+            portfolio = assess_portfolio(projected_positions, self._portfolio_limits)
         except Exception as exc:
             return AutonomousDecision(False, f"portfolio risk evaluation failed: {type(exc).__name__}", None)
         if not portfolio.approved:
