@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from app.api.ai import router as ai_router
 from app.api.auth import router as auth_router
 from app.api.backtest import router as backtest_router
+from app.api.broker_state import router as broker_state_router
 from app.api.brokers import router as brokers_router
 from app.api.market_data import router as market_data_router
 from app.api.market_stream import consume_redis_events
@@ -176,6 +177,7 @@ app.include_router(ai_router)
 app.include_router(options_router)
 app.include_router(paper_router)
 app.include_router(brokers_router)
+app.include_router(broker_state_router)
 
 
 @app.get("/health")
