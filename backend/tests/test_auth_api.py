@@ -21,7 +21,8 @@ class FakeDb:
                 return next((u for u in self.users.values() if u["email"] == params["email"]), None)
         if "FROM auth_sessions" in text:
             session = self.sessions.get(params["token_hash"])
-            if session and session["expires_at"] > params["now"] and session["revoked_at"] is None:
+            now = params.get("now")
+            if session and (now is None or session["expires_at"] > now) and session["revoked_at"] is None:
                 return self.users[session["user_id"]]
         return None
 
