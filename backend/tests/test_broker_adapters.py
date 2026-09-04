@@ -180,6 +180,42 @@ async def test_dhan_place_order_rejects_blank_broker_status(monkeypatch: pytest.
 
 
 @pytest.mark.asyncio
+async def test_dhan_malformed_account_state_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
+    broker = DhanBroker("client", "token")
+
+    async def fake_request(*args, **kwargs):
+        return {"unexpected": "payload"}
+
+    monkeypatch.setattr(broker._client, "request", fake_request)
+    with pytest.raises(RuntimeError, match="account response did not contain available balance"):
+        await broker.get_account()
+
+
+@pytest.mark.asyncio
+async def test_dhan_malformed_positions_state_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
+    broker = DhanBroker("client", "token")
+
+    async def fake_request(*args, **kwargs):
+        return {"unexpected": "payload"}
+
+    monkeypatch.setattr(broker._client, "request", fake_request)
+    with pytest.raises(RuntimeError, match="positions response was unavailable"):
+        await broker.get_positions()
+
+
+@pytest.mark.asyncio
+async def test_dhan_malformed_orders_state_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
+    broker = DhanBroker("client", "token")
+
+    async def fake_request(*args, **kwargs):
+        return {"unexpected": "payload"}
+
+    monkeypatch.setattr(broker._client, "request", fake_request)
+    with pytest.raises(RuntimeError, match="orders response was unavailable"):
+        await broker.get_orders()
+
+
+@pytest.mark.asyncio
 async def test_dhan_cancel_requires_authoritative_response(monkeypatch: pytest.MonkeyPatch) -> None:
     broker = DhanBroker("client", "token", allow_live_orders=True)
 
