@@ -9,7 +9,7 @@ from app.brokers.durable_idempotency import DurableBrokerIdempotencyStore
 from app.database.session import SQLAlchemyExecutor, create_database_engine
 
 from .audit import DurableExecutionAuditSink, PostgresExecutionAuditRepository
-from .controlled import ControlledBrokerExecution
+from .fail_closed_controlled import FailClosedControlledBrokerExecution
 from .emergency_control import PostgresEmergencyControlStore
 from .gate import DeterministicExecutionGate, RiskLimits
 from .post_fill_sync import PostFillBrokerStateSynchronizer, RiskSnapshotSink
@@ -23,7 +23,7 @@ from .state_sync import BrokerStateSynchronizer
 class ExecutionRuntime:
     """Fully composed execution dependencies; construction does not activate trading."""
 
-    executor: ControlledBrokerExecution
+    executor: FailClosedControlledBrokerExecution
     sessions: TradingSessionLifecycle
 
 
@@ -70,7 +70,7 @@ def build_execution_runtime(
         session_id=session_identity_provider.current_session_id(),
         sink=sink,
     )
-    executor = ControlledBrokerExecution(
+    executor = FailClosedControlledBrokerExecution(
         broker,
         DeterministicExecutionGate(risk_limits),
         confirmation_phrase=confirmation_phrase,
