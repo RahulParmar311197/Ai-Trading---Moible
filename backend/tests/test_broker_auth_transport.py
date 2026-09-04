@@ -25,6 +25,18 @@ class FakeErrorResponse:
         }
 
 
+class FakeLegacyErrorResponse:
+    is_error = True
+    status_code = 403
+
+    def json(self):
+        return {
+            "errorType": "Invalid_Authentication",
+            "internalErrorCode": "DH-901",
+            "internalErrorMessage": "Client ID or user generated access token is invalid or expired.",
+        }
+
+
 class FakeAsyncClient:
     captured = None
     response = FakeResponse()
@@ -60,6 +72,16 @@ async def test_http_client_supports_custom_auth_header(monkeypatch: pytest.Monke
 async def test_http_client_preserves_safe_provider_error_details(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("app.brokers.http.httpx.AsyncClient", FakeAsyncClient)
     FakeAsyncClient.response = FakeErrorResponse()
+    client = HTTPBrokerClient("https://example.invalid", access_token="secret-token")
+
+    with pytest.raises(BrokerHTTPError, match=r"HTTP 403 \(DH-901: Client ID or user generated access token is invalid or expired\.\)"):
+        await client.request("GET", "/profile")
+
+
+@pytest.mark.asyncio
+async def test_http_client_preserves_safe_legacy_provider_error_details(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("app.brokers.http.httpx.AsyncClient", FakeAsyncClient)
+    FakeAsyncClient.response = FakeLegacyErrorResponse()
     client = HTTPBrokerClient("https://example.invalid", access_token="secret-token")
 
     with pytest.raises(BrokerHTTPError, match=r"HTTP 403 \(DH-901: Client ID or user generated access token is invalid or expired\.\)"):

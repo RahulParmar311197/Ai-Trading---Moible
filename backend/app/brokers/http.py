@@ -65,15 +65,26 @@ class HTTPBrokerClient:
             return None
         if not isinstance(payload, dict):
             return None
-        code = payload.get("errorCode")
-        message = payload.get("errorMessage")
-        if not code and not message:
+
+        # DhanHQ documents errorCode/errorMessage for v2. Keep support for
+        # the provider's legacy internalErrorCode/internalErrorMessage shape
+        # as well, without ever exposing an unbounded raw response body.
+        code = payload.get("errorCode") or payload.get("internalErrorCode")
+        message = payload.get("errorMessage") or payload.get("internalErrorMessage")
+        error_type = payload.get("errorType")
+        if not code and not message and not error_type:
             return None
+
         safe_code = str(code).strip()[:32] if code else ""
         safe_message = str(message).strip()[:160] if message else ""
+        safe_type = str(error_type).strip()[:64] if error_type else ""
         if safe_code and safe_message:
             return f"{safe_code}: {safe_message}"
-        return safe_code or safe_message or None
+        if safe_code:
+            return safe_code
+        if safe_message:
+            return safe_message
+        return safe_type or None
 
     async def request(self, method: str, path: str, **kwargs: Any) -> dict[str, Any] | list[Any]:
         headers = dict(kwargs.pop("headers", {}))
