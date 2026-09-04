@@ -54,15 +54,17 @@ def _build_execution_runtime():
         return None, "Controlled execution is not configured"
     if provider != "upstox":
         return None, f"Unsupported execution broker: {provider}"
+    if not settings.execution_sandbox:
+        return None, "Production broker execution is not enabled until account-bound secret resolution and runtime verification are complete"
 
-    access_token = settings.upstox_sandbox_access_token if settings.execution_sandbox else settings.upstox_access_token
+    access_token = settings.upstox_sandbox_access_token
     if not access_token.strip():
-        return None, "Upstox execution access token is not configured"
+        return None, "Upstox sandbox execution access token is not configured"
 
     broker = UpstoxBroker(
         access_token,
-        sandbox=settings.execution_sandbox,
-        allow_live_orders=settings.execution_allow_live_orders,
+        sandbox=True,
+        allow_live_orders=False,
         allow_sandbox_orders=settings.execution_allow_sandbox_orders,
     )
     runtime = build_execution_runtime(
