@@ -14,13 +14,15 @@ Run `33858141630` verifies the broker authentication transport regression commit
 
 Commit `6eef5fa655f1c3bd63e52f581769264881cf546c` adds a manual Dhan sandbox read-only smoke workflow. The workflow requires `DHAN_SANDBOX_CLIENT_ID` and `DHAN_SANDBOX_ACCESS_TOKEN` repository secrets, targets the documented Dhan sandbox base URL through `DhanBroker(sandbox=True)`, performs account/positions/orders reads, and separately asserts that sandbox mutation remains disabled by default.
 
+The Dhan sandbox workflow was subsequently hardened with a `/profile` authentication diagnostic before portfolio reads. The latest operator-executed run reached that diagnostic and failed with HTTP 403 from the Dhan sandbox `/profile` request. This is a broker-authentication/runtime failure, not evidence of a successful sandbox connection; no mutation step was reached and no order was submitted.
+
 ## Runtime evidence
 
 The project operator has confirmed that the **Upstox sandbox place/cancel smoke execution succeeded** using the repository's dedicated sandbox workflow/token path. This is operator-confirmed runtime evidence; the connected GitHub integration cannot inspect repository secrets or independently reproduce the secret-backed execution.
 
 This sandbox result does not constitute production broker verification or live-money activation.
 
-The new Dhan sandbox workflow is credential-backed but has not been externally executed through the connected tools. Its existence is therefore implementation/CI configuration evidence, not runtime verification.
+Dhan sandbox runtime verification remains **failed/blocked**: repository secrets are present in the workflow environment, but the sandbox `/profile` authentication request currently returns HTTP 403. The workflow remains read-only and mutation-gated. The failure must be resolved and a fresh successful `/profile` plus portfolio-read run obtained before Dhan sandbox runtime can be marked verified.
 
 ## Safety
 
