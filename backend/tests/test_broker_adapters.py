@@ -156,6 +156,30 @@ async def test_dhan_live_submission_is_gated_by_default() -> None:
 
 
 @pytest.mark.asyncio
+async def test_dhan_place_order_requires_broker_status(monkeypatch: pytest.MonkeyPatch) -> None:
+    broker = DhanBroker("client", "token", allow_live_orders=True, instrument_resolver=resolver())
+
+    async def fake_request(*args, **kwargs):
+        return {"orderId": "d-1"}
+
+    monkeypatch.setattr(broker._client, "request", fake_request)
+    with pytest.raises(RuntimeError, match="did not contain an order status; reconciliation required"):
+        await broker.place_order(order())
+
+
+@pytest.mark.asyncio
+async def test_dhan_place_order_rejects_blank_broker_status(monkeypatch: pytest.MonkeyPatch) -> None:
+    broker = DhanBroker("client", "token", allow_live_orders=True, instrument_resolver=resolver())
+
+    async def fake_request(*args, **kwargs):
+        return {"orderId": "d-1", "orderStatus": "   "}
+
+    monkeypatch.setattr(broker._client, "request", fake_request)
+    with pytest.raises(RuntimeError, match="did not contain an order status; reconciliation required"):
+        await broker.place_order(order())
+
+
+@pytest.mark.asyncio
 async def test_dhan_cancel_requires_authoritative_response(monkeypatch: pytest.MonkeyPatch) -> None:
     broker = DhanBroker("client", "token", allow_live_orders=True)
 
