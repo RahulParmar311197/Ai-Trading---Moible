@@ -4,7 +4,7 @@ import pytest
 
 from app.brokers.base import BrokerOrder, BrokerOrderStatus, BrokerOrderType, BrokerSide
 from app.brokers.dhan import DhanBroker
-from app.brokers.http import LiveBrokerDisabled
+from app.brokers.http import BrokerHTTPError, LiveBrokerDisabled
 from app.brokers.order_config import BrokerInstrument, ExchangeSegment, InstrumentResolver, OrderValidity, ProductType
 from app.brokers.upstox import UpstoxBroker
 
@@ -75,6 +75,40 @@ async def test_upstox_live_order_gate_is_not_reused_for_sandbox() -> None:
     )
     assert broker.orders_enabled is False
     assert broker._client.base_url == UpstoxBroker.SANDBOX_BASE_URL
+
+
+@pytest.mark.asyncio
+async def test_upstox_missing_broker_order_id_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
+    broker = UpstoxBroker(
+        "sandbox-token",
+        sandbox=True,
+        allow_sandbox_orders=True,
+        instrument_resolver=resolver(),
+    )
+
+    async def fake_request(*args, **kwargs):
+        return {"data": {}}
+
+    monkeypatch.setattr(broker._client, "request", fake_request)
+    with pytest.raises(BrokerHTTPError, match="no broker order ID; reconciliation required"):
+        await broker.place_order(order())
+
+
+@pytest.mark.asyncio
+async def test_upstox_empty_order_ids_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
+    broker = UpstoxBroker(
+        "sandbox-token",
+        sandbox=True,
+        allow_sandbox_orders=True,
+        instrument_resolver=resolver(),
+    )
+
+    async def fake_request(*args, **kwargs):
+        return {"data": {"order_ids": []}}
+
+    monkeypatch.setattr(broker._client, "request", fake_request)
+    with pytest.raises(BrokerHTTPError, match="no broker order ID; reconciliation required"):
+        await broker.place_order(order())
 
 
 @pytest.mark.asyncio
