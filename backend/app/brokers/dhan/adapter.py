@@ -32,19 +32,35 @@ class DhanBroker:
 
     async def get_account(self) -> Account:
         payload = await self._client.request("GET", "/fundlimit")
-        data = payload if isinstance(payload, dict) else {}
-        available = decimal_value(data.get("availabelBalance", data.get("availableBalance", 0)))
-        balance = available + decimal_value(data.get("utilizedAmount"))
+        if not isinstance(payload, dict) or not payload:
+            raise RuntimeError("Dhan account response was unavailable; reconciliation required")
+        available_raw = payload.get("availabelBalance", payload.get("availableBalance"))
+        if available_raw is None or not str(available_raw).strip():
+            raise RuntimeError("Dhan account response did not contain available balance; reconciliation required")
+        available = decimal_value(available_raw)
+        balance = available + decimal_value(payload.get("utilizedAmount"))
         return Account(account_id=self.client_id, currency="INR", balance=balance, available_margin=available)
+
+    @staticmethod
+    def _rows(payload: Any, resource: str) -> list[dict[str, Any]]:
+        if isinstance(payload, list):
+            rows = payload
+        elif isinstance(payload, dict) and isinstance(payload.get("data"), list):
+            rows = payload["data"]
+        else:
+            raise RuntimeError(f"Dhan {resource} response was unavailable; reconciliation required")
+        if any(not isinstance(row, dict) for row in rows):
+            raise RuntimeError(f"Dhan {resource} response contained invalid rows; reconciliation required")
+        return rows
 
     async def get_positions(self) -> tuple[BrokerPosition, ...]:
         payload = await self._client.request("GET", "/positions")
-        rows = payload if isinstance(payload, list) else payload.get("data", []) if isinstance(payload, dict) else []
+        rows = self._rows(payload, "positions")
         return tuple(BrokerPosition(symbol=str(row.get("securityId", row.get("tradingSymbol", ""))), quantity=int(row.get("netQty", row.get("netQuantity", 0)) or 0), average_price=decimal_value(row.get("costPrice", row.get("buyAvg", row.get("avgCostPrice", 0)))), realized_pnl=decimal_value(row.get("realizedProfit", row.get("realizedPnl", 0))), unrealized_pnl=decimal_value(row.get("unrealizedProfit", row.get("unrealizedPnl", 0)))) for row in rows)
 
     async def get_orders(self) -> tuple[BrokerOrder, ...]:
         payload = await self._client.request("GET", "/orders")
-        rows = payload if isinstance(payload, list) else payload.get("data", []) if isinstance(payload, dict) else []
+        rows = self._rows(payload, "orders")
         return tuple(self._map_order(row) for row in rows)
 
     async def place_order(self, order: BrokerOrder) -> BrokerOrder:
