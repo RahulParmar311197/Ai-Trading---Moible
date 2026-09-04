@@ -14,18 +14,31 @@ class DhanBroker:
     """Provider adapter for DhanHQ v2 account/portfolio/order APIs."""
 
     provider = "dhan"
+    LIVE_BASE_URL = "https://api.dhan.co/v2"
+    SANDBOX_BASE_URL = "https://sandbox.dhan.co/v2"
     _MAX_CORRELATION_ID_LENGTH = 30
 
-    def __init__(self, client_id: str, access_token: str, *, timeout: float = 10.0, allow_live_orders: bool = False, instrument_resolver: InstrumentResolver | None = None, session_expires_at: datetime | None = None) -> None:
+    def __init__(self, client_id: str, access_token: str, *, timeout: float = 10.0, allow_live_orders: bool = False, sandbox: bool = False, allow_sandbox_orders: bool = False, instrument_resolver: InstrumentResolver | None = None, session_expires_at: datetime | None = None) -> None:
         self.client_id = client_id
-        self._session = StaticTokenBrokerSession(self.provider, client_id, access_token, expires_at=session_expires_at)
-        self._client = HTTPBrokerClient("https://api.dhan.co/v2", session=self._session, timeout=timeout)
+        self._sandbox = sandbox
         self._allow_live_orders = allow_live_orders
+        self._allow_sandbox_orders = allow_sandbox_orders
+        self._session = StaticTokenBrokerSession(self.provider, client_id, access_token, expires_at=session_expires_at)
+        base_url = self.SANDBOX_BASE_URL if sandbox else self.LIVE_BASE_URL
+        self._client = HTTPBrokerClient(base_url, session=self._session, timeout=timeout, auth_header="access-token", auth_scheme="")
         self._instrument_resolver = instrument_resolver or InstrumentResolver()
 
     @property
     def session(self) -> StaticTokenBrokerSession:
         return self._session
+
+    @property
+    def sandbox(self) -> bool:
+        return self._sandbox
+
+    @property
+    def orders_enabled(self) -> bool:
+        return self._allow_sandbox_orders if self._sandbox else self._allow_live_orders
 
     async def authenticate(self) -> BrokerAuthentication:
         return self._session.authentication()
@@ -64,8 +77,9 @@ class DhanBroker:
         return tuple(self._map_order(row) for row in rows)
 
     async def place_order(self, order: BrokerOrder) -> BrokerOrder:
-        if not self._allow_live_orders:
-            raise LiveBrokerDisabled("Dhan live order submission is disabled")
+        if not self.orders_enabled:
+            mode = "sandbox" if self._sandbox else "live"
+            raise LiveBrokerDisabled(f"Dhan {mode} order submission is disabled")
         instrument = self._instrument_resolver.resolve(order.symbol)
         payload = await self._client.request("POST", "/orders", json=self._order_payload(order, instrument))
         data = payload if isinstance(payload, dict) else {}
@@ -93,8 +107,9 @@ class DhanBroker:
         return {"dhanClientId": self.client_id, "correlationId": self._validate_correlation_id(order.client_order_id), "transactionType": order.side.value, "exchangeSegment": instrument.exchange_segment.value, "productType": product, "orderType": order.order_type.value, "validity": instrument.validity.value, "securityId": instrument.provider_symbol, "quantity": order.quantity, "disclosedQuantity": "", "price": str(order.average_price or Decimal("0")), "triggerPrice": "", "afterMarketOrder": False, "amoTime": "", "boProfitValue": "", "boStopLossValue": ""}
 
     async def cancel_order(self, order_id: str) -> BrokerOrder:
-        if not self._allow_live_orders:
-            raise LiveBrokerDisabled("Dhan live order cancellation is disabled")
+        if not self.orders_enabled:
+            mode = "sandbox" if self._sandbox else "live"
+            raise LiveBrokerDisabled(f"Dhan {mode} order cancellation is disabled")
         if not order_id:
             raise ValueError("Dhan order id must be non-empty")
         payload = await self._client.request("DELETE", f"/orders/{order_id}")
