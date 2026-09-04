@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.api.ai import router as ai_router
+from app.api.auth import router as auth_router
 from app.api.backtest import router as backtest_router
 from app.api.market_data import router as market_data_router
 from app.api.market_stream import consume_redis_events
@@ -172,6 +173,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="AI Trading Platform API", version="0.1.0", lifespan=lifespan)
+app.include_router(auth_router)
 app.include_router(markets_router)
 app.include_router(market_data_router)
 app.include_router(market_stream_router)
