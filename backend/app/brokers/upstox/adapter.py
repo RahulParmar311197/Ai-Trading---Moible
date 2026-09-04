@@ -15,7 +15,7 @@ class UpstoxBroker:
 
     provider = "upstox"
     LIVE_BASE_URL = "https://api.upstox.com/v2"
-    SANDBOX_BASE_URL = "https://sandbox.upstox.com/v2"
+    SANDBOX_BASE_URL = "https://api-sandbox.upstox.com/v2"
 
     def __init__(self, access_token: str, *, timeout: float = 10.0, allow_live_orders: bool = False, sandbox: bool = False, allow_sandbox_orders: bool = False, instrument_resolver: InstrumentResolver | None = None, session_expires_at: datetime | None = None) -> None:
         self._sandbox = sandbox
