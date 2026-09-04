@@ -278,9 +278,29 @@ def test_unknown_upstox_status_fails_closed() -> None:
         UpstoxBroker._map_order({"order_id": "u-unknown", "tag": "client-1", "status": "new-provider-state"})
 
 
+def test_missing_upstox_order_status_fails_closed() -> None:
+    with pytest.raises(RuntimeError, match="did not contain an order status; reconciliation required"):
+        UpstoxBroker._map_order({"order_id": "u-missing", "tag": "client-1"})
+
+
+def test_blank_upstox_order_status_fails_closed() -> None:
+    with pytest.raises(RuntimeError, match="did not contain an order status; reconciliation required"):
+        UpstoxBroker._map_order({"order_id": "u-blank", "tag": "client-1", "status": "   "})
+
+
 def test_unknown_dhan_status_fails_closed() -> None:
     with pytest.raises(ValueError, match="unsupported Dhan order status"):
         DhanBroker._map_order({"orderId": "d-unknown", "correlationId": "client-1", "orderStatus": "new-provider-state"})
+
+
+def test_missing_dhan_order_status_fails_closed() -> None:
+    with pytest.raises(RuntimeError, match="did not contain an order status; reconciliation required"):
+        DhanBroker._map_order({"orderId": "d-missing", "correlationId": "client-1"})
+
+
+def test_blank_dhan_order_status_fails_closed() -> None:
+    with pytest.raises(RuntimeError, match="did not contain an order status; reconciliation required"):
+        DhanBroker._map_order({"orderId": "d-blank", "correlationId": "client-1", "orderStatus": "   "})
 
 
 def test_upstox_payload_uses_resolved_provider_configuration() -> None:
