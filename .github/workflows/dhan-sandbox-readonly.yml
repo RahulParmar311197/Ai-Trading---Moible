@@ -25,6 +25,53 @@ jobs:
           test -n "$DHAN_SANDBOX_CLIENT_ID"
           test -n "$DHAN_SANDBOX_ACCESS_TOKEN"
           echo "Dhan sandbox credentials are configured for this workflow run."
+      - name: Diagnose Dhan sandbox HTTP response
+        env:
+          DHAN_SANDBOX_ACCESS_TOKEN: ${{ secrets.DHAN_SANDBOX_ACCESS_TOKEN }}
+        run: |
+          python - <<'PY'
+          import asyncio
+          import hashlib
+          import os
+
+          import httpx
+
+          async def main() -> None:
+              url = "https://sandbox.dhan.co/v2/profile"
+              headers = {
+                  "Accept": "application/json",
+                  "access-token": os.environ["DHAN_SANDBOX_ACCESS_TOKEN"],
+              }
+              async with httpx.AsyncClient(timeout=10.0, follow_redirects=False) as client:
+                  response = await client.get(url, headers=headers)
+              print(f"Dhan sandbox /profile HTTP status: {response.status_code}")
+              print(f"Dhan sandbox /profile content-type: {response.headers.get('content-type', '')[:80]}")
+              print(f"Dhan sandbox /profile server: {response.headers.get('server', '')[:80]}")
+              print(f"Dhan sandbox /profile body length: {len(response.content)}")
+              if response.status_code == 200:
+                  try:
+                      payload = response.json()
+                  except ValueError as exc:
+                      raise RuntimeError("Dhan sandbox /profile returned non-JSON success response") from exc
+                  if not isinstance(payload, dict):
+                      raise RuntimeError("Dhan sandbox /profile success response was not an object")
+                  print(f"Dhan sandbox /profile JSON keys: {','.join(sorted(str(key) for key in payload.keys()))}")
+                  return
+              body_digest = hashlib.sha256(response.content).hexdigest()
+              print(f"Dhan sandbox /profile body SHA-256: {body_digest}")
+              try:
+                  payload = response.json()
+              except ValueError:
+                  print("Dhan sandbox /profile response is not JSON.")
+              else:
+                  if isinstance(payload, dict):
+                      print(f"Dhan sandbox /profile JSON keys: {','.join(sorted(str(key) for key in payload.keys()))}")
+                  else:
+                      print("Dhan sandbox /profile JSON response is not an object.")
+              raise RuntimeError(f"Dhan sandbox /profile returned HTTP {response.status_code}")
+
+          asyncio.run(main())
+          PY
       - name: Diagnose Dhan sandbox authentication
         env:
           DHAN_SANDBOX_CLIENT_ID: ${{ secrets.DHAN_SANDBOX_CLIENT_ID }}
@@ -33,7 +80,6 @@ jobs:
           python - <<'PY'
           import asyncio
           import os
-          import httpx
 
           from app.brokers.dhan import DhanBroker
           from app.brokers.http import BrokerHTTPError
