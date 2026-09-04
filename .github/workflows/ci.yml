@@ -37,6 +37,14 @@ jobs:
       - run: pip install -r requirements.txt
       - name: Verify official Upstox protobuf package
         run: python -c "from upstox_client.feeder.proto import MarketDataFeedV3_pb2; print(MarketDataFeedV3_pb2.__name__)"
+      - name: Apply database migrations
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ai_trading
+        run: |
+          for migration in ../database/migrations/*.sql; do
+            echo "Applying ${migration}"
+            psql "${DATABASE_URL}" -v ON_ERROR_STOP=1 -f "${migration}"
+          done
       - run: pytest -q -m 'not integration'
       - run: pytest -q -m integration
         env:
