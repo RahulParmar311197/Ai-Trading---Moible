@@ -54,7 +54,10 @@ class DhanBroker:
         payload = await self._client.request("POST", "/orders", json=self._order_payload(order, instrument))
         data = payload if isinstance(payload, dict) else {}
         order_id = str(data.get("orderId", data.get("order_id", "")))
-        status = self._map_status(str(data.get("orderStatus", data.get("status", "PENDING"))))
+        raw_status = data.get("orderStatus", data.get("status"))
+        if raw_status is None or not str(raw_status).strip():
+            raise RuntimeError("Dhan order response did not contain an order status; reconciliation required")
+        status = self._map_status(str(raw_status))
         if not order_id:
             raise RuntimeError("Dhan order response did not contain an order id")
         return order.model_copy(update={"order_id": order_id, "status": status})
