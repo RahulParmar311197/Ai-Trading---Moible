@@ -14,10 +14,12 @@ Last updated: 2026-09-04
 
 - Upstox sandbox workflow is on `main` and requires `UPSTOX_SANDBOX_ACCESS_TOKEN` from repository secrets.
 - The sandbox workflow network preflight is diagnostic-only; the actual place/cancel integration test remains the authoritative sandbox execution check.
-- A real sandbox place/cancel execution has not yet been successfully verified.
+- The project operator has confirmed that the Upstox sandbox place/cancel smoke execution succeeded using the dedicated sandbox workflow/token path. This is operator-confirmed runtime evidence; the connected GitHub integration cannot inspect repository secrets or independently reproduce the secret-backed execution.
+- CI run `33858141630` completed successfully for the broker authentication transport regression commit: backend dependency install, official Upstox protobuf verification, PostgreSQL migrations, non-integration pytest, integration pytest, and Android `assembleDebug` all passed.
+- Dhan authentication transport now uses the provider-required `access-token` header without a Bearer scheme; Upstox retains `Authorization: Bearer`.
+- Dhan sandbox mode is explicitly isolated from live mutation and uses the documented sandbox base URL; sandbox permission cannot enable live orders.
+- Upstox cancellation confirmation is fail-closed and requires authoritative broker cancellation status rather than fabricating local `CANCELLED` state.
 - Live trading remains explicitly gated and is not production verified.
-- Dhan cancellation handling now requires an authoritative broker cancellation response and a subsequent authoritative order refresh confirming the requested broker order ID is `CANCELLED`; fabricated local cancellation state is no longer accepted.
-- Dhan order submission now also fails closed when the broker response omits or supplies a blank order status; the lifecycle requires reconciliation instead of assuming `PENDING`/`NEW`.
 
 ## Verified implementation state
 
@@ -27,6 +29,7 @@ Last updated: 2026-09-04
 - Provider-neutral broker contracts, authentication boundaries, reconciliation, idempotency, Upstox/Dhan adapters, instrument resolution/catalogue ingestion, and secret-safe session handling are implemented.
 - Upstox and Dhan live mutation remains disabled by default.
 - Upstox has an explicit sandbox mode with a separate `allow_sandbox_orders` gate. Sandbox permission cannot enable live orders.
+- Dhan has an explicit sandbox mode with a separate `allow_sandbox_orders` gate and documented sandbox endpoint isolation.
 - `ControlledBrokerExecution` is inert until authenticated startup and exact explicit activation. The kill switch defaults active, deterministic risk approval is mandatory before mutation, broker order-id confirmation is required, audit events are emitted, and shutdown/recovery fail closed.
 - Controlled live construction requires an explicitly supplied idempotency store; there is no silent process-local fallback.
 - Ambiguous broker submission exceptions preserve the idempotency reservation and force fail-closed reconciliation before reuse.
@@ -44,6 +47,7 @@ Last updated: 2026-09-04
 - Durable idempotency regression coverage is merged: unresolved reservations remain pending, completed results are replayed, conflicting reuse is rejected, and explicit reconciliation/clear permits reuse.
 - Dhan cancellation is fail-closed: cancellation requires a matching broker order ID and `CANCELLED` response, followed by an authoritative `GET /orders/{order_id}` confirmation before returning the mapped order.
 - Dhan order submission is fail-closed when the broker response lacks a non-blank `orderStatus`/`status`; tests cover missing and blank status responses and require reconciliation.
+- Broker authentication transport regression coverage verifies Dhan `access-token` versus Upstox Bearer semantics.
 
 ## Stage status
 
@@ -89,10 +93,12 @@ Last updated: 2026-09-04
 
 - [x] Provider-neutral broker/auth/reconciliation contracts, idempotency, durable PostgreSQL idempotency, ambiguous-submission protection, Upstox/Dhan adapters, mutation gating, instrument resolution/catalogues, secret-safe sessions, token exchange/renewal boundaries, CI verification
 - [x] Explicit Upstox sandbox adapter mode and opt-in place/cancel smoke-test path
+- [x] Upstox sandbox place/cancel runtime smoke execution — operator confirmed
+- [x] Dhan authentication-header transport regression coverage and sandbox-mode isolation
 - [x] Dhan cancellation hardening with authoritative post-cancel order refresh and regression tests
 - [x] Dhan submission missing-status fail-closed hardening with regression tests
-- [ ] Live broker runtime verification
-- [ ] Upstox sandbox smoke execution with a real sandbox token
+- [ ] Dhan sandbox external runtime verification
+- [ ] Production/live broker runtime verification
 
 ### Stage 9 — Controlled Live Trading
 
@@ -147,18 +153,15 @@ Last updated: 2026-09-04
 
 ## Latest CI evidence
 
-- Main CI run `33852909204` (#651), head `17f84ebb7b5d214ad1181458f30d0915e63e52ac`, completed successfully on 2026-09-04. Backend tests passed including migrations, non-integration pytest, and integration pytest steps; Android `assembleDebug` passed.
-- The Dhan cancellation hardening regression tests are included in CI run #651 and the backend job completed successfully.
-- Commit `08870ca6e063d480d4a2538ca0974a63792e8c79` adds the Dhan missing-status fail-closed implementation; commit `cf956f162b63da964eff70c2a87345e77e894667` adds regression tests for missing and blank status responses. CI for these newer commits is not yet evidenced by a completed run in the connector.
-- Earlier PR #27 head `74931b378227f3b709761f0918614adf0271f025`: Android CI run `33834375439` completed successfully; CI run `33834375456` completed successfully with backend-tests and Android build passing. PR merged to `main` as `89be79df6bb8f0d7d66fb602486aaa823b5ffccd`.
-- PR #26 head `098814160c4fd6b18f948b4a84d93cf9783c885b`: CI run `33833371312` backend-tests and Android build both completed successfully; PR merged to `main` as `f2b51649954b3c95b5038fda48a70493dbaca42d`.
-- PR #22 head `3b24a27848ee215f82bc2fabedb6baed92e5a3bb`: CI run `33746835072` backend-tests and Android build both completed successfully; PR merged to `main` as `62f66671c97dd9bec19a66617d0025222bae378b`.
+- Main CI run `33858141630` completed successfully on 2026-09-04 for commit `cf0d8fd782e4172891dfb337af3bd21288ee741c`. Backend dependencies, official Upstox protobuf verification, PostgreSQL migrations, non-integration pytest, integration pytest, and Android `assembleDebug` all passed.
+- The run includes provider authentication-header regression coverage. Dhan uses `access-token` without Bearer; Upstox retains Bearer Authorization.
+- The operator-confirmed Upstox sandbox place/cancel smoke is runtime evidence but is not independently reproducible through the connected GitHub integration because repository secrets are inaccessible.
 
 ## Runtime verification
 
 The Codespaces environment was previously rebuilt successfully with self-contained Docker client/Compose setup. PostgreSQL 16 and Redis 7 were started locally and health-checked. The local backend suite and PostgreSQL integration suite were executed successfully. FastAPI `/health` returned 200/ok and `/ready` returned 200/degraded because live market-data and controlled execution prerequisites were intentionally not configured.
 
-The Dhan option-chain adapter, emergency-control runtime, autonomous decision pipeline, Dhan broker runtime, Upstox broker runtime, and production broker integrations have CI-level or code-level verification only unless explicitly stated above. No live Dhan credential, real option-chain request, production broker runtime, or real live activation has been performed.
+The Dhan option-chain adapter, emergency-control runtime, autonomous decision pipeline, Dhan broker runtime, Upstox broker runtime, and production broker integrations have CI-level or code-level verification only unless explicitly stated above. Upstox sandbox place/cancel is explicitly operator-confirmed runtime evidence. No live Dhan credential, real option-chain request, production broker runtime, or real live activation has been performed.
 
 ## Safety status
 
@@ -166,8 +169,7 @@ The Dhan option-chain adapter, emergency-control runtime, autonomous decision pi
 
 ## Remaining blockers / unverified items
 
-1. Production broker runtime and real live activation are unverified. Upstox sandbox has a dedicated workflow and repository-secret path, but a real place/cancel smoke execution has not yet been successfully verified.
+1. Dhan sandbox external runtime verification and production/live broker runtime remain unverified.
 2. Stage 5 real external AI-provider runtime verification remains unverified; provider contract compatibility and Android integration are verified.
 3. Stage 6 live option-chain provider runtime integration and fresh runtime verification remain unverified.
 4. Stage 10 production validation remains unverified and gated; autonomous decision evaluation and controlled bridging are implemented and CI verified but are not an authorization path for live orders.
-5. Dhan broker runtime authentication and live/paper external runtime behavior remain unverified; cancellation and missing-status submission hardening are implementation/test verified only until newer CI completes.
