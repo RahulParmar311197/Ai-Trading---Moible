@@ -102,9 +102,12 @@ class UpstoxBroker:
     @staticmethod
     def _map_order(row: dict[str, Any]) -> BrokerOrder:
         status_map = {"complete": BrokerOrderStatus.FILLED, "open": BrokerOrderStatus.OPEN, "pending": BrokerOrderStatus.NEW, "cancelled": BrokerOrderStatus.CANCELLED, "rejected": BrokerOrderStatus.REJECTED, "partially_filled": BrokerOrderStatus.PARTIALLY_FILLED, "partial": BrokerOrderStatus.PARTIALLY_FILLED}
-        raw_status = str(row.get("status", "pending")).lower()
+        raw_status = row.get("status")
+        if raw_status is None or not str(raw_status).strip():
+            raise RuntimeError("Upstox order response did not contain an order status; reconciliation required")
+        normalized_status = str(raw_status).lower()
         try:
-            status = status_map[raw_status]
+            status = status_map[normalized_status]
         except KeyError as exc:
-            raise ValueError(f"unsupported Upstox order status: {raw_status}") from exc
+            raise ValueError(f"unsupported Upstox order status: {normalized_status}") from exc
         return BrokerOrder(order_id=str(row.get("order_id", "")), client_order_id=str(row.get("tag", row.get("order_ref_id", row.get("order_id", "")))), symbol=str(row.get("instrument_token", "")), side=str(row.get("transaction_type", "BUY")), order_type=str(row.get("order_type", "MARKET")), quantity=int(row.get("quantity", 1) or 1), filled_quantity=int(row.get("filled_quantity", row.get("filled_qty", 0)) or 0), average_price=decimal_value(row.get("average_price"), "0") or None, status=status)
