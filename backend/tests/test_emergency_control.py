@@ -65,7 +65,11 @@ def test_write_failure_fails_closed():
 
 
 class FakeBroker:
+    def __init__(self):
+        self.auth_calls = 0
+
     async def authenticate(self):
+        self.auth_calls += 1
         return BrokerAuthentication(provider="fake", account_id="account-1", authenticated=True)
 
 
@@ -81,31 +85,38 @@ class MemoryEmergencyStore:
         return self.state
 
 
-def build_execution(store):
-    return ControlledBrokerExecution(FakeBroker(), DeterministicExecutionGate(RiskLimits()), confirmation_phrase="ENABLE LIVE", idempotency_store=BrokerIdempotencyStore(), emergency_control=store)
+def build_execution(store, broker=None):
+    return ControlledBrokerExecution(broker or FakeBroker(), DeterministicExecutionGate(RiskLimits()), confirmation_phrase="ENABLE LIVE", idempotency_store=BrokerIdempotencyStore(), emergency_control=store)
 
 
 @pytest.mark.asyncio
-async def test_startup_keeps_kill_switch_active_when_persisted_stop_exists():
-    execution = build_execution(MemoryEmergencyStore(active=True))
-    await execution.startup()
-    assert execution.started
-    assert execution.kill_switch_active
+async def test_startup_rejects_persisted_emergency_stop_before_broker_authentication():
+    broker = FakeBroker()
+    events = []
+    execution = ControlledBrokerExecution(broker, DeterministicExecutionGate(RiskLimits()), confirmation_phrase="ENABLE LIVE", idempotency_store=BrokerIdempotencyStore(), emergency_control=MemoryEmergencyStore(active=True), audit_sink=events.append)
     with pytest.raises(ControlledExecutionError, match="durable emergency stop is active"):
-        execution.activate("ENABLE LIVE")
+        await execution.startup()
+    assert broker.auth_calls == 0
+    assert not execution.started
+    assert execution.kill_switch_active
+    assert events[-1].event_type == "STARTUP_REJECTED"
 
 
 @pytest.mark.asyncio
-async def test_emergency_stop_reset_requires_explicit_confirmation_and_stays_deactivated():
+async def test_emergency_stop_can_be_cleared_after_fail_closed_startup_and_stays_deactivated():
     store = MemoryEmergencyStore(active=True)
     execution = build_execution(store)
-    await execution.startup()
+    with pytest.raises(ControlledExecutionError, match="durable emergency stop is active"):
+        await execution.startup()
     with pytest.raises(ControlledExecutionError, match="explicit live-execution confirmation required"):
         execution.clear_emergency_stop("WRONG")
     execution.clear_emergency_stop("ENABLE LIVE", "operator reviewed state")
     assert store.state.active is False
     assert execution.kill_switch_active
     assert not execution.active
+    await execution.startup()
+    execution.activate("ENABLE LIVE")
+    assert execution.active
 
 
 @pytest.mark.asyncio
