@@ -155,6 +155,64 @@ async def test_dhan_live_submission_is_gated_by_default() -> None:
         await broker.place_order(order("1333"))
 
 
+@pytest.mark.asyncio
+async def test_dhan_cancel_requires_authoritative_response(monkeypatch: pytest.MonkeyPatch) -> None:
+    broker = DhanBroker("client", "token", allow_live_orders=True)
+
+    async def fake_request(*args, **kwargs):
+        return {}
+
+    monkeypatch.setattr(broker._client, "request", fake_request)
+    with pytest.raises(RuntimeError, match="cancellation response was ambiguous"):
+        await broker.cancel_order("d-1")
+
+
+@pytest.mark.asyncio
+async def test_dhan_cancel_rejects_mismatched_confirmation(monkeypatch: pytest.MonkeyPatch) -> None:
+    broker = DhanBroker("client", "token", allow_live_orders=True)
+
+    async def fake_request(*args, **kwargs):
+        return {"orderId": "different", "orderStatus": "CANCELLED"}
+
+    monkeypatch.setattr(broker._client, "request", fake_request)
+    with pytest.raises(RuntimeError, match="cancellation response was ambiguous"):
+        await broker.cancel_order("d-1")
+
+
+@pytest.mark.asyncio
+async def test_dhan_cancel_requires_refreshed_cancelled_state(monkeypatch: pytest.MonkeyPatch) -> None:
+    broker = DhanBroker("client", "token", allow_live_orders=True)
+    calls = []
+
+    async def fake_request(method, path, **kwargs):
+        calls.append((method, path))
+        if method == "DELETE":
+            return {"orderId": "d-1", "orderStatus": "CANCELLED"}
+        return {"orderId": "d-1", "correlationId": "client-1", "securityId": "1333", "transactionType": "BUY", "orderType": "LIMIT", "quantity": 1, "orderStatus": "PENDING"}
+
+    monkeypatch.setattr(broker._client, "request", fake_request)
+    with pytest.raises(RuntimeError, match="state refresh was not confirmed"):
+        await broker.cancel_order("d-1")
+    assert calls == [("DELETE", "/orders/d-1"), ("GET", "/orders/d-1")]
+
+
+@pytest.mark.asyncio
+async def test_dhan_cancel_returns_refreshed_broker_order(monkeypatch: pytest.MonkeyPatch) -> None:
+    broker = DhanBroker("client", "token", allow_live_orders=True)
+
+    async def fake_request(method, path, **kwargs):
+        if method == "DELETE":
+            return {"orderId": "d-1", "orderStatus": "CANCELLED"}
+        return {"orderId": "d-1", "correlationId": "client-1", "securityId": "1333", "transactionType": "BUY", "orderType": "LIMIT", "quantity": 1, "filledQty": 0, "orderStatus": "CANCELLED"}
+
+    monkeypatch.setattr(broker._client, "request", fake_request)
+    cancelled = await broker.cancel_order("d-1")
+    assert cancelled.order_id == "d-1"
+    assert cancelled.client_order_id == "client-1"
+    assert cancelled.symbol == "1333"
+    assert cancelled.status is BrokerOrderStatus.CANCELLED
+
+
 def test_upstox_order_mapping_is_provider_neutral() -> None:
     mapped = UpstoxBroker._map_order({
         "order_id": "u-1",
