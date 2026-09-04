@@ -86,7 +86,12 @@ class UpstoxBroker:
         if not self.orders_enabled:
             raise LiveBrokerDisabled("Upstox sandbox order cancellation is disabled" if self._sandbox else "Upstox live order cancellation is disabled")
         payload = await self._client.request("DELETE", "/order/cancel", params={"order_id": order_id})
-        data = payload.get("data", {}) if isinstance(payload, dict) else {}
+        data = payload.get("data") if isinstance(payload, dict) else None
+        if not isinstance(data, dict):
+            raise BrokerHTTPError("Upstox order cancellation returned no broker confirmation; reconciliation required")
+        confirmed_order_id = data.get("order_id")
+        if not confirmed_order_id or str(confirmed_order_id) != order_id:
+            raise BrokerHTTPError("Upstox order cancellation returned ambiguous broker order ID; reconciliation required")
         return BrokerOrder(order_id=order_id, client_order_id=str(data.get("tag", order_id)), symbol=str(data.get("instrument_token", "unknown")), side=str(data.get("transaction_type", "BUY")), order_type=str(data.get("order_type", "MARKET")), quantity=int(data.get("quantity", 1) or 1), status=BrokerOrderStatus.CANCELLED)
 
     async def reconcile_order(self, client_order_id: str) -> BrokerReconciliation:
