@@ -1,0 +1,98 @@
+name: Dhan Sandbox Read-Only Smoke
+
+on:
+  workflow_dispatch:
+
+jobs:
+  sandbox-readonly:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      PYTHONPATH: .
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+      - name: Verify Dhan sandbox credentials are configured
+        env:
+          DHAN_SANDBOX_CLIENT_ID: ${{ secrets.DHAN_SANDBOX_CLIENT_ID }}
+          DHAN_SANDBOX_ACCESS_TOKEN: ${{ secrets.DHAN_SANDBOX_ACCESS_TOKEN }}
+        run: |
+          test -n "$DHAN_SANDBOX_CLIENT_ID"
+          test -n "$DHAN_SANDBOX_ACCESS_TOKEN"
+          echo "Dhan sandbox credentials are configured for this workflow run."
+      - name: Verify Dhan sandbox account and portfolio reads
+        env:
+          DHAN_SANDBOX_CLIENT_ID: ${{ secrets.DHAN_SANDBOX_CLIENT_ID }}
+          DHAN_SANDBOX_ACCESS_TOKEN: ${{ secrets.DHAN_SANDBOX_ACCESS_TOKEN }}
+        run: |
+          python - <<'PY'
+          import asyncio
+          import os
+
+          from app.brokers.dhan import DhanBroker
+
+          async def main() -> None:
+              broker = DhanBroker(
+                  os.environ["DHAN_SANDBOX_CLIENT_ID"],
+                  os.environ["DHAN_SANDBOX_ACCESS_TOKEN"],
+                  sandbox=True,
+              )
+              assert broker.sandbox is True
+              assert broker.orders_enabled is False
+              assert broker._client.base_url == DhanBroker.SANDBOX_BASE_URL
+
+              account = await broker.get_account()
+              positions = await broker.get_positions()
+              orders = await broker.get_orders()
+
+              assert account.account_id == os.environ["DHAN_SANDBOX_CLIENT_ID"]
+              assert isinstance(positions, tuple)
+              assert isinstance(orders, tuple)
+              print("Dhan sandbox read-only smoke succeeded: account, positions, and orders resolved.")
+
+          asyncio.run(main())
+          PY
+      - name: Assert sandbox cannot submit orders
+        env:
+          DHAN_SANDBOX_CLIENT_ID: ${{ secrets.DHAN_SANDBOX_CLIENT_ID }}
+          DHAN_SANDBOX_ACCESS_TOKEN: ${{ secrets.DHAN_SANDBOX_ACCESS_TOKEN }}
+        run: |
+          python - <<'PY'
+          import asyncio
+          import os
+          from decimal import Decimal
+
+          from app.brokers.base import BrokerOrder, BrokerOrderStatus, BrokerOrderType, BrokerSide
+          from app.brokers.dhan import DhanBroker
+          from app.brokers.http import LiveBrokerDisabled
+
+          async def main() -> None:
+              broker = DhanBroker(
+                  os.environ["DHAN_SANDBOX_CLIENT_ID"],
+                  os.environ["DHAN_SANDBOX_ACCESS_TOKEN"],
+                  sandbox=True,
+              )
+              order = BrokerOrder(
+                  order_id="local-sandbox-gate",
+                  client_order_id="sandbox-gate",
+                  symbol="NIFTY",
+                  side=BrokerSide.BUY,
+                  order_type=BrokerOrderType.MARKET,
+                  quantity=1,
+                  average_price=Decimal("0"),
+                  status=BrokerOrderStatus.NEW,
+              )
+              try:
+                  await broker.place_order(order)
+              except LiveBrokerDisabled:
+                  print("Dhan sandbox mutation gate is active by default.")
+                  return
+              raise AssertionError("Dhan sandbox mutation unexpectedly bypassed the default gate")
+
+          asyncio.run(main())
+          PY
