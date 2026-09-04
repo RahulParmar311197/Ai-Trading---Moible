@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from app.api.ai import router as ai_router
 from app.api.auth import router as auth_router
 from app.api.backtest import router as backtest_router
+from app.api.brokers import router as brokers_router
 from app.api.market_data import router as market_data_router
 from app.api.market_stream import consume_redis_events
 from app.api.market_stream import router as market_stream_router
@@ -53,11 +54,7 @@ def _build_execution_runtime():
     if provider != "upstox":
         return None, f"Unsupported execution broker: {provider}"
 
-    access_token = (
-        settings.upstox_sandbox_access_token
-        if settings.execution_sandbox
-        else settings.upstox_access_token
-    )
+    access_token = settings.upstox_sandbox_access_token if settings.execution_sandbox else settings.upstox_access_token
     if not access_token.strip():
         return None, "Upstox execution access token is not configured"
 
@@ -166,10 +163,7 @@ async def lifespan(app: FastAPI):
         for task in (runner_task, market_stream_task):
             if task is not None:
                 task.cancel()
-        await asyncio.gather(
-            *(task for task in (runner_task, market_stream_task) if task is not None),
-            return_exceptions=True,
-        )
+        await asyncio.gather(*(task for task in (runner_task, market_stream_task) if task is not None), return_exceptions=True)
 
 
 app = FastAPI(title="AI Trading Platform API", version="0.1.0", lifespan=lifespan)
@@ -181,6 +175,7 @@ app.include_router(backtest_router)
 app.include_router(ai_router)
 app.include_router(options_router)
 app.include_router(paper_router)
+app.include_router(brokers_router)
 
 
 @app.get("/health")
