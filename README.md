@@ -26,4 +26,6 @@ Never commit real API keys, broker credentials, JWT secrets, certificates, or pr
 
 ## Current stage
 
-Stage 0 — Architecture / repository foundation.
+Stage 10 — Autonomous Trading Foundation.
+
+Live/autonomous broker mutation remains explicitly gated and is not production verified.
