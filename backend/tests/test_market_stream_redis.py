@@ -61,9 +61,11 @@ async def test_redis_events_reach_matching_subscriber(monkeypatch):
     task = asyncio.create_task(stream.__anext__())
     await asyncio.sleep(0)
     await consume_redis_events(redis)
-    assert json.loads(await asyncio.wait_for(task, timeout=1))["instrument_id"] == "nifty"
+    payload = await asyncio.wait_for(task, timeout=1)
+    assert json.loads(payload)["instrument_id"] == "nifty"
     await stream.aclose()
     assert redis.pubsub_instance.subscribed == "market.events"
+    assert redis.pubsub_instance.unsubscribed == "market.events"
     assert redis.pubsub_instance.closed
 
 
