@@ -18,6 +18,9 @@ class BrokerAccount:
     external_account_id: str
     enabled: bool
     has_credential_ref: bool
+    # Opaque reference used only by the internal credential-resolution boundary.
+    # API serializers must never expose this value.
+    credential_ref: str | None
 
 
 class BrokerAccountRepository:
@@ -28,6 +31,9 @@ class BrokerAccountRepository:
 
     @staticmethod
     def _map(row: dict[str, Any]) -> BrokerAccount:
+        credential_ref = row.get("credential_ref")
+        if credential_ref is not None:
+            credential_ref = str(credential_ref).strip() or None
         return BrokerAccount(
             id=UUID(str(row["id"])),
             user_id=UUID(str(row["user_id"])),
@@ -35,7 +41,8 @@ class BrokerAccountRepository:
             environment=str(row["environment"]),
             external_account_id=str(row["external_account_id"]),
             enabled=bool(row["enabled"]),
-            has_credential_ref=bool(row.get("credential_ref")),
+            has_credential_ref=credential_ref is not None,
+            credential_ref=credential_ref,
         )
 
     def list_for_user(self, user_id: UUID) -> tuple[BrokerAccount, ...]:
