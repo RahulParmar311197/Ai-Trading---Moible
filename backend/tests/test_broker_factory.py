@@ -77,7 +77,7 @@ def test_credential_provider_failure_propagates_without_fallback():
     credentials = FakeCredentials(error=CredentialUnavailable("secret store unavailable"))
 
     with pytest.raises(CredentialUnavailable, match="secret store unavailable"):
-        BrokerAccountFactory(FakeRepository(item), credentials).build(user_id=item.user_id, account_id=item.id)
+        BrokerAccountFactory(FakeRepository(item), credentials).build(user_id=item.user_id, account_id=item.id).build(user_id=item.user_id, account_id=item.id)
     assert credentials.calls == [(item.user_id, item.id, "vault/ref")]
 
 
@@ -98,6 +98,22 @@ def test_invalid_provider_result_fails_closed():
     credentials = FakeCredentials(object())
 
     with pytest.raises(CredentialUnavailable, match="invalid credentials"):
+        BrokerAccountFactory(FakeRepository(item), credentials).build(user_id=item.user_id, account_id=item.id)
+
+
+def test_non_string_access_token_fails_closed():
+    item = account()
+    credentials = FakeCredentials(BrokerCredentials(123))
+
+    with pytest.raises(CredentialUnavailable, match="no access token"):
+        BrokerAccountFactory(FakeRepository(item), credentials).build(user_id=item.user_id, account_id=item.id)
+
+
+def test_non_string_dhan_client_id_fails_closed():
+    item = account(provider="DHAN")
+    credentials = FakeCredentials(BrokerCredentials("token-value", 123))
+
+    with pytest.raises(CredentialUnavailable, match="no client id"):
         BrokerAccountFactory(FakeRepository(item), credentials).build(user_id=item.user_id, account_id=item.id)
 
 
