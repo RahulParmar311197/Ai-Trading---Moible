@@ -76,9 +76,23 @@ class DhanBroker:
     async def cancel_order(self, order_id: str) -> BrokerOrder:
         if not self._allow_live_orders:
             raise LiveBrokerDisabled("Dhan live order cancellation is disabled")
+        if not order_id:
+            raise ValueError("Dhan order id must be non-empty")
         payload = await self._client.request("DELETE", f"/orders/{order_id}")
-        data = payload if isinstance(payload, dict) else {}
-        return BrokerOrder(order_id=order_id, client_order_id=str(data.get("correlationId", order_id)), symbol=str(data.get("securityId", "unknown")), side=str(data.get("transactionType", "BUY")), order_type=str(data.get("orderType", "MARKET")), quantity=int(data.get("quantity", 1) or 1), status=BrokerOrderStatus.CANCELLED)
+        if not isinstance(payload, dict):
+            raise RuntimeError("Dhan cancellation response was invalid; reconciliation required")
+        response_order_id = str(payload.get("orderId", payload.get("order_id", "")))
+        response_status = str(payload.get("orderStatus", payload.get("status", "")))
+        if response_order_id != order_id or response_status.upper() != "CANCELLED":
+            raise RuntimeError("Dhan cancellation response was ambiguous; reconciliation required")
+        refreshed = await self._client.request("GET", f"/orders/{order_id}")
+        data = refreshed.get("data", refreshed) if isinstance(refreshed, dict) else {}
+        if not isinstance(data, dict) or not data:
+            raise RuntimeError("Dhan cancellation state refresh was unavailable; reconciliation required")
+        broker_order = self._map_order(data)
+        if broker_order.order_id != order_id or broker_order.status is not BrokerOrderStatus.CANCELLED:
+            raise RuntimeError("Dhan cancellation state refresh was not confirmed; reconciliation required")
+        return broker_order
 
     async def reconcile_order(self, client_order_id: str) -> BrokerReconciliation:
         correlation_id = self._validate_correlation_id(client_order_id)
