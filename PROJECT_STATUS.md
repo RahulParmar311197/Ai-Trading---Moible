@@ -10,6 +10,13 @@ Last updated: 2026-09-04
 
 **Stage 10 — Autonomous Trading Foundation**
 
+## Verification update
+
+- Upstox sandbox workflow is on `main` and requires `UPSTOX_SANDBOX_ACCESS_TOKEN` from repository secrets.
+- The sandbox workflow network preflight has been changed from a hard DNS gate to diagnostic-only behavior; the actual place/cancel integration test remains the authoritative sandbox execution check.
+- A real sandbox place/cancel execution has not yet been successfully verified.
+- Live trading remains explicitly gated and is not production verified.
+
 ## Verified implementation state
 
 - Deterministic strategy/backtest/replay foundations are integrated; AI remains advisory and cannot authorize execution.
@@ -152,7 +159,7 @@ The Dhan option-chain adapter, emergency-control runtime, autonomous decision pi
 
 ## Remaining blockers / unverified items
 
-1. Production broker runtime and real live activation are unverified. Upstox has a documented sandbox path, but the manual sandbox smoke workflow remains environment-dependent and requires an intentionally supplied sandbox token.
+1. Production broker runtime and real live activation are unverified. Upstox sandbox has a dedicated workflow and repository-secret path, but a real place/cancel smoke execution has not yet been successfully verified.
 2. Stage 5 real external AI-provider runtime verification remains unverified; provider contract compatibility and Android integration are verified.
 3. Stage 6 live option-chain provider runtime integration and fresh runtime verification remain unverified.
 4. Stage 10 production validation remains unverified and gated; autonomous decision evaluation and controlled bridging are implemented and CI verified but are not an authorization path for live orders.
