@@ -56,6 +56,25 @@ class HTTPBrokerClient:
     def _authorization_value(self, token: str) -> str:
         return f"{self._auth_scheme} {token}" if self._auth_scheme else token
 
+    @staticmethod
+    def _safe_provider_error(response: httpx.Response) -> str | None:
+        """Extract only bounded, non-secret provider error fields."""
+        try:
+            payload = response.json()
+        except ValueError:
+            return None
+        if not isinstance(payload, dict):
+            return None
+        code = payload.get("errorCode")
+        message = payload.get("errorMessage")
+        if not code and not message:
+            return None
+        safe_code = str(code).strip()[:32] if code else ""
+        safe_message = str(message).strip()[:160] if message else ""
+        if safe_code and safe_message:
+            return f"{safe_code}: {safe_message}"
+        return safe_code or safe_message or None
+
     async def request(self, method: str, path: str, **kwargs: Any) -> dict[str, Any] | list[Any]:
         headers = dict(kwargs.pop("headers", {}))
         headers.setdefault("Accept", "application/json")
@@ -70,6 +89,9 @@ class HTTPBrokerClient:
             # but their messages may contain provider-specific or secret material.
             raise BrokerHTTPError(f"broker session/transport failure: {type(exc).__name__}") from exc
         if response.is_error:
+            provider_error = self._safe_provider_error(response)
+            if provider_error:
+                raise BrokerHTTPError(f"broker API returned HTTP {response.status_code} ({provider_error})")
             raise BrokerHTTPError(f"broker API returned HTTP {response.status_code}")
         try:
             return response.json()
