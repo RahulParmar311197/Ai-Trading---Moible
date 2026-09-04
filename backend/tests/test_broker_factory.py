@@ -93,6 +93,14 @@ def test_cross_user_or_account_lookup_fails_before_credential_resolution():
     assert credentials.calls == []
 
 
+def test_invalid_provider_result_fails_closed():
+    item = account()
+    credentials = FakeCredentials(object())
+
+    with pytest.raises(CredentialUnavailable, match="invalid credentials"):
+        BrokerAccountFactory(FakeRepository(item), credentials).build(user_id=item.user_id, account_id=item.id)
+
+
 def test_upstox_credentials_are_resolved_by_exact_user_account_and_ref():
     item = account()
     credentials = FakeCredentials(BrokerCredentials("token-value"))
