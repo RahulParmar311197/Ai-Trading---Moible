@@ -15,10 +15,11 @@ Last updated: 2026-09-04
 - Upstox sandbox workflow is on `main` and requires `UPSTOX_SANDBOX_ACCESS_TOKEN` from repository secrets.
 - The sandbox workflow network preflight is diagnostic-only; the actual place/cancel integration test remains the authoritative sandbox execution check.
 - The project operator has confirmed that the Upstox sandbox place/cancel smoke execution succeeded using the dedicated sandbox workflow/token path. This is operator-confirmed runtime evidence; the connected GitHub integration cannot inspect repository secrets or independently reproduce the secret-backed execution.
-- CI run `33858141630` completed successfully for the broker authentication transport regression commit: backend dependency install, official Upstox protobuf verification, PostgreSQL migrations, non-integration pytest, integration pytest, and Android `assembleDebug` all passed.
-- Dhan authentication transport now uses the provider-required `access-token` header without a Bearer scheme; Upstox retains `Authorization: Bearer`.
+- Main CI run `33864185428` completed successfully for the latest verified AI validation changes: backend dependency install, official Upstox protobuf verification, PostgreSQL migrations, non-integration pytest, integration pytest, and Android `assembleDebug` all passed.
+- Dhan authentication transport uses the provider-required `access-token` header without a Bearer scheme; Upstox retains `Authorization: Bearer`.
 - Dhan sandbox mode is explicitly isolated from live mutation and uses the documented sandbox base URL; sandbox permission cannot enable live orders.
 - Upstox cancellation confirmation is fail-closed and requires authoritative broker cancellation status rather than fabricating local `CANCELLED` state.
+- Codespaces/GitHub Actions Dhan credential separation is documented in `docs/DHAN_SANDBOX_CREDENTIALS.md`; no credential values are stored in the repository.
 - Live trading remains explicitly gated and is not production verified.
 
 ## Verified implementation state
@@ -42,7 +43,7 @@ Last updated: 2026-09-04
 - The application runtime composes durable PostgreSQL audit, idempotency, risk-state, session-baseline, and emergency-control stores. Runtime construction remains inert and never activates trading.
 - Provider-neutral AI HTTP compatibility and Android advisory AI integration are verified; AI cannot authorize execution.
 - A deterministic portfolio risk monitor provides gross/net exposure, per-position notional, P&L, and pairwise correlation checks without any broker mutation or execution authorization.
-- A durable emergency execution stop defaults active, persists its state in PostgreSQL, fails closed on persistence/read failure, and is checked before broker authentication at startup, as well as at activation and submission boundaries. Clearing it is explicit and does not auto-activate trading.
+- A durable emergency execution stop, persists its state in PostgreSQL, fails closed on persistence/read failure, and is checked before broker authentication at startup, as well as at activation and submission boundaries. Clearing it is explicit and does not auto-activate trading.
 - The autonomous decision pipeline, deterministic autonomous intent handoff, and autonomous-to-controlled execution bridge are merged to `main`; the bridge requires both portfolio-risk approval and execution-risk approval before delegation.
 - Durable idempotency regression coverage is merged: unresolved reservations remain pending, completed results are replayed, conflicting reuse is rejected, and explicit reconciliation/clear permits reuse.
 - Dhan cancellation is fail-closed: cancellation requires a matching broker order ID and `CANCELLED` response, followed by an authoritative `GET /orders/{order_id}` confirmation before returning the mapped order.
@@ -132,8 +133,8 @@ Last updated: 2026-09-04
 - [x] Application/runtime composition with concrete durable PostgreSQL risk-state sink
 - [x] Durable emergency execution stop and fail-closed persistence/read behavior
 - [x] CI verification of emergency-control implementation and Android build
-- [x] Local full backend pytest verification: 279 passed, 1 skipped
-- [x] Local PostgreSQL integration verification: 5 passed, 1 skipped
+- [x] Latest verified full CI backend test suite: 380 passed, 6 deselected
+- [x] Latest verified CI PostgreSQL integration suite: 5 passed, 1 skipped
 - [x] Local FastAPI runtime smoke verification: `/health` 200/ok and `/ready` 200/degraded with execution/market-data intentionally unconfigured
 - [x] PR #22 backend CI and Android CI verified successfully after reconciliation regression fixes
 - [x] PR #26 backend CI and Android CI verified successfully after atomic durable-completion regression fixes
@@ -153,7 +154,8 @@ Last updated: 2026-09-04
 
 ## Latest CI evidence
 
-- Main CI run `33858141630` completed successfully on 2026-09-04 for commit `cf0d8fd782e4172891dfb337af3bd21288ee741c`. Backend dependencies, official Upstox protobuf verification, PostgreSQL migrations, non-integration pytest, integration pytest, and Android `assembleDebug` all passed.
+- Main CI run `33864185428` completed successfully on 2026-09-04 for the latest verified AI validation changes. Backend dependencies, official Upstox protobuf verification, PostgreSQL migrations, non-integration pytest, integration pytest, and Android `assembleDebug` all passed.
+- Backend test job evidence for that run reports 380 passed and 6 deselected in the non-integration suite, with the integration suite passing.
 - The run includes provider authentication-header regression coverage. Dhan uses `access-token` without Bearer; Upstox retains Bearer Authorization.
 - The operator-confirmed Upstox sandbox place/cancel smoke is runtime evidence but is not independently reproducible through the connected GitHub integration because repository secrets are inaccessible.
 
