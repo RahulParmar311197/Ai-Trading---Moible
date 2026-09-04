@@ -1,8 +1,8 @@
-"""Concrete Redis client factory for application runtime."""
+"""Concrete asynchronous Redis client factory for application runtime."""
 
 from functools import lru_cache
 
-from redis import Redis
+from redis.asyncio import Redis
 
 from app.config import settings
 
