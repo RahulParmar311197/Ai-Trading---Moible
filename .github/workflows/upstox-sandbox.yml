@@ -23,26 +23,41 @@ jobs:
         run: |
           test -n "$UPSTOX_SANDBOX_ACCESS_TOKEN"
           echo "UPSTOX_SANDBOX_ACCESS_TOKEN is configured for this workflow run."
-      - name: Verify Upstox sandbox HTTPS reachability
+      - name: Diagnose Upstox sandbox network reachability
+        continue-on-error: true
         run: |
           python - <<'PY'
           import socket
-          host = "sandbox.upstox.com"
-          print(f"Resolving {host}...")
-          print(socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM))
-          PY
-          python - <<'PY'
           import urllib.request
+          import urllib.error
+
+          host = "sandbox.upstox.com"
           url = "https://sandbox.upstox.com/v2/order/place"
-          request = urllib.request.Request(url, method="GET")
+          dns_ok = False
+
+          print(f"Resolving {host}...")
           try:
-              with urllib.request.urlopen(request, timeout=15) as response:
-                  print(f"Sandbox endpoint reachable: HTTP {response.status}")
-          except urllib.error.HTTPError as exc:
-              if exc.code in {400, 401, 403, 404, 405}:
-                  print(f"Sandbox endpoint reachable: HTTP {exc.code}")
-              else:
-                  raise
+              addresses = socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM)
+              dns_ok = bool(addresses)
+              print(f"DNS resolution succeeded with {len(addresses)} result(s).")
+          except OSError as exc:
+              print(f"DNS resolution failed: {exc!r}")
+
+          if dns_ok:
+              print(f"Checking HTTPS reachability: {url}")
+              request = urllib.request.Request(url, method="GET")
+              try:
+                  with urllib.request.urlopen(request, timeout=15) as response:
+                      print(f"Sandbox endpoint reachable: HTTP {response.status}")
+              except urllib.error.HTTPError as exc:
+                  if exc.code in {400, 401, 403, 404, 405}:
+                      print(f"Sandbox endpoint reachable: HTTP {exc.code}")
+                  else:
+                      print(f"Sandbox endpoint returned unexpected HTTP {exc.code}: {exc.reason}")
+              except OSError as exc:
+                  print(f"HTTPS connection failed: {exc!r}")
+          else:
+              print("Skipping HTTPS check because DNS resolution failed.")
           PY
       - name: Run Upstox sandbox place/cancel smoke test
         env:
