@@ -4,21 +4,21 @@ Last updated: 2026-09-04
 
 ## Verified passing runs
 
-- `33862416980` — commit `b523e454c956b6887132dca3873803baeeae76d7`: **full CI completed successfully**. Backend dependency installation, official Upstox protobuf verification, PostgreSQL migrations, non-integration pytest (`380 passed, 6 deselected`), integration pytest (`5 passed, 1 skipped`), and Android `assembleDebug` all passed.
+- `33864185428` — commit `e9aef2d0d6d593a98752bfbaca3ea10a6a00c9a6`: **full CI completed successfully**. Android build completed successfully; backend dependency installation, official Upstox protobuf verification, PostgreSQL migrations, non-integration pytest, and integration pytest all passed.
+- `33864185593` — Android-only verification completed successfully, including Gradle wrapper verification and debug APK assembly.
+- `33862416980` — commit `b523e454c956b6887132dca3873803baeeae76d7`: **full CI completed successfully**. Backend non-integration pytest reported `380 passed, 6 deselected`; integration pytest reported `5 passed, 1 skipped`; PostgreSQL migrations and Android `assembleDebug` also passed.
 - `33858141630` — commit `cf0d8fd782e4172891dfb337af3bd21288ee741c`: full CI completed successfully.
 - `33862899646` — commit `a8bd8eb88531dbb26bb328ad58aa3b4a05817ce2`: Android CI completed successfully.
-- `33854870591` — prior main commit `27b293eb41ea6645261f6212abdc6f5e65099a6c`: full CI completed successfully.
-- `33854870731` — prior main commit `27b293eb41ea6645261f6212abdc6f5e65099a6c`: Android CI completed successfully.
 
 ## Current verification
 
-Main is currently at the documentation-only verification commit `a8bd8eb88531dbb26bb328ad58aa3b4a05817ce2`. Android CI for that commit completed successfully in run `33862899646`.
+`main` has advanced beyond the older documentation-only commit and currently includes AI proposal price-direction validation hardening. The latest full CI run `33864185428` completed successfully for commit `e9aef2d0d6d593a98752bfbaca3ea10a6a00c9a6`. The latest Android-only run `33864185593` also completed successfully.
 
 The Dhan sandbox workflow requires `DHAN_SANDBOX_CLIENT_ID` and `DHAN_SANDBOX_ACCESS_TOKEN` repository secrets, targets the documented Dhan sandbox base URL through `DhanBroker(sandbox=True)`, performs account/positions/orders reads, and separately asserts that sandbox mutation remains disabled by default.
 
-The latest operator-executed Dhan Sandbox Read-Only Smoke run `33863069710` reached the direct `/profile` diagnostic and failed with HTTP 403. The response metadata was: content type `text/html`, server `awselb/2.0`, body length 118 bytes, and non-JSON response. A SHA-256 body digest was logged without exposing the response body or credentials.
+The operator-executed Dhan Sandbox Read-Only Smoke run `33863069710` reached the direct `/profile` diagnostic and failed with HTTP 403. The response metadata was: content type `text/html`, server `awselb/2.0`, body length 118 bytes, and non-JSON response. A SHA-256 body digest was logged without exposing the response body or credentials.
 
-Because the response is non-JSON and originates from an AWS load-balancer response path, the run did not reach application-level Dhan authentication, account/positions/orders reads, or any mutation test. No order was submitted. This is runtime evidence of an external sandbox HTTP failure, not evidence of successful Dhan sandbox authentication.
+That run checked out older commit `a8bd8eb88531dbb26bb328ad58aa3b4a05817ce2`, not the current `main` commit. Therefore it remains valid evidence of the observed external Dhan sandbox 403 at that time, but is **not** current-code runtime verification. Because the response was non-JSON and originated from an AWS load-balancer response path, the run did not reach application-level Dhan authentication, account/positions/orders reads, or any mutation test. No order was submitted.
 
 ## Runtime evidence
 
@@ -26,7 +26,7 @@ The project operator has confirmed that the **Upstox sandbox place/cancel smoke 
 
 This sandbox result does not constitute production broker verification or live-money activation.
 
-Dhan sandbox runtime verification remains **failed/blocked**. Repository secrets are present in the workflow environment, but the sandbox `/profile` request currently returns HTTP 403 with a non-JSON AWS load-balancer response. The workflow remains read-only and mutation-gated. A successful `/profile` plus account/positions/orders read run is required before Dhan sandbox runtime can be marked verified.
+Dhan sandbox runtime verification remains **unverified/blocked**. Repository secrets were present in the failed workflow environment, but the sandbox `/profile` request returned HTTP 403 with a non-JSON AWS load-balancer response. The workflow remains read-only and mutation-gated. A fresh run against current `main` with valid matching sandbox credentials, followed by successful `/profile` and account/positions/orders reads, is required before Dhan sandbox runtime can be marked verified.
 
 ## External documentation cross-check
 
