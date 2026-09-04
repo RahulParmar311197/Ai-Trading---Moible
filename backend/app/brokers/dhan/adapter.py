@@ -116,5 +116,7 @@ class DhanBroker:
 
     @classmethod
     def _map_order(cls, row: dict[str, Any]) -> BrokerOrder:
-        raw_status = str(row.get("orderStatus", row.get("status", "PENDING"))).upper()
-        return BrokerOrder(order_id=str(row.get("orderId", row.get("order_id", ""))), client_order_id=str(row.get("correlationId", row.get("correlation_id", row.get("orderId", "")))), symbol=str(row.get("securityId", row.get("tradingSymbol", ""))), side=str(row.get("transactionType", "BUY")), order_type=str(row.get("orderType", "MARKET")), quantity=int(row.get("quantity", 1) or 1), filled_quantity=int(row.get("tradedQty", row.get("filledQuantity", row.get("filledQty", 0))) or 0), average_price=decimal_value(row.get("averageTradedPrice", row.get("averagePrice", 0))) or None, status=cls._map_status(raw_status))
+        raw_status = row.get("orderStatus", row.get("status"))
+        if raw_status is None or not str(raw_status).strip():
+            raise RuntimeError("Dhan order response did not contain an order status; reconciliation required")
+        return BrokerOrder(order_id=str(row.get("orderId", row.get("order_id", ""))), client_order_id=str(row.get("correlationId", row.get("correlation_id", row.get("orderId", "")))), symbol=str(row.get("securityId", row.get("tradingSymbol", ""))), side=str(row.get("transactionType", "BUY")), order_type=str(row.get("orderType", "MARKET")), quantity=int(row.get("quantity", 1) or 1), filled_quantity=int(row.get("tradedQty", row.get("filledQuantity", row.get("filledQty", 0))) or 0), average_price=decimal_value(row.get("averageTradedPrice", row.get("averagePrice", 0))) or None, status=cls._map_status(str(raw_status)))
