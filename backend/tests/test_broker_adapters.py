@@ -119,7 +119,7 @@ async def test_upstox_cancel_requires_broker_confirmation(monkeypatch: pytest.Mo
         return {"data": {}}
 
     monkeypatch.setattr(broker._client, "request", fake_request)
-    with pytest.raises(BrokerHTTPError, match="no broker confirmation; reconciliation required"):
+    with pytest.raises(BrokerHTTPError, match="ambiguous broker order ID; reconciliation required"):
         await broker.cancel_order("broker-1")
 
 
