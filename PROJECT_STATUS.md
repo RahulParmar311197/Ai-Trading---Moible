@@ -15,7 +15,9 @@ Last updated: 2026-09-04
 - Upstox sandbox place/cancel smoke execution is operator-confirmed runtime evidence; repository secrets are not inspectable through the connected GitHub integration.
 - Main CI run `33866098324` completed successfully for database migration `015_broker_accounts.sql`: PostgreSQL migrations, backend non-integration/integration tests, and Android `assembleDebug` passed. fileciteturn695file0L2-L10
 - Broker-account metadata is user-owned and exposed only through authenticated API boundaries. Raw broker tokens are not stored or returned.
-- Authenticated broker-account API regression coverage and the fail-closed credential-provider regression test have now been added; fresh CI verification for these commits is pending.
+- Authenticated broker-account API regression coverage and the fail-closed credential-provider regression test are implemented; fresh CI verification for those commits is pending.
+- The internal broker-account factory now resolves an opaque credential reference through `CredentialProvider` and constructs Upstox/Dhan adapters with all broker mutation gates disabled. It cannot enable live trading from account metadata.
+- The account repository retains the opaque credential reference only for this internal resolution boundary; the authenticated API response continues to expose only `has_credential_ref`.
 - A fail-closed external credential-provider boundary is implemented; no broker token is resolved until a deployment supplies a real secret-management implementation.
 - Live trading remains explicitly gated and is not production verified.
 
@@ -30,6 +32,7 @@ Last updated: 2026-09-04
 - User-owned broker-account metadata persistence and authenticated management API are implemented. Account operations are scoped by authenticated `user_id` at the repository query boundary.
 - Broker-account API does not accept an access token field, never returns `credential_ref`, and newly created accounts remain disabled until explicitly enabled.
 - External credential resolution is deliberately fail-closed through `CredentialProvider`; the default provider raises `CredentialUnavailable` rather than inventing or reading credentials.
+- `BrokerAccountFactory` is an internal construction boundary: it requires a user-scoped enabled account, a credential reference, and successfully resolved credentials; LIVE accounts still receive `allow_live_orders=False`.
 
 ## Stage status
 
@@ -40,7 +43,8 @@ Last updated: 2026-09-04
 - [x] Dhan sandbox isolation, authentication transport, cancellation hardening, missing-status fail-closed behavior and regression tests
 - [x] User-owned broker-account metadata migration and authenticated account-management boundary
 - [x] Fail-closed external credential-provider abstraction
-- [ ] CI verification of broker-account repository/API and credential-boundary commits
+- [x] Internal credential-resolution/broker-construction boundary with regression tests
+- [ ] CI verification of broker-account repository/API, credential boundary, and factory commits
 - [ ] Dhan sandbox external runtime verification
 - [ ] Production/live broker runtime verification
 
@@ -61,15 +65,15 @@ Last updated: 2026-09-04
 ## Latest CI evidence
 
 - `33866098324` completed successfully on 2026-09-04 for commit `d82cc64350796a66237cd5aa641cbedc18327dca`. Both backend-tests and android-build completed successfully; backend applied migrations and ran both pytest suites, while Android completed `assembleDebug`. fileciteturn695file0L2-L10
-- Subsequent broker-account repository/API, credential-boundary, and API regression-test commits are awaiting their own full CI verification.
+- Commits after `33866098324` add broker-account API regressions, credential-boundary coverage, and the broker factory; they require fresh full CI verification before being marked CI-verified.
 
 ## Safety status
 
-**LIVE/AUTONOMOUS TRADING REMAINS GATED.** User-owned broker metadata is not itself broker authorization. No stored account is connected to live mutation through this API. Missing credentials fail closed, and the default credential provider cannot resolve secrets. Production broker runtime verification and real live activation have not been performed.
+**LIVE/AUTONOMOUS TRADING REMAINS GATED.** User-owned broker metadata is not itself broker authorization. No stored account is connected to live mutation through this API. Missing credentials fail closed, and the default credential provider cannot resolve secrets. The broker factory explicitly constructs mutation-disabled adapters. Production broker runtime verification and real live activation have not been performed.
 
 ## Remaining blockers / unverified items
 
-1. Fresh CI verification of the broker-account repository/API and credential-boundary commits is pending.
+1. Fresh CI verification of the broker-account API, credential boundary, and factory commits is pending.
 2. A production-grade secret-management implementation is required before user-owned accounts can resolve broker credentials.
 3. Dhan sandbox external runtime verification remains blocked by the previously observed upstream HTTP 403 until valid sandbox credentials/access are available and the workflow is rerun.
 4. Stage 5 external AI-provider runtime verification remains unverified.
