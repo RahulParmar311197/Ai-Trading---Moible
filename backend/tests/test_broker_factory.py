@@ -81,6 +81,18 @@ def test_credential_provider_failure_propagates_without_fallback():
     assert credentials.calls == [(item.user_id, item.id, "vault/ref")]
 
 
+def test_cross_user_or_account_lookup_fails_before_credential_resolution():
+    item = account()
+    credentials = FakeCredentials(BrokerCredentials("token-value"))
+    factory = BrokerAccountFactory(FakeRepository(item), credentials)
+
+    with pytest.raises(BrokerUnavailable, match="not found"):
+        factory.build(user_id=uuid4(), account_id=item.id)
+    with pytest.raises(BrokerUnavailable, match="not found"):
+        factory.build(user_id=item.user_id, account_id=uuid4())
+    assert credentials.calls == []
+
+
 def test_upstox_credentials_are_resolved_by_exact_user_account_and_ref():
     item = account()
     credentials = FakeCredentials(BrokerCredentials("token-value"))
@@ -122,6 +134,14 @@ def test_dhan_missing_client_id_fails_closed():
     credentials = FakeCredentials(BrokerCredentials("token-value"))
 
     with pytest.raises(CredentialUnavailable, match="no client id"):
+        BrokerAccountFactory(FakeRepository(item), credentials).build(user_id=item.user_id, account_id=item.id)
+
+
+def test_blank_access_token_from_provider_fails_closed():
+    item = account()
+    credentials = FakeCredentials(BrokerCredentials("  "))
+
+    with pytest.raises(CredentialUnavailable, match="no access token"):
         BrokerAccountFactory(FakeRepository(item), credentials).build(user_id=item.user_id, account_id=item.id)
 
 
