@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import Any
 
 from ..base import Account, BrokerAuthentication, BrokerOrder, BrokerOrderStatus, BrokerPosition, BrokerReconciliation
-from ..http import HTTPBrokerClient, LiveBrokerDisabled, decimal_value
+from ..http import BrokerHTTPError, HTTPBrokerClient, LiveBrokerDisabled, decimal_value
 from ..order_config import BrokerInstrument, InstrumentResolver, OrderValidity, ProductType
 from ..session import StaticTokenBrokerSession
 
@@ -68,9 +68,12 @@ class UpstoxBroker:
         if isinstance(data, dict) and data.get("order_id"):
             order_id = str(data["order_id"])
         elif isinstance(data, dict) and data.get("order_ids"):
-            order_id = str(data["order_ids"][0])
+            order_ids = data["order_ids"]
+            if not isinstance(order_ids, list) or not order_ids or not order_ids[0]:
+                raise BrokerHTTPError("Upstox order submission returned no broker order ID; reconciliation required")
+            order_id = str(order_ids[0])
         else:
-            order_id = order.order_id
+            raise BrokerHTTPError("Upstox order submission returned no broker order ID; reconciliation required")
         return order.model_copy(update={"order_id": order_id, "status": BrokerOrderStatus.NEW})
 
     @staticmethod
