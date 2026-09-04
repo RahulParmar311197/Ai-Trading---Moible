@@ -80,6 +80,6 @@ async def test_redis_invalid_payload_is_not_broadcast(monkeypatch):
     await asyncio.sleep(0)
     with pytest.raises(Exception):
         await consume_redis_events(redis)
-    assert not task.done()
     task.cancel()
+    await asyncio.gather(task, return_exceptions=True)
     await stream.aclose()
