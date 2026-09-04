@@ -14,7 +14,8 @@ Last updated: 2026-09-04
 
 - Upstox sandbox place/cancel smoke execution is operator-confirmed runtime evidence; repository secrets are not inspectable through the connected GitHub integration.
 - Main CI run `33866098324` completed successfully for database migration `015_broker_accounts.sql`: PostgreSQL migrations, backend non-integration/integration tests, and Android `assembleDebug` passed. fileciteturn695file0L2-L10
-- Broker-account metadata is now user-owned and exposed only through authenticated API boundaries. Raw broker tokens are not stored or returned.
+- Broker-account metadata is user-owned and exposed only through authenticated API boundaries. Raw broker tokens are not stored or returned.
+- Authenticated broker-account API regression coverage and the fail-closed credential-provider regression test have now been added; fresh CI verification for these commits is pending.
 - A fail-closed external credential-provider boundary is implemented; no broker token is resolved until a deployment supplies a real secret-management implementation.
 - Live trading remains explicitly gated and is not production verified.
 
@@ -60,7 +61,7 @@ Last updated: 2026-09-04
 ## Latest CI evidence
 
 - `33866098324` completed successfully on 2026-09-04 for commit `d82cc64350796a66237cd5aa641cbedc18327dca`. Both backend-tests and android-build completed successfully; backend applied migrations and ran both pytest suites, while Android completed `assembleDebug`. fileciteturn695file0L2-L10
-- Subsequent commits adding the broker-account repository/API, credential boundary, and tests require their own CI verification before being marked CI-verified.
+- Subsequent broker-account repository/API, credential-boundary, and API regression-test commits are awaiting their own full CI verification.
 
 ## Safety status
 
@@ -68,7 +69,7 @@ Last updated: 2026-09-04
 
 ## Remaining blockers / unverified items
 
-1. CI verification of the broker-account repository/API and credential-boundary commits is pending.
+1. Fresh CI verification of the broker-account repository/API and credential-boundary commits is pending.
 2. A production-grade secret-management implementation is required before user-owned accounts can resolve broker credentials.
 3. Dhan sandbox external runtime verification remains blocked by the previously observed upstream HTTP 403 until valid sandbox credentials/access are available and the workflow is rerun.
 4. Stage 5 external AI-provider runtime verification remains unverified.
