@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 from app.api import brokers as brokers_api
 from app.api.auth import current_user
 from app.auth import AuthUser
-from app.brokers.account_repository import BrokerAccount, BrokerAccountRepository
+from app.brokers.account_repository import BrokerAccountRepository
 from app.main import app
 
 
