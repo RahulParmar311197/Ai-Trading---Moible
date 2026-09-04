@@ -17,13 +17,32 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install -r requirements.txt
-      - name: Verify Upstox sandbox DNS
+      - name: Verify sandbox token is configured
+        env:
+          UPSTOX_SANDBOX_ACCESS_TOKEN: ${{ secrets.UPSTOX_SANDBOX_ACCESS_TOKEN }}
+        run: |
+          test -n "$UPSTOX_SANDBOX_ACCESS_TOKEN"
+          echo "UPSTOX_SANDBOX_ACCESS_TOKEN is configured for this workflow run."
+      - name: Verify Upstox sandbox HTTPS reachability
         run: |
           python - <<'PY'
           import socket
           host = "sandbox.upstox.com"
           print(f"Resolving {host}...")
           print(socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM))
+          PY
+          python - <<'PY'
+          import urllib.request
+          url = "https://sandbox.upstox.com/v2/order/place"
+          request = urllib.request.Request(url, method="GET")
+          try:
+              with urllib.request.urlopen(request, timeout=15) as response:
+                  print(f"Sandbox endpoint reachable: HTTP {response.status}")
+          except urllib.error.HTTPError as exc:
+              if exc.code in {400, 401, 403, 404, 405}:
+                  print(f"Sandbox endpoint reachable: HTTP {exc.code}")
+              else:
+                  raise
           PY
       - name: Run Upstox sandbox place/cancel smoke test
         env:
