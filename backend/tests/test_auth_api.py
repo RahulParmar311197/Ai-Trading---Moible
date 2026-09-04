@@ -2,8 +2,8 @@ from decimal import Decimal
 
 from fastapi.testclient import TestClient
 
+from app.api import auth as auth_api
 from app.api import paper as paper_api
-from app.api.auth import get_auth_service
 from app.auth import AuthService
 from app.main import app
 from app.paper.engine import PaperBroker
@@ -42,8 +42,8 @@ def test_auth_register_login_me_and_paper_requires_auth(monkeypatch):
     db = FakeDb()
     auth = AuthService(db)
     broker = PaperBroker(starting_balance=Decimal("1000"))
+    monkeypatch.setattr(auth_api, "get_auth_service", lambda: auth)
     monkeypatch.setattr(paper_api, "get_paper_broker", lambda user_id: broker)
-    app.dependency_overrides[get_auth_service] = lambda: auth
     try:
         with TestClient(app) as client:
             assert client.get("/api/v1/paper/account").status_code == 401
@@ -62,4 +62,4 @@ def test_auth_register_login_me_and_paper_requires_auth(monkeypatch):
             assert client.get("/api/v1/auth/me", headers=headers).status_code == 200
             assert client.get("/api/v1/paper/account", headers=headers).status_code == 200
     finally:
-        app.dependency_overrides.pop(get_auth_service, None)
+        app.dependency_overrides.clear()
