@@ -13,7 +13,7 @@ Last updated: 2026-09-04
 ## Verification update
 
 - Upstox sandbox place/cancel smoke execution is operator-confirmed runtime evidence; repository secrets are not inspectable through the connected GitHub integration.
-- Main CI run `33866098324` completed successfully for database migration `015_broker_accounts.sql`: PostgreSQL migrations, backend non-integration/integration tests, and Android `assembleDebug` passed. 
+- Main CI run `33866098324` completed successfully for database migration `015_broker_accounts.sql`: PostgreSQL migrations, backend non-integration/integration tests, and Android `assembleDebug` passed.
 - Broker-account metadata is user-owned and exposed only through authenticated API boundaries. Raw broker tokens are not stored or returned.
 - Authenticated broker-account API regression coverage and the fail-closed credential-provider regression test are implemented; fresh CI verification for those commits is pending.
 - The internal broker-account factory resolves an opaque credential reference through `CredentialProvider` and constructs Upstox/Dhan adapters with all broker mutation gates disabled. It cannot enable live trading from account metadata.
@@ -21,6 +21,7 @@ Last updated: 2026-09-04
 - A fail-closed external credential-provider boundary is implemented; no broker token is resolved until a deployment supplies a real secret-management implementation.
 - Authenticated read-only broker state now flows through the factory boundary; the state endpoint exposes account, positions and orders only and performs no broker mutation.
 - Blank or whitespace-only credential references are rejected before secret resolution.
+- Credential resolution now also fails closed for malformed non-string access tokens or Dhan client IDs returned by a provider.
 - Application execution startup now hard-gates production broker runtime until account-bound secret resolution and production runtime verification are complete. Sandbox construction forces `allow_live_orders=False`.
 - Live trading remains explicitly gated and is not production verified.
 
@@ -72,7 +73,7 @@ Last updated: 2026-09-04
 ## Latest CI evidence
 
 - `33866098324` completed successfully on 2026-09-04 for commit `d82cc64350796a66237cd5aa641cbedc18327dca`. Both backend-tests and android-build completed successfully; backend applied migrations and ran both pytest suites, while Android completed `assembleDebug`.
-- Commits after `33866098324` add broker-account API regressions, credential-boundary coverage, broker factory, broker-state API tests, and execution startup hard-gating; they require fresh full CI verification before being marked CI-verified.
+- Commits after `33866098324` add broker-account API regressions, credential-boundary coverage, broker factory, broker-state API tests, execution startup hard-gating, and malformed-credential regression coverage; they require fresh full CI verification before being marked CI-verified.
 
 ## Safety status
 
@@ -80,7 +81,7 @@ Last updated: 2026-09-04
 
 ## Remaining blockers / unverified items
 
-1. Fresh CI verification of the broker-account API, credential boundary, factory, broker-state API, and execution-startup hard-gate commits is pending.
+1. Fresh CI verification of the broker-account API, credential boundary, factory, broker-state API, execution-startup hard-gate, and malformed-credential regression commits is pending.
 2. A production-grade secret-management implementation is required before user-owned accounts can resolve broker credentials.
 3. Dhan sandbox external runtime verification remains blocked by the previously observed upstream HTTP 403 until valid sandbox credentials/access are available and the workflow is rerun.
 4. Stage 5 external AI-provider runtime verification remains unverified.
