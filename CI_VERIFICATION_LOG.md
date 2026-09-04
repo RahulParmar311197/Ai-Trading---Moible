@@ -30,7 +30,7 @@ Dhan sandbox runtime verification remains **failed/blocked**. Repository secrets
 
 ## External documentation cross-check
 
-Current DhanHQ documentation states that the User Profile API is a simple GET used to validate access-token validity/account setup and documents the `access-token` header. Dhan's sandbox documentation separately identifies `https://sandbox.dhan.co/v2/` as the sandbox base URL and requires separate sandbox credentials. The current Dhan error documentation describes API-level failures as structured error responses; the observed HTML 403 therefore does not provide a Dhan error code such as `DH-901` or `DH-902`. citeturn1search0turn1search10turn0search7
+Current DhanHQ documentation states that the User Profile API is a simple GET used to validate access-token validity/account setup and documents the `access-token` header. Dhan's sandbox documentation separately identifies `https://sandbox.dhan.co/v2/` as the sandbox base URL and requires separate sandbox credentials. The current Dhan error documentation describes API-level failures as structured error responses; the observed HTML 403 therefore does not provide a Dhan error code such as `DH-901` or `DH-902`.
 
 ## Safety
 
