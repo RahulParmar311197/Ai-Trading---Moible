@@ -17,6 +17,7 @@ Last updated: 2026-09-04
 - A real sandbox place/cancel execution has not yet been successfully verified.
 - Live trading remains explicitly gated and is not production verified.
 - Dhan cancellation handling now requires an authoritative broker cancellation response and a subsequent authoritative order refresh confirming the requested broker order ID is `CANCELLED`; fabricated local cancellation state is no longer accepted.
+- Dhan order submission now also fails closed when the broker response omits or supplies a blank order status; the lifecycle requires reconciliation instead of assuming `PENDING`/`NEW`.
 
 ## Verified implementation state
 
@@ -42,6 +43,7 @@ Last updated: 2026-09-04
 - The autonomous decision pipeline, deterministic autonomous intent handoff, and autonomous-to-controlled execution bridge are merged to `main`; the bridge requires both portfolio-risk approval and execution-risk approval before delegation.
 - Durable idempotency regression coverage is merged: unresolved reservations remain pending, completed results are replayed, conflicting reuse is rejected, and explicit reconciliation/clear permits reuse.
 - Dhan cancellation is fail-closed: cancellation requires a matching broker order ID and `CANCELLED` response, followed by an authoritative `GET /orders/{order_id}` confirmation before returning the mapped order.
+- Dhan order submission is fail-closed when the broker response lacks a non-blank `orderStatus`/`status`; tests cover missing and blank status responses and require reconciliation.
 
 ## Stage status
 
@@ -88,6 +90,7 @@ Last updated: 2026-09-04
 - [x] Provider-neutral broker/auth/reconciliation contracts, idempotency, durable PostgreSQL idempotency, ambiguous-submission protection, Upstox/Dhan adapters, mutation gating, instrument resolution/catalogues, secret-safe sessions, token exchange/renewal boundaries, CI verification
 - [x] Explicit Upstox sandbox adapter mode and opt-in place/cancel smoke-test path
 - [x] Dhan cancellation hardening with authoritative post-cancel order refresh and regression tests
+- [x] Dhan submission missing-status fail-closed hardening with regression tests
 - [ ] Live broker runtime verification
 - [ ] Upstox sandbox smoke execution with a real sandbox token
 
@@ -146,6 +149,7 @@ Last updated: 2026-09-04
 
 - Main CI run `33852909204` (#651), head `17f84ebb7b5d214ad1181458f30d0915e63e52ac`, completed successfully on 2026-09-04. Backend tests passed including migrations, non-integration pytest, and integration pytest steps; Android `assembleDebug` passed.
 - The Dhan cancellation hardening regression tests are included in CI run #651 and the backend job completed successfully.
+- Commit `08870ca6e063d480d4a2538ca0974a63792e8c79` adds the Dhan missing-status fail-closed implementation; commit `cf956f162b63da964eff70c2a87345e77e894667` adds regression tests for missing and blank status responses. CI for these newer commits is not yet evidenced by a completed run in the connector.
 - Earlier PR #27 head `74931b378227f3b709761f0918614adf0271f025`: Android CI run `33834375439` completed successfully; CI run `33834375456` completed successfully with backend-tests and Android build passing. PR merged to `main` as `89be79df6bb8f0d7d66fb602486aaa823b5ffccd`.
 - PR #26 head `098814160c4fd6b18f948b4a84d93cf9783c885b`: CI run `33833371312` backend-tests and Android build both completed successfully; PR merged to `main` as `f2b51649954b3c95b5038fda48a70493dbaca42d`.
 - PR #22 head `3b24a27848ee215f82bc2fabedb6baed92e5a3bb`: CI run `33746835072` backend-tests and Android build both completed successfully; PR merged to `main` as `62f66671c97dd9bec19a66617d0025222bae378b`.
@@ -166,4 +170,4 @@ The Dhan option-chain adapter, emergency-control runtime, autonomous decision pi
 2. Stage 5 real external AI-provider runtime verification remains unverified; provider contract compatibility and Android integration are verified.
 3. Stage 6 live option-chain provider runtime integration and fresh runtime verification remain unverified.
 4. Stage 10 production validation remains unverified and gated; autonomous decision evaluation and controlled bridging are implemented and CI verified but are not an authorization path for live orders.
-5. Dhan broker runtime authentication and live/paper external runtime behavior remain unverified; cancellation logic is implementation/test/CI verified only.
+5. Dhan broker runtime authentication and live/paper external runtime behavior remain unverified; cancellation and missing-status submission hardening are implementation/test verified only until newer CI completes.
