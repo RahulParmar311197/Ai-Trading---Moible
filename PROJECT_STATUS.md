@@ -1,6 +1,6 @@
 # AI Trading Platform — Project Status
 
-Last updated: 2026-09-03
+Last updated: 2026-09-04
 
 ## Current branch
 
@@ -21,7 +21,7 @@ Last updated: 2026-09-03
 - `ControlledBrokerExecution` is inert until authenticated startup and exact explicit activation. The kill switch defaults active, deterministic risk approval is mandatory before mutation, broker order-id confirmation is required, audit events are emitted, and shutdown/recovery fail closed.
 - Controlled live construction requires an explicitly supplied idempotency store; there is no silent process-local fallback.
 - Ambiguous broker submission exceptions preserve the idempotency reservation and force fail-closed reconciliation before reuse.
-- Durable PostgreSQL idempotency uses atomic reservation and transactional result persistence; concurrent callers cannot both claim a new client-order key.
+- Durable PostgreSQL idempotency uses atomic reservation and atomic result persistence; concurrent callers cannot both claim a new client-order key, and terminal results cannot be overwritten by a conflicting result.
 - Recovery refreshes broker positions/orders, reconciles requested IDs, and rejects unexpected live broker orders outside the explicit expected local order set. It never auto-activates trading.
 - Recovery now carries an authoritative reconciled `BrokerOrder` and completes idempotency only for confirmed terminal `FILLED` results; unresolved NEW/OPEN/PARTIALLY_FILLED states remain pending, while REJECTED/CANCELLED remain explicitly clearable.
 - Before every controlled live submission, the execution boundary refreshes broker positions and requires the submitted `RiskSnapshot.position_quantity` to match the current broker position for the order symbol.
@@ -95,6 +95,7 @@ Last updated: 2026-09-03
 - [x] Ambiguous broker submission fail-closed behavior
 - [x] Explicit idempotency-store requirement
 - [x] Atomic durable reservation and concurrency regression coverage
+- [x] Atomic durable terminal-result completion and no-overwrite protection
 - [x] Terminal `REJECTED`/`CANCELLED` reservation clearing after reconciliation
 - [x] Durable idempotency unresolved/completed/conflict/reuse regression coverage
 - [x] Recovered terminal `FILLED` result completes idempotency and replays without broker resubmission
@@ -115,6 +116,7 @@ Last updated: 2026-09-03
 - [x] Local PostgreSQL integration verification: 5 passed, 1 skipped
 - [x] Local FastAPI runtime smoke verification: `/health` 200/ok and `/ready` 200/degraded with execution/market-data intentionally unconfigured
 - [x] PR #22 backend CI and Android CI verified successfully after reconciliation regression fixes
+- [x] PR #26 backend CI and Android CI verified successfully after atomic durable-completion regression fixes
 - [ ] Production broker runtime verification
 - [ ] Real live activation
 
@@ -130,6 +132,7 @@ Last updated: 2026-09-03
 
 ## Latest CI evidence
 
+- PR #26 head `098814160c4fd6b18f948b4a84d93cf9783c885b`: CI run `33833371312` backend-tests and Android build both completed successfully; PR merged to `main` as `f2b51649954b3c95b5038fda48a70493dbaca42d`.
 - PR #22 head `3b24a27848ee215f82bc2fabedb6baed92e5a3bb`: CI run `33746835072` backend-tests and Android build both completed successfully; PR merged to `main` as `62f66671c97dd9bec19a66617d0025222bae378b`.
 - PR #20 head `b15ed867a4f1ff42644003d41f68814a0cfe82af`: backend CI and Android CI both completed successfully; merged to `main` as `7dc9ebe30b22e7d33549d5cdef86aafc18dc6df8`.
 - PR #21 head `9031a808cf70702a8e6875cb605cea2cd3b6f4c8`: backend CI and Android CI both completed successfully; merged to `main` as `6cd16f083baa6e8e836b4d00865a6314e73b8f21`.
