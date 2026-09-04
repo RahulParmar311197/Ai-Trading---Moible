@@ -55,36 +55,21 @@ async def test_upstox_sandbox_submission_is_separately_gated() -> None:
 
 @pytest.mark.asyncio
 async def test_upstox_sandbox_order_gate_does_not_enable_live_mode() -> None:
-    broker = UpstoxBroker(
-        "sandbox-token",
-        sandbox=True,
-        allow_sandbox_orders=True,
-        instrument_resolver=resolver(),
-    )
+    broker = UpstoxBroker("sandbox-token", sandbox=True, allow_sandbox_orders=True, instrument_resolver=resolver())
     assert broker.orders_enabled is True
     assert broker._client.base_url == UpstoxBroker.SANDBOX_BASE_URL
 
 
 @pytest.mark.asyncio
 async def test_upstox_live_order_gate_is_not_reused_for_sandbox() -> None:
-    broker = UpstoxBroker(
-        "token",
-        allow_live_orders=True,
-        sandbox=True,
-        instrument_resolver=resolver(),
-    )
+    broker = UpstoxBroker("token", allow_live_orders=True, sandbox=True, instrument_resolver=resolver())
     assert broker.orders_enabled is False
     assert broker._client.base_url == UpstoxBroker.SANDBOX_BASE_URL
 
 
 @pytest.mark.asyncio
 async def test_upstox_missing_broker_order_id_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
-    broker = UpstoxBroker(
-        "sandbox-token",
-        sandbox=True,
-        allow_sandbox_orders=True,
-        instrument_resolver=resolver(),
-    )
+    broker = UpstoxBroker("sandbox-token", sandbox=True, allow_sandbox_orders=True, instrument_resolver=resolver())
 
     async def fake_request(*args, **kwargs):
         return {"data": {}}
@@ -96,12 +81,7 @@ async def test_upstox_missing_broker_order_id_fails_closed(monkeypatch: pytest.M
 
 @pytest.mark.asyncio
 async def test_upstox_empty_order_ids_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
-    broker = UpstoxBroker(
-        "sandbox-token",
-        sandbox=True,
-        allow_sandbox_orders=True,
-        instrument_resolver=resolver(),
-    )
+    broker = UpstoxBroker("sandbox-token", sandbox=True, allow_sandbox_orders=True, instrument_resolver=resolver())
 
     async def fake_request(*args, **kwargs):
         return {"data": {"order_ids": []}}
@@ -128,7 +108,7 @@ async def test_upstox_cancel_rejects_mismatched_broker_order_id(monkeypatch: pyt
     broker = UpstoxBroker("sandbox-token", sandbox=True, allow_sandbox_orders=True)
 
     async def fake_request(*args, **kwargs):
-        return {"data": {"order_id": "different-order"}}
+        return {"data": {"order_id": "different-order", "status": "cancelled"}}
 
     monkeypatch.setattr(broker._client, "request", fake_request)
     with pytest.raises(BrokerHTTPError, match="ambiguous broker order ID; reconciliation required"):
@@ -136,11 +116,35 @@ async def test_upstox_cancel_rejects_mismatched_broker_order_id(monkeypatch: pyt
 
 
 @pytest.mark.asyncio
-async def test_upstox_cancel_accepts_matching_broker_order_id(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_upstox_cancel_requires_explicit_cancelled_status(monkeypatch: pytest.MonkeyPatch) -> None:
     broker = UpstoxBroker("sandbox-token", sandbox=True, allow_sandbox_orders=True)
 
     async def fake_request(*args, **kwargs):
         return {"data": {"order_id": "broker-1"}}
+
+    monkeypatch.setattr(broker._client, "request", fake_request)
+    with pytest.raises(BrokerHTTPError, match="no explicit CANCELLED status; reconciliation required"):
+        await broker.cancel_order("broker-1")
+
+
+@pytest.mark.asyncio
+async def test_upstox_cancel_rejects_non_cancelled_status(monkeypatch: pytest.MonkeyPatch) -> None:
+    broker = UpstoxBroker("sandbox-token", sandbox=True, allow_sandbox_orders=True)
+
+    async def fake_request(*args, **kwargs):
+        return {"data": {"order_id": "broker-1", "status": "open"}}
+
+    monkeypatch.setattr(broker._client, "request", fake_request)
+    with pytest.raises(BrokerHTTPError, match="no explicit CANCELLED status; reconciliation required"):
+        await broker.cancel_order("broker-1")
+
+
+@pytest.mark.asyncio
+async def test_upstox_cancel_accepts_matching_broker_order_id_and_cancelled_status(monkeypatch: pytest.MonkeyPatch) -> None:
+    broker = UpstoxBroker("sandbox-token", sandbox=True, allow_sandbox_orders=True)
+
+    async def fake_request(*args, **kwargs):
+        return {"data": {"order_id": "broker-1", "status": "cancelled"}}
 
     monkeypatch.setattr(broker._client, "request", fake_request)
     cancelled = await broker.cancel_order("broker-1")
@@ -153,6 +157,29 @@ async def test_dhan_live_submission_is_gated_by_default() -> None:
     broker = DhanBroker("client", "token")
     with pytest.raises(LiveBrokerDisabled):
         await broker.place_order(order("1333"))
+
+
+@pytest.mark.asyncio
+async def test_dhan_sandbox_is_isolated_from_live_gate() -> None:
+    broker = DhanBroker("client", "token", sandbox=True, allow_sandbox_orders=True, allow_live_orders=True, instrument_resolver=resolver())
+    assert broker.sandbox is True
+    assert broker.orders_enabled is True
+    assert broker._client.base_url == DhanBroker.SANDBOX_BASE_URL
+
+
+@pytest.mark.asyncio
+async def test_dhan_sandbox_submission_is_disabled_by_default() -> None:
+    broker = DhanBroker("client", "token", sandbox=True, instrument_resolver=resolver())
+    assert broker.orders_enabled is False
+    with pytest.raises(LiveBrokerDisabled, match="Dhan sandbox order submission is disabled"):
+        await broker.place_order(order())
+
+
+@pytest.mark.asyncio
+async def test_dhan_live_gate_does_not_enable_sandbox_orders() -> None:
+    broker = DhanBroker("client", "token", allow_live_orders=True, sandbox=True, instrument_resolver=resolver())
+    assert broker.orders_enabled is False
+    assert broker._client.base_url == DhanBroker.SANDBOX_BASE_URL
 
 
 @pytest.mark.asyncio
@@ -274,17 +301,7 @@ async def test_dhan_cancel_returns_refreshed_broker_order(monkeypatch: pytest.Mo
 
 
 def test_upstox_order_mapping_is_provider_neutral() -> None:
-    mapped = UpstoxBroker._map_order({
-        "order_id": "u-1",
-        "tag": "client-1",
-        "instrument_token": "NSE_EQ|TEST",
-        "transaction_type": "BUY",
-        "order_type": "MARKET",
-        "quantity": 5,
-        "filled_quantity": 5,
-        "average_price": 101.25,
-        "status": "complete",
-    })
+    mapped = UpstoxBroker._map_order({"order_id": "u-1", "tag": "client-1", "instrument_token": "NSE_EQ|TEST", "transaction_type": "BUY", "order_type": "MARKET", "quantity": 5, "filled_quantity": 5, "average_price": 101.25, "status": "complete"})
     assert mapped.order_id == "u-1"
     assert mapped.client_order_id == "client-1"
     assert mapped.status is BrokerOrderStatus.FILLED
@@ -292,17 +309,7 @@ def test_upstox_order_mapping_is_provider_neutral() -> None:
 
 
 def test_dhan_order_mapping_is_provider_neutral() -> None:
-    mapped = DhanBroker._map_order({
-        "orderId": "d-1",
-        "correlationId": "client-1",
-        "securityId": "1333",
-        "transactionType": "SELL",
-        "orderType": "MARKET",
-        "quantity": 5,
-        "tradedQty": 2,
-        "averageTradedPrice": 100.5,
-        "orderStatus": "PART_TRADED",
-    })
+    mapped = DhanBroker._map_order({"orderId": "d-1", "correlationId": "client-1", "securityId": "1333", "transactionType": "SELL", "orderType": "MARKET", "quantity": 5, "tradedQty": 2, "averageTradedPrice": 100.5, "orderStatus": "PART_TRADED"})
     assert mapped.order_id == "d-1"
     assert mapped.client_order_id == "client-1"
     assert mapped.status is BrokerOrderStatus.PARTIALLY_FILLED
