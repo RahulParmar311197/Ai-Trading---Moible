@@ -1,11 +1,11 @@
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
 from app.api import brokers as brokers_api
 from app.api.auth import current_user
 from app.auth import AuthUser
-from app.brokers.account_repository import BrokerAccountRepository
+from app.brokers.account_repository import BrokerAccount, BrokerAccountRepository
 from app.main import app
 
 
@@ -17,7 +17,7 @@ class FakeRepository:
         return tuple(account for account in self.accounts if account.user_id == user_id)
 
     def create(self, user_id, provider, environment, external_account_id, credential_ref=None):
-        return BrokerAccountRepository._map({
+        account = BrokerAccountRepository._map({
             "id": str(uuid4()),
             "user_id": str(user_id),
             "provider": provider.strip().upper(),
@@ -26,6 +26,8 @@ class FakeRepository:
             "credential_ref": credential_ref,
             "enabled": False,
         })
+        self.accounts.append(account)
+        return account
 
 
 def test_broker_accounts_require_authentication():
@@ -35,15 +37,7 @@ def test_broker_accounts_require_authentication():
 
 def test_broker_account_api_is_user_scoped_and_never_returns_credential_ref(monkeypatch):
     repository = FakeRepository()
-    user_id = uuid4()
-    user = AuthUser(user_id, "trader@example.com", "Trader", "ACTIVE")
-
-    def create(*args, **kwargs):
-        account = repository.create(*args, **kwargs)
-        repository.accounts.append(account)
-        return account
-
-    repository.create = create
+    user = AuthUser(uuid4(), "trader@example.com", "Trader", "ACTIVE")
     monkeypatch.setattr(brokers_api, "get_broker_account_repository", lambda: repository)
     app.dependency_overrides[current_user] = lambda: user
     try:
