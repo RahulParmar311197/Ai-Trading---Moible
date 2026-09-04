@@ -33,7 +33,7 @@ class BrokerAccountFactory:
             raise BrokerUnavailable("broker account not found")
         if not account.enabled:
             raise BrokerUnavailable("broker account is disabled")
-        credential_ref = account.credential_ref
+        credential_ref = (account.credential_ref or "").strip()
         if not credential_ref:
             raise CredentialUnavailable("broker account has no credential reference")
 
