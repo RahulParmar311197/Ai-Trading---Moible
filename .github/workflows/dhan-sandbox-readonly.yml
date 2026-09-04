@@ -25,6 +25,43 @@ jobs:
           test -n "$DHAN_SANDBOX_CLIENT_ID"
           test -n "$DHAN_SANDBOX_ACCESS_TOKEN"
           echo "Dhan sandbox credentials are configured for this workflow run."
+      - name: Diagnose Dhan sandbox authentication
+        env:
+          DHAN_SANDBOX_CLIENT_ID: ${{ secrets.DHAN_SANDBOX_CLIENT_ID }}
+          DHAN_SANDBOX_ACCESS_TOKEN: ${{ secrets.DHAN_SANDBOX_ACCESS_TOKEN }}
+        run: |
+          python - <<'PY'
+          import asyncio
+          import os
+          import httpx
+
+          from app.brokers.dhan import DhanBroker
+          from app.brokers.http import BrokerHTTPError
+
+          async def main() -> None:
+              broker = DhanBroker(
+                  os.environ["DHAN_SANDBOX_CLIENT_ID"],
+                  os.environ["DHAN_SANDBOX_ACCESS_TOKEN"],
+                  sandbox=True,
+              )
+              try:
+                  profile = await broker._client.request("GET", "/profile")
+              except BrokerHTTPError as exc:
+                  print(f"Dhan sandbox profile authentication failed: {exc}")
+                  raise
+              if not isinstance(profile, dict):
+                  raise RuntimeError("Dhan sandbox profile response was not an object")
+              returned_client_id = str(profile.get("dhanClientId", "")).strip()
+              token_validity = str(profile.get("tokenValidity", "")).strip()
+              if returned_client_id != os.environ["DHAN_SANDBOX_CLIENT_ID"]:
+                  raise RuntimeError("Dhan sandbox profile client ID did not match configured client ID")
+              print("Dhan sandbox profile authentication succeeded.")
+              print(f"Dhan sandbox profile client ID matched: {returned_client_id}")
+              if token_validity:
+                  print(f"Dhan sandbox token validity reported by provider: {token_validity}")
+
+          asyncio.run(main())
+          PY
       - name: Verify Dhan sandbox account and portfolio reads
         env:
           DHAN_SANDBOX_CLIENT_ID: ${{ secrets.DHAN_SANDBOX_CLIENT_ID }}
