@@ -49,10 +49,11 @@ class BrokerAccountFactory:
     def _validate_credentials(account: BrokerAccount, credentials: BrokerCredentials) -> None:
         if not isinstance(credentials, BrokerCredentials):
             raise CredentialUnavailable("broker credential provider returned invalid credentials")
-        if not credentials.access_token or not credentials.access_token.strip():
+        if not isinstance(credentials.access_token, str) or not credentials.access_token.strip():
             raise CredentialUnavailable("broker credential provider returned no access token")
-        if account.provider == "DHAN" and (not credentials.client_id or not credentials.client_id.strip()):
-            raise CredentialUnavailable("Dhan credential provider returned no client id")
+        if account.provider == "DHAN":
+            if not isinstance(credentials.client_id, str) or not credentials.client_id.strip():
+                raise CredentialUnavailable("Dhan credential provider returned no client id")
 
     @staticmethod
     def _construct(account: BrokerAccount, credentials: BrokerCredentials) -> Broker:
