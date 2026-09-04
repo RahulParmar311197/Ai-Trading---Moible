@@ -32,8 +32,8 @@ jobs:
           import urllib.request
           import urllib.error
 
-          host = "sandbox.upstox.com"
-          url = "https://sandbox.upstox.com/v2/order/place"
+          host = "api-sandbox.upstox.com"
+          url = "https://api-sandbox.upstox.com/v2/order/place"
           dns_ok = False
           last_error = None
 
