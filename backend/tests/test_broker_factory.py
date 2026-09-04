@@ -63,6 +63,15 @@ def test_missing_credential_reference_fails_closed():
     assert credentials.calls == []
 
 
+def test_whitespace_credential_reference_fails_before_resolution():
+    item = account(credential_ref="   \t\n")
+    credentials = FakeCredentials(BrokerCredentials("token"))
+
+    with pytest.raises(CredentialUnavailable, match="no credential reference"):
+        BrokerAccountFactory(FakeRepository(item), credentials).build(user_id=item.user_id, account_id=item.id)
+    assert credentials.calls == []
+
+
 def test_credential_provider_failure_propagates_without_fallback():
     item = account()
     credentials = FakeCredentials(error=CredentialUnavailable("secret store unavailable"))
