@@ -30,7 +30,7 @@ Last updated: 2026-09-04
 - The application runtime composes durable PostgreSQL audit, idempotency, risk-state, session-baseline, and emergency-control stores. Runtime construction remains inert and never activates trading.
 - Provider-neutral AI HTTP compatibility and Android advisory AI integration are verified; AI cannot authorize execution.
 - A deterministic portfolio risk monitor provides gross/net exposure, per-position notional, P&L, and pairwise correlation checks without any broker mutation or execution authorization.
-- A durable emergency execution stop defaults active, persists its state in PostgreSQL, fails closed on persistence/read failure, and is checked at startup, activation, and submission boundaries. Clearing it is explicit and does not auto-activate trading.
+- A durable emergency execution stop defaults active, persists its state in PostgreSQL, fails closed on persistence/read failure, and is checked before broker authentication at startup, as well as at activation and submission boundaries. Clearing it is explicit and does not auto-activate trading.
 - The autonomous decision pipeline, deterministic autonomous intent handoff, and autonomous-to-controlled execution bridge are merged to `main`; the bridge requires both portfolio-risk approval and execution-risk approval before delegation.
 - Durable idempotency regression coverage is merged: unresolved reservations remain pending, completed results are replayed, conflicting reuse is rejected, and explicit reconciliation/clear permits reuse.
 
@@ -88,6 +88,7 @@ Last updated: 2026-09-04
 - [x] Fresh broker position refresh and snapshot consistency check before broker mutation
 - [x] Broker order-id confirmation
 - [x] Kill switch and fail-closed startup/shutdown
+- [x] Persisted emergency-stop state is authoritative before broker authentication at startup
 - [x] Audit-event boundary and durable audit repository
 - [x] Recovery/reconciliation boundary
 - [x] Unexpected-live-order recovery rejection
@@ -117,6 +118,7 @@ Last updated: 2026-09-04
 - [x] Local FastAPI runtime smoke verification: `/health` 200/ok and `/ready` 200/degraded with execution/market-data intentionally unconfigured
 - [x] PR #22 backend CI and Android CI verified successfully after reconciliation regression fixes
 - [x] PR #26 backend CI and Android CI verified successfully after atomic durable-completion regression fixes
+- [x] PR #27 backend CI and Android CI verified successfully; persisted emergency stop is fail-closed before broker authentication
 - [ ] Production broker runtime verification
 - [ ] Real live activation
 
@@ -132,6 +134,7 @@ Last updated: 2026-09-04
 
 ## Latest CI evidence
 
+- PR #27 head `74931b378227f3b709761f0918614adf0271f025`: Android CI run `33834375439` completed successfully; CI run `33834375456` completed successfully with backend-tests and Android build passing. PR merged to `main` as `89be79df6bb8f0d7d66fb602486aaa823b5ffccd`.
 - PR #26 head `098814160c4fd6b18f948b4a84d93cf9783c885b`: CI run `33833371312` backend-tests and Android build both completed successfully; PR merged to `main` as `f2b51649954b3c95b5038fda48a70493dbaca42d`.
 - PR #22 head `3b24a27848ee215f82bc2fabedb6baed92e5a3bb`: CI run `33746835072` backend-tests and Android build both completed successfully; PR merged to `main` as `62f66671c97dd9bec19a66617d0025222bae378b`.
 - PR #20 head `b15ed867a4f1ff42644003d41f68814a0cfe82af`: backend CI and Android CI both completed successfully; merged to `main` as `7dc9ebe30b22e7d33549d5cdef86aafc18dc6df8`.
@@ -145,7 +148,7 @@ The Dhan option-chain adapter, emergency-control runtime, autonomous decision pi
 
 ## Safety status
 
-**LIVE/AUTONOMOUS TRADING REMAINS GATED.** Controlled execution requires authenticated startup plus exact explicit activation; broker position state is refreshed before submission and must agree with the supplied risk snapshot; partial/filled confirmations require explicit post-fill synchronization and failures stop the lifecycle with the kill switch active; recovery/startup keep the kill switch active; shutdown and ambiguous broker failures fail closed. The durable emergency stop defaults active and fails closed on persistence/read errors. Dhan/Upstox live mutation remains disabled by default. AI remains subordinate to deterministic validation, strategy, risk and execution controls. The autonomous decision pipeline and bridge do not authorize broker submission without the controlled execution boundary. Production broker runtime verification and real live activation have not been performed.
+**LIVE/AUTONOMOUS TRADING REMAINS GATED.** Controlled execution requires authenticated startup plus exact explicit activation; persisted emergency-stop state is checked before broker authentication at startup and must be clear before activation/submission; broker position state is refreshed before submission and must agree with the supplied risk snapshot; partial/filled confirmations require explicit post-fill synchronization and failures stop the lifecycle with the kill switch active; recovery/startup keep the kill switch active; shutdown and ambiguous broker failures fail closed. The durable emergency stop defaults active and fails closed on persistence/read errors. Dhan/Upstox live mutation remains disabled by default. AI remains subordinate to deterministic validation, strategy, risk and execution controls. The autonomous decision pipeline and bridge do not authorize broker submission without the controlled execution boundary. Production broker runtime verification and real live activation have not been performed.
 
 ## Remaining blockers / unverified items
 
