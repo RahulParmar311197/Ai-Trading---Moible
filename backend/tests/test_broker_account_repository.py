@@ -52,7 +52,7 @@ class FakeDb:
         return None
 
 
-def test_broker_accounts_are_scoped_to_user_and_credentials_are_not_exposed():
+def test_broker_accounts_are_scoped_to_user_and_opaque_ref_is_internal_only():
     db = FakeDb()
     repository = BrokerAccountRepository(db)
     user_a, user_b = uuid4(), uuid4()
@@ -62,7 +62,7 @@ def test_broker_accounts_are_scoped_to_user_and_credentials_are_not_exposed():
     assert repository.list_for_user(user_a) == (account,)
     assert repository.list_for_user(user_b) == ()
     assert account.has_credential_ref is True
-    assert not hasattr(account, "credential_ref")
+    assert account.credential_ref == "secret-ref"
     assert repository.get_for_user(user_b, account.id) is None
 
 
