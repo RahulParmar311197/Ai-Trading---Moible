@@ -5,7 +5,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /** Read-only paper portfolio client. It cannot access broker credentials or live execution. */
-class PaperApiClient(private val baseUrl: String) {
+class PaperApiClient(private val baseUrl: String, private val token: String) {
     data class Account(val balance: String, val equity: String, val positions: Int, val tradingHalted: Boolean)
 
     fun account(): Account {
@@ -20,11 +20,13 @@ class PaperApiClient(private val baseUrl: String) {
 
     private fun request(path: String): JSONObject {
         require(baseUrl.isNotBlank()) { "API base URL is not configured" }
+        require(token.isNotBlank()) { "authentication session is not available" }
         val connection = (URL(baseUrl.trimEnd('/') + path).openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
             connectTimeout = 10_000
             readTimeout = 20_000
             setRequestProperty("Accept", "application/json")
+            setRequestProperty("Authorization", "Bearer $token")
         }
         return try {
             val status = connection.responseCode
