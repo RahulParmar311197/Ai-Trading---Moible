@@ -92,6 +92,9 @@ class UpstoxBroker:
         confirmed_order_id = data.get("order_id")
         if not confirmed_order_id or str(confirmed_order_id) != order_id:
             raise BrokerHTTPError("Upstox order cancellation returned ambiguous broker order ID; reconciliation required")
+        raw_status = data.get("status")
+        if raw_status is None or not str(raw_status).strip() or str(raw_status).lower() != "cancelled":
+            raise BrokerHTTPError("Upstox order cancellation returned no explicit CANCELLED status; reconciliation required")
         return BrokerOrder(order_id=order_id, client_order_id=str(data.get("tag", order_id)), symbol=str(data.get("instrument_token", "unknown")), side=str(data.get("transaction_type", "BUY")), order_type=str(data.get("order_type", "MARKET")), quantity=int(data.get("quantity", 1) or 1), status=BrokerOrderStatus.CANCELLED)
 
     async def reconcile_order(self, client_order_id: str) -> BrokerReconciliation:
