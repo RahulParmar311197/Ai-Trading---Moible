@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from app.api.ai import router as ai_router
 from app.api.backtest import router as backtest_router
 from app.api.market_data import router as market_data_router
+from app.api.market_stream import consume_redis_events
 from app.api.market_stream import router as market_stream_router
 from app.api.markets import router as markets_router
 from app.api.options import router as options_router
@@ -51,10 +52,11 @@ def _build_execution_runtime():
     if provider != "upstox":
         return None, f"Unsupported execution broker: {provider}"
 
-    if settings.execution_sandbox:
-        access_token = settings.upstox_sandbox_access_token
-    else:
-        access_token = settings.upstox_access_token
+    access_token = (
+        settings.upstox_sandbox_access_token
+        if settings.execution_sandbox
+        else settings.upstox_access_token
+    )
     if not access_token.strip():
         return None, "Upstox execution access token is not configured"
 
@@ -109,6 +111,7 @@ def _build_option_chain_provider() -> OptionChainProvider:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     runner_task: asyncio.Task[None] | None = None
+    market_stream_task: asyncio.Task[None] | None = None
     execution_runtime = None
 
     try:
@@ -121,13 +124,17 @@ async def lifespan(app: FastAPI):
     if settings.market_data_provider and settings.configured_market_data_instruments:
         try:
             feed = get_market_data_feed()
-            publisher = RedisMarketPublisher(get_redis_client())
+            redis_client = get_redis_client()
+            publisher = RedisMarketPublisher(redis_client)
             runner = ProviderMarketRunner(feed, publisher.publish)
             app.state.market_data_feed = feed
             app.state.market_data_publisher = publisher
             app.state.market_data_runner = runner
             runner_task = runner.start(settings.configured_market_data_instruments)
             app.state.market_data_runner_task = runner_task
+            market_stream_task = asyncio.create_task(consume_redis_events(redis_client))
+            app.state.market_stream_task = market_stream_task
+            app.state.market_data_startup_error = None
         except ProviderConfigurationError as exc:
             app.state.market_data_startup_error = str(exc)
     else:
@@ -155,9 +162,13 @@ async def lifespan(app: FastAPI):
     finally:
         if execution_runtime is not None:
             await execution_runtime.executor.shutdown("application shutdown")
-        if runner_task is not None:
-            runner_task.cancel()
-            await asyncio.gather(runner_task, return_exceptions=True)
+        for task in (runner_task, market_stream_task):
+            if task is not None:
+                task.cancel()
+        await asyncio.gather(
+            *(task for task in (runner_task, market_stream_task) if task is not None),
+            return_exceptions=True,
+        )
 
 
 app = FastAPI(title="AI Trading Platform API", version="0.1.0", lifespan=lifespan)
@@ -172,13 +183,11 @@ app.include_router(paper_router)
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    """Liveness endpoint: the API process is healthy even in degraded mode."""
     return {"status": "ok"}
 
 
 @app.get("/ready")
 def readiness() -> dict[str, str]:
-    """Readiness reflects configured market-data, option-chain and execution prerequisites."""
     market_error = getattr(app.state, "market_data_startup_error", None)
     option_error = getattr(app.state, "option_chain_startup_error", None)
     execution_error = getattr(app.state, "execution_startup_error", None)
