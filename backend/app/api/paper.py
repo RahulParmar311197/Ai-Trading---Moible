@@ -1,5 +1,6 @@
 from decimal import Decimal
 from functools import lru_cache
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -12,11 +13,11 @@ from app.paper import Order, OrderSide, OrderType, PaperBroker, PostgresPaperRep
 router = APIRouter(prefix="/api/v1/paper", tags=["paper"])
 
 
-@lru_cache(maxsize=1)
-def get_paper_broker() -> PaperBroker:
-    """Hydrate the process-local paper facade from durable PostgreSQL state."""
+@lru_cache(maxsize=128)
+def get_paper_broker(user_id: UUID) -> PaperBroker:
+    """Hydrate one process-local paper facade from durable state for one user."""
     database = SQLAlchemyExecutor(create_database_engine())
-    repository = PostgresPaperRepository(database)
+    repository = PostgresPaperRepository(database, user_id)
     return PaperBroker.from_repository(repository)
 
 
@@ -36,8 +37,8 @@ class PlacePaperOrderRequest(BaseModel):
 
 
 @router.post("/orders", response_model=Order)
-def place_paper_order(request: PlacePaperOrderRequest, _user: AuthUser = Depends(require_paper_user)) -> Order:
-    broker = get_paper_broker()
+def place_paper_order(request: PlacePaperOrderRequest, user: AuthUser = Depends(require_paper_user)) -> Order:
+    broker = get_paper_broker(user.id)
     order = Order(order_id=request.order_id, symbol=request.symbol, side=request.side, order_type=request.order_type, quantity=request.quantity, limit_price=request.limit_price)
     try:
         broker.place_order(order, request.market_price)
@@ -47,8 +48,8 @@ def place_paper_order(request: PlacePaperOrderRequest, _user: AuthUser = Depends
 
 
 @router.post("/orders/{order_id}/cancel", response_model=Order)
-def cancel_paper_order(order_id: str, _user: AuthUser = Depends(require_paper_user)) -> Order:
-    broker = get_paper_broker()
+def cancel_paper_order(order_id: str, user: AuthUser = Depends(require_paper_user)) -> Order:
+    broker = get_paper_broker(user.id)
     try:
         return broker.cancel_order(order_id)
     except KeyError as exc:
@@ -58,30 +59,30 @@ def cancel_paper_order(order_id: str, _user: AuthUser = Depends(require_paper_us
 
 
 @router.get("/orders", response_model=tuple[Order, ...])
-def list_paper_orders(_user: AuthUser = Depends(require_paper_user)) -> tuple[Order, ...]:
-    return tuple(get_paper_broker().orders.values())
+def list_paper_orders(user: AuthUser = Depends(require_paper_user)) -> tuple[Order, ...]:
+    return tuple(get_paper_broker(user.id).orders.values())
 
 
 @router.get("/positions")
-def list_paper_positions(_user: AuthUser = Depends(require_paper_user)):
-    return tuple(get_paper_broker().positions.values())
+def list_paper_positions(user: AuthUser = Depends(require_paper_user)):
+    return tuple(get_paper_broker(user.id).positions.values())
 
 
 @router.get("/account")
-def paper_account(_user: AuthUser = Depends(require_paper_user)) -> dict[str, object]:
-    broker = get_paper_broker()
+def paper_account(user: AuthUser = Depends(require_paper_user)) -> dict[str, object]:
+    broker = get_paper_broker(user.id)
     return {"balance": broker.balance, "equity": broker.equity(), "positions": len(broker.positions), "trading_halted": broker.halted}
 
 
 @router.post("/kill-switch")
-def activate_kill_switch(_user: AuthUser = Depends(require_paper_user)) -> dict[str, bool]:
-    broker = get_paper_broker()
+def activate_kill_switch(user: AuthUser = Depends(require_paper_user)) -> dict[str, bool]:
+    broker = get_paper_broker(user.id)
     broker.kill_switch()
     return {"trading_halted": broker.halted}
 
 
 @router.post("/kill-switch/clear")
-def clear_kill_switch(_user: AuthUser = Depends(require_paper_user)) -> dict[str, bool]:
-    broker = get_paper_broker()
+def clear_kill_switch(user: AuthUser = Depends(require_paper_user)) -> dict[str, bool]:
+    broker = get_paper_broker(user.id)
     broker.clear_kill_switch()
     return {"trading_halted": broker.halted}
