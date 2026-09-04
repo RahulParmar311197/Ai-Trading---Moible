@@ -54,7 +54,7 @@ def test_disabled_account_fails_before_credential_resolution():
     assert credentials.calls == []
 
 
-def test_missing_credential_reference_fails_closed():
+def test_missing_credential_reference_fails_before_resolution():
     item = account(credential_ref=None)
     credentials = FakeCredentials(BrokerCredentials("token"))
 
@@ -77,7 +77,7 @@ def test_credential_provider_failure_propagates_without_fallback():
     credentials = FakeCredentials(error=CredentialUnavailable("secret store unavailable"))
 
     with pytest.raises(CredentialUnavailable, match="secret store unavailable"):
-        BrokerAccountFactory(FakeRepository(item), credentials).build(user_id=item.user_id, account_id=item.id).build(user_id=item.user_id, account_id=item.id)
+        BrokerAccountFactory(FakeRepository(item), credentials).build(user_id=item.user_id, account_id=item.id)
     assert credentials.calls == [(item.user_id, item.id, "vault/ref")]
 
 
