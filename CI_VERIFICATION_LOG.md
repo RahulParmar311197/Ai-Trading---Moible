@@ -4,17 +4,20 @@ Last updated: 2026-09-04
 
 ## Verified passing runs
 
-- `33858141630` — commit `cf0d8fd782e4172891dfb337af3bd21288ee741c`: **full CI completed successfully**. Backend dependencies, official Upstox protobuf verification, PostgreSQL migrations, non-integration pytest, integration pytest, and Android `assembleDebug` all passed.
+- `33862416980` — commit `b523e454c956b6887132dca3873803baeeae76d7`: **full CI completed successfully**. Backend dependency installation, official Upstox protobuf verification, PostgreSQL migrations, non-integration pytest (`380 passed, 6 deselected`), integration pytest (`5 passed, 1 skipped`), and Android `assembleDebug` all passed.
+- `33858141630` — commit `cf0d8fd782e4172891dfb337af3bd21288ee741c`: full CI completed successfully.
 - `33854870591` — prior main commit `27b293eb41ea6645261f6212abdc6f5e65099a6c`: full CI completed successfully.
 - `33854870731` — prior main commit `27b293eb41ea6645261f6212abdc6f5e65099a6c`: Android CI completed successfully.
 
 ## Current verification
 
-Run `33858141630` verifies the broker authentication transport regression commit. Tests explicitly verify Dhan uses `access-token` without Bearer and Upstox retains `Authorization: Bearer`.
+Run `33862416980` verifies the Dhan sandbox 403 classification regression commit. Backend and Android jobs both completed successfully. The backend run applied all PostgreSQL migrations, ran the full non-integration suite, and ran the integration suite.
 
-Commit `6eef5fa655f1c3bd63e52f581769264881cf546c` adds a manual Dhan sandbox read-only smoke workflow. The workflow requires `DHAN_SANDBOX_CLIENT_ID` and `DHAN_SANDBOX_ACCESS_TOKEN` repository secrets, targets the documented Dhan sandbox base URL through `DhanBroker(sandbox=True)`, performs account/positions/orders reads, and separately asserts that sandbox mutation remains disabled by default.
+The Dhan sandbox workflow requires `DHAN_SANDBOX_CLIENT_ID` and `DHAN_SANDBOX_ACCESS_TOKEN` repository secrets, targets the documented Dhan sandbox base URL through `DhanBroker(sandbox=True)`, performs account/positions/orders reads, and separately asserts that sandbox mutation remains disabled by default.
 
-The Dhan sandbox workflow was subsequently hardened with a `/profile` authentication diagnostic before portfolio reads. The latest operator-executed run reached that diagnostic and failed with HTTP 403 from the Dhan sandbox `/profile` request. This is a broker-authentication/runtime failure, not evidence of a successful sandbox connection; no mutation step was reached and no order was submitted.
+The Dhan sandbox workflow was hardened with a `/profile` authentication diagnostic before portfolio reads. The latest operator-executed runtime run reached that diagnostic and failed with HTTP 403 from the Dhan sandbox `/profile` request. This is a broker-authentication/runtime failure, not evidence of a successful sandbox connection; no portfolio read or mutation step was reached and no order was submitted.
+
+The latest `main` change adds safe diagnostic classification for non-standard Dhan 403 responses without logging credentials or raw provider response bodies. A fresh sandbox workflow run is required to obtain the resulting provider-response classification.
 
 ## Runtime evidence
 
