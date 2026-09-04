@@ -61,3 +61,39 @@ def test_ai_proposal_rejects_zero_entry_stop_distance():
             proposal(entry=Decimal("100"), stop=Decimal("100"), target=Decimal("110"), risk_reward=Decimal("2")),
             signal_exists=True,
         )
+
+
+@pytest.mark.parametrize(
+    "overrides, message",
+    [
+        ({"stop": "105"}, "LONG requires stop < entry < target"),
+        ({"target": "90"}, "LONG requires stop < entry < target"),
+        (
+            {"direction": "SHORT", "stop": "95", "target": "90"},
+            "SHORT requires target < entry < stop",
+        ),
+        (
+            {"direction": "SHORT", "stop": "105", "target": "110"},
+            "SHORT requires target < entry < stop",
+        ),
+    ],
+)
+def test_ai_proposal_enforces_directional_price_geometry(overrides, message):
+    with pytest.raises(ValueError, match=message):
+        AIOutputValidator().validate(proposal(**overrides), signal_exists=True)
+
+
+def test_ai_short_proposal_with_correct_price_geometry_is_accepted():
+    result = AIOutputValidator().validate(
+        proposal(
+            direction="SHORT",
+            entry="100",
+            stop="105",
+            target="90",
+            risk_reward="2",
+            conditions_satisfied=("liquidity_sweep", "bearish_mss", "bearish_fvg"),
+        ),
+        signal_exists=True,
+        expected_direction="SHORT",
+    )
+    assert result.direction == "SHORT"
