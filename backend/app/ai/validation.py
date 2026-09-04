@@ -31,15 +31,16 @@ class AIOutputValidator:
             if missing:
                 raise ValueError("AI proposal rejected: required conditions are not satisfied")
 
+        distance = abs(proposal.entry - proposal.stop)
+        if distance == 0:
+            raise ValueError("AI proposal rejected: entry and stop must differ")
+
         if proposal.direction == "LONG":
             if not proposal.stop < proposal.entry < proposal.target:
                 raise ValueError("AI proposal rejected: LONG requires stop < entry < target")
         elif not proposal.target < proposal.entry < proposal.stop:
             raise ValueError("AI proposal rejected: SHORT requires target < entry < stop")
 
-        distance = abs(proposal.entry - proposal.stop)
-        if distance == 0:
-            raise ValueError("AI proposal rejected: entry and stop must differ")
         expected_rr = abs(proposal.target - proposal.entry) / distance
         if abs(expected_rr - proposal.risk_reward) > Decimal("0.000001"):
             raise ValueError("AI proposal rejected: risk/reward does not match prices")
