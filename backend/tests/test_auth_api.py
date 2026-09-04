@@ -28,7 +28,7 @@ class FakeDb:
     def execute(self, query, params):
         text = str(query)
         if "INSERT INTO users" in text:
-            self.users[params["id"]] = dict(params)
+            self.users[params["id"]] = {**dict(params), "status": "ACTIVE"}
         elif "INSERT INTO auth_sessions" in text:
             self.sessions[params["token_hash"]] = dict(params)
         elif "UPDATE auth_sessions SET last_seen_at" in text:
