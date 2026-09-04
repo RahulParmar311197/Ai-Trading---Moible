@@ -3,7 +3,7 @@ from decimal import Decimal
 import pytest
 
 from app.brokers.base import Account, BrokerPosition
-from app.execution.risk_session import RiskSessionBaseline, RiskSessionBaselineConflict
+from app.execution.risk_session import RiskSessionBaseline, RiskSessionBaselineConflict, RiskSessionBaselineMissing
 from app.execution.session_lifecycle import TradingSessionError, TradingSessionLifecycle
 from app.execution.state_sync import BrokerStateSynchronizer
 
@@ -30,6 +30,8 @@ class Store:
         return baseline
 
     def get(self, session_id: str) -> RiskSessionBaseline:
+        if session_id not in self.values:
+            raise RiskSessionBaselineMissing("missing")
         return self.values[session_id]
 
 
@@ -48,6 +50,23 @@ async def test_establish_persists_first_broker_realized_pnl_as_session_baseline(
     assert session.session_id == "session-2026-09-03"
     assert session.baseline.daily_realized_pnl_baseline == Decimal("1250")
     assert store.values["session-2026-09-03"] == session.baseline
+
+
+@pytest.mark.asyncio
+async def test_establish_resumes_existing_baseline_after_realized_pnl_changes() -> None:
+    identity = Identity("session-1")
+    store = Store()
+    store.values["session-1"] = RiskSessionBaseline("session-1", Decimal("1250"))
+    state = BrokerStateSynchronizer(
+        _async_account,
+        lambda: _async_positions(realized=Decimal("1750")),
+    )
+    lifecycle = TradingSessionLifecycle(identity, store, state)
+
+    session = await lifecycle.establish()
+
+    assert session.baseline.daily_realized_pnl_baseline == Decimal("1250")
+    assert session.state.realized_pnl == Decimal("1750")
 
 
 @pytest.mark.asyncio
