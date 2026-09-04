@@ -2,7 +2,7 @@ from uuid import uuid4
 
 import pytest
 
-from app.brokers.account_repository import BrokerAccount, BrokerAccountRepository
+from app.brokers.account_repository import BrokerAccount
 from app.brokers.credential_provider import BrokerCredentials, CredentialUnavailable
 from app.brokers.dhan.adapter import DhanBroker
 from app.brokers.factory import BrokerAccountFactory, BrokerUnavailable
@@ -82,7 +82,7 @@ def test_upstox_credentials_are_resolved_by_exact_user_account_and_ref():
     assert credentials.calls == [(item.user_id, item.id, "vault/ref")]
     assert broker.sandbox is True
     assert broker.orders_enabled is False
-    assert broker.session.access_token == "token-value"
+    assert broker.session.access_token() == "token-value"
 
 
 def test_live_account_never_enables_live_mutations():
