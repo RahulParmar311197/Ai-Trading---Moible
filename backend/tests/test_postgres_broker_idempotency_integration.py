@@ -10,7 +10,7 @@ from sqlalchemy import text
 
 from app.brokers import BrokerOrder, BrokerOrderStatus, BrokerOrderType, BrokerSide
 from app.brokers.durable_idempotency import DurableBrokerIdempotencyStore
-from app.brokers.idempotency import IdempotencyPending
+from app.brokers.idempotency import IdempotencyConflict, IdempotencyPending
 from app.database.session import SQLAlchemyExecutor, create_database_engine
 
 
@@ -63,7 +63,7 @@ def test_durable_idempotency_survives_repository_recreation() -> None:
     with pytest.raises(ValueError, match="already used"):
         second_store.begin(conflicting)
 
-    with pytest.raises(RuntimeError, match="reservation missing"):
+    with pytest.raises(IdempotencyConflict, match="broker result does not match"):
         second_store.complete(conflicting, result)
 
     with engine.begin() as connection:

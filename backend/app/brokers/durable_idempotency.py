@@ -50,22 +50,9 @@ class DurableBrokerIdempotencyStore:
         return BrokerOrder.model_validate(stored_result)
 
     def complete(self, order: BrokerOrder, result: BrokerOrder) -> BrokerOrder:
-        """Persist a broker result only when it matches the existing reservation."""
+        """Atomically persist a result without overwriting a different terminal result."""
         key = order.client_order_id
         fingerprint = self.fingerprint(order)
-        reservation = self.db.fetch_one(
-            "SELECT fingerprint FROM broker_idempotency_keys WHERE client_order_id = :client_order_id",
-            {"client_order_id": key},
-        )
-        if reservation is None:
-            # Recovery may legitimately bootstrap a durable terminal result.
-            if self.fingerprint(result) != fingerprint:
-                raise IdempotencyConflict(
-                    f"broker result does not match idempotency reservation: {key}"
-                )
-        elif reservation["fingerprint"] != fingerprint:
-            raise RuntimeError("idempotency reservation missing or fingerprint mismatch")
-
         result_fingerprint = self.fingerprint(result)
         if result_fingerprint != fingerprint:
             if result.status not in {BrokerOrderStatus.NEW, BrokerOrderStatus.OPEN}:
@@ -74,39 +61,48 @@ class DurableBrokerIdempotencyStore:
                 )
             return result
 
-        self.db.execute(
+        serialized = json.dumps(
+            result.model_dump(mode="json"), sort_keys=True, separators=(",", ":")
+        )
+        now = datetime.now(timezone.utc)
+        row = self.db.execute_returning(
             """
             INSERT INTO broker_idempotency_keys (client_order_id, fingerprint, result, updated_at)
             VALUES (:client_order_id, :fingerprint, CAST(:result AS JSONB), :updated_at)
-            ON CONFLICT (client_order_id) DO NOTHING
+            ON CONFLICT (client_order_id) DO UPDATE
+            SET result = EXCLUDED.result, updated_at = EXCLUDED.updated_at
+            WHERE broker_idempotency_keys.fingerprint = EXCLUDED.fingerprint
+              AND (broker_idempotency_keys.result IS NULL OR broker_idempotency_keys.result = EXCLUDED.result)
+            RETURNING result
             """,
             {
                 "client_order_id": key,
                 "fingerprint": fingerprint,
-                "result": json.dumps(result.model_dump(mode="json"), sort_keys=True, separators=(",", ":")),
-                "updated_at": datetime.now(timezone.utc),
+                "result": serialized,
+                "updated_at": now,
             },
         )
-        self.db.execute(
-            """
-            UPDATE broker_idempotency_keys
-            SET result = CAST(:result AS JSONB), updated_at = :updated_at
-            WHERE client_order_id = :client_order_id AND fingerprint = :fingerprint
-            """,
-            {
-                "client_order_id": key,
-                "fingerprint": fingerprint,
-                "result": json.dumps(result.model_dump(mode="json"), sort_keys=True, separators=(",", ":")),
-                "updated_at": datetime.now(timezone.utc),
-            },
+        if row is not None:
+            stored_result = row["result"]
+            if isinstance(stored_result, str):
+                stored_result = json.loads(stored_result)
+            return BrokerOrder.model_validate(stored_result)
+
+        reservation = self.db.fetch_one(
+            "SELECT fingerprint, result FROM broker_idempotency_keys WHERE client_order_id = :client_order_id",
+            {"client_order_id": key},
         )
-        row = self.db.fetch_one(
-            "SELECT client_order_id FROM broker_idempotency_keys WHERE client_order_id = :client_order_id AND fingerprint = :fingerprint AND result IS NOT NULL",
-            {"client_order_id": key, "fingerprint": fingerprint},
-        )
-        if row is None:
-            raise RuntimeError("idempotency reservation missing or fingerprint mismatch")
-        return result
+        if reservation is None:
+            raise RuntimeError("idempotency reservation disappeared")
+        if reservation["fingerprint"] != fingerprint:
+            raise IdempotencyConflict(
+                f"idempotency reservation missing or fingerprint mismatch: {key}"
+            )
+        if reservation["result"] is not None:
+            raise IdempotencyConflict(
+                f"idempotency key already completed with a different result: {key}"
+            )
+        raise RuntimeError("idempotency completion could not be persisted")
 
     def clear(self, client_order_id: str) -> None:
         """Clear only after broker state has been externally reconciled."""

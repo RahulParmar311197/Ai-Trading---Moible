@@ -16,33 +16,40 @@ class FakeDb:
     def execute_returning(self, sql: str, params: dict[str, object]) -> object | None:
         self.executed.append((sql, params))
         key = str(params["client_order_id"])
-        if key in self.rows:
+        if "DO NOTHING" in sql:
+            if key in self.rows:
+                return None
+            self.rows[key] = {"fingerprint": params["fingerprint"], "result": None}
+            return {"client_order_id": key}
+
+        row = self.rows.get(key)
+        if row is None:
+            self.rows[key] = {
+                "fingerprint": params["fingerprint"],
+                "result": json.loads(str(params["result"])),
+            }
+            return {"result": self.rows[key]["result"]}
+        if row["fingerprint"] != params["fingerprint"]:
             return None
-        self.rows[key] = {"fingerprint": params["fingerprint"], "result": None}
-        return {"client_order_id": key}
+        incoming = json.loads(str(params["result"]))
+        if row["result"] is not None and row["result"] != incoming:
+            return None
+        row["result"] = incoming
+        return {"result": row["result"]}
 
     def fetch_one(self, sql: str, params: dict[str, object]) -> dict[str, object] | None:
         key = str(params["client_order_id"])
         row = self.rows.get(key)
         if row is None:
             return None
-        if "result IS NOT NULL" in sql and row["result"] is None:
-            return None
         if "fingerprint" in params and row["fingerprint"] != params["fingerprint"]:
             return None
-        if "client_order_id FROM" in sql:
-            return {"client_order_id": key}
         return row
 
     def execute(self, sql: str, params: dict[str, object]) -> None:
         self.executed.append((sql, params))
-        key = str(params["client_order_id"])
-        if sql.lstrip().startswith("UPDATE"):
-            row = self.rows.get(key)
-            if row is not None and row["fingerprint"] == params["fingerprint"]:
-                row["result"] = json.loads(str(params["result"]))
-        elif sql.lstrip().startswith("DELETE"):
-            self.rows.pop(key, None)
+        if sql.lstrip().startswith("DELETE"):
+            self.rows.pop(str(params["client_order_id"]), None)
 
 
 def order(*, symbol: str = "NIFTY", client_order_id: str = "client-1") -> BrokerOrder:
@@ -115,3 +122,22 @@ def test_durable_store_clear_allows_reuse_only_after_explicit_reconciliation() -
 
     store.clear(request.client_order_id)
     assert store.begin(request) is None
+
+
+def test_durable_store_does_not_overwrite_existing_terminal_result() -> None:
+    db = FakeDb()
+    store = DurableBrokerIdempotencyStore(db)
+    request = order()
+    first = result("broker-1")
+    different = result("broker-2")
+
+    assert store.begin(request) is None
+    assert store.complete(request, first) == first
+
+    with pytest.raises(IdempotencyConflict, match="different result"):
+        store.complete(request, different)
+
+    assert store.begin(request) == first
+    completion_statements = [sql for sql, _ in db.executed if "DO UPDATE" in sql]
+    assert len(completion_statements) == 2
+    assert all("result IS NULL" in sql for sql in completion_statements)
