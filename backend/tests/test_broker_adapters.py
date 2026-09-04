@@ -112,6 +112,43 @@ async def test_upstox_empty_order_ids_fails_closed(monkeypatch: pytest.MonkeyPat
 
 
 @pytest.mark.asyncio
+async def test_upstox_cancel_requires_broker_confirmation(monkeypatch: pytest.MonkeyPatch) -> None:
+    broker = UpstoxBroker("sandbox-token", sandbox=True, allow_sandbox_orders=True)
+
+    async def fake_request(*args, **kwargs):
+        return {"data": {}}
+
+    monkeypatch.setattr(broker._client, "request", fake_request)
+    with pytest.raises(BrokerHTTPError, match="no broker confirmation; reconciliation required"):
+        await broker.cancel_order("broker-1")
+
+
+@pytest.mark.asyncio
+async def test_upstox_cancel_rejects_mismatched_broker_order_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    broker = UpstoxBroker("sandbox-token", sandbox=True, allow_sandbox_orders=True)
+
+    async def fake_request(*args, **kwargs):
+        return {"data": {"order_id": "different-order"}}
+
+    monkeypatch.setattr(broker._client, "request", fake_request)
+    with pytest.raises(BrokerHTTPError, match="ambiguous broker order ID; reconciliation required"):
+        await broker.cancel_order("broker-1")
+
+
+@pytest.mark.asyncio
+async def test_upstox_cancel_accepts_matching_broker_order_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    broker = UpstoxBroker("sandbox-token", sandbox=True, allow_sandbox_orders=True)
+
+    async def fake_request(*args, **kwargs):
+        return {"data": {"order_id": "broker-1"}}
+
+    monkeypatch.setattr(broker._client, "request", fake_request)
+    cancelled = await broker.cancel_order("broker-1")
+    assert cancelled.order_id == "broker-1"
+    assert cancelled.status is BrokerOrderStatus.CANCELLED
+
+
+@pytest.mark.asyncio
 async def test_dhan_live_submission_is_gated_by_default() -> None:
     broker = DhanBroker("client", "token")
     with pytest.raises(LiveBrokerDisabled):
@@ -196,6 +233,5 @@ def test_dhan_rejects_invalid_correlation_id_before_network_call() -> None:
 def test_enabled_broker_rejects_unknown_instrument_before_network_call() -> None:
     broker = DhanBroker("client", "token", allow_live_orders=True)
     with pytest.raises(KeyError, match="instrument mapping not configured"):
-        # Resolver lookup occurs before the HTTP request.
         import asyncio
         asyncio.run(broker.place_order(order("UNKNOWN")))
